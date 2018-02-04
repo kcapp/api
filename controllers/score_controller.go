@@ -10,6 +10,25 @@ import (
 	"github.com/kcapp/api/models"
 )
 
+// AddVisit will add the visit to the database
+func AddVisit(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	var visit models.Visit
+	err := json.NewDecoder(r.Body).Decode(&visit)
+	if err != nil {
+		log.Println("Unable to deserialize body", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = models.AddVisit(visit)
+	if err != nil {
+		log.Println("Unable to add visit", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 // ModifyVisit will modify the scores of the given visit
 func ModifyVisit(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

@@ -17,9 +17,10 @@ type Visit struct {
 
 // Dart struct used for storing darts
 type Dart struct {
-	Value      null.Int `json:"value"`
-	Multiplier int64    `json:"multiplier"`
-	IsCheckout bool     `json:"is_checkout"`
+	Value             null.Int `json:"value"`
+	Multiplier        int64    `json:"multiplier"`
+	IsCheckoutAttempt bool     `json:"is_checkout"`
+	IsBust            bool     `json:"is_bust,omitempty"`
 }
 
 // GetPlayerVisits will return all visits for a given player
@@ -47,9 +48,9 @@ func GetPlayerVisits(id int) ([]*Visit, error) {
 		second := new(Dart)
 		third := new(Dart)
 		err := rows.Scan(&v.ID, &v.MatchID, &v.PlayerID,
-			&first.Value, &first.Multiplier, &first.IsCheckout,
-			&second.Value, &second.Multiplier, &second.IsCheckout,
-			&third.Value, &third.Multiplier, &third.IsCheckout,
+			&first.Value, &first.Multiplier, &first.IsCheckoutAttempt,
+			&second.Value, &second.Multiplier, &second.IsCheckoutAttempt,
+			&third.Value, &third.Multiplier, &third.IsCheckoutAttempt,
 			&v.IsBust, &v.CreatedAt, &v.UpdatedAt)
 		if err != nil {
 			return nil, err
@@ -91,9 +92,9 @@ func GetMatchVisits(id int) ([]*Visit, error) {
 		second := new(Dart)
 		third := new(Dart)
 		err := rows.Scan(&v.ID, &v.MatchID, &v.PlayerID,
-			&first.Value, &first.Multiplier, &first.IsCheckout,
-			&second.Value, &second.Multiplier, &second.IsCheckout,
-			&third.Value, &third.Multiplier, &third.IsCheckout,
+			&first.Value, &first.Multiplier, &first.IsCheckoutAttempt,
+			&second.Value, &second.Multiplier, &second.IsCheckoutAttempt,
+			&third.Value, &third.Multiplier, &third.IsCheckoutAttempt,
 			&v.IsBust, &v.CreatedAt, &v.UpdatedAt)
 		if err != nil {
 			return nil, err
@@ -127,9 +128,9 @@ func GetVisit(id int) (*Visit, error) {
 			updated_at
 		FROM score s
 		WHERE s.id = ?`, id).Scan(&v.ID, &v.MatchID, &v.PlayerID,
-		&v.FirstDart.Value, &v.FirstDart.Multiplier, &v.FirstDart.IsCheckout,
-		&v.SecondDart.Value, &v.SecondDart.Multiplier, &v.SecondDart.IsCheckout,
-		&v.ThirdDart.Value, &v.ThirdDart.Multiplier, &v.ThirdDart.IsCheckout,
+		&v.FirstDart.Value, &v.FirstDart.Multiplier, &v.FirstDart.IsCheckoutAttempt,
+		&v.SecondDart.Value, &v.SecondDart.Multiplier, &v.SecondDart.IsCheckoutAttempt,
+		&v.ThirdDart.Value, &v.ThirdDart.Multiplier, &v.ThirdDart.IsCheckoutAttempt,
 		&v.IsBust, &v.CreatedAt, &v.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -185,4 +186,113 @@ func DeleteVisit(id int) error {
 	}
 	tx.Commit()
 	return nil
+}
+
+// AddVisit will write thegiven visit to database
+func AddVisit(visit Visit) error {
+	currentScore, err := getPlayerScore(visit.PlayerID, visit.MatchID)
+	if err != nil {
+		return err
+	}
+
+	// TODO Don't allow to save score for same player twice in a row
+
+	setVisitModifiers(currentScore, visit.FirstDart, visit.SecondDart, visit.ThirdDart)
+	visit.IsBust = visit.FirstDart.IsBust || visit.SecondDart.IsBust || visit.ThirdDart.IsBust
+
+	stmt, err := db.Prepare(`
+		INSERT INTO score(
+			match_id, player_id,
+			first_dart, first_dart_multiplier, is_checkout_first,
+			second_dart, second_dart_multiplier, is_checkout_second,
+			third_dart, third_dart_multiplier, is_checkout_third,
+			is_bust, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(visit.MatchID, visit.PlayerID,
+		visit.FirstDart.Value, visit.FirstDart.Multiplier, visit.FirstDart.IsCheckoutAttempt,
+		visit.SecondDart.Value, visit.SecondDart.Multiplier, visit.SecondDart.IsCheckoutAttempt,
+		visit.ThirdDart.Value, visit.ThirdDart.Multiplier, visit.ThirdDart.IsCheckoutAttempt,
+		visit.IsBust)
+	if err != nil {
+		return err
+	}
+
+	// TODO set current player
+	stmt, err = db.Prepare(`UPDATE ` + "`match`" + ` SET current_player_id = ? WHERE id = ?`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	return nil
+}
+
+func getPlayerScore(playerID int, matchID int) (int, error) {
+	var currentScore int
+	err := db.QueryRow(`
+		SELECT m.starting_score - SUM(first_dart * first_dart_multiplier + second_dart * second_dart_multiplier + third_dart * third_dart_multiplier)
+		FROM score s LEFT JOIN `+"`match`"+` m ON m.id = s.match_id
+		WHERE player_id = ? AND match_id = ? AND is_bust = 0`, playerID, matchID).Scan(&currentScore)
+	if err != nil {
+		return 0, err
+	}
+	return currentScore, nil
+}
+
+func setVisitModifiers(currentScore int, firstDart *Dart, secondDart *Dart, thirdDart *Dart) {
+	// Make sure to write multipliers as 1 (single) on miss
+	if !firstDart.Value.Valid || firstDart.Value.Int64 == 0 {
+		firstDart.Multiplier = 1
+	}
+	if !secondDart.Value.Valid || secondDart.Value.Int64 == 0 {
+		secondDart.Multiplier = 1
+	}
+	if !thirdDart.Value.Valid || thirdDart.Value.Int64 == 0 {
+		thirdDart.Multiplier = 1
+	}
+
+	firstDart.IsBust = isBust(firstDart, currentScore)
+	if !firstDart.IsBust {
+		firstDart.IsCheckoutAttempt = isCheckoutAttempt(currentScore)
+	}
+	currentScore = currentScore - int((firstDart.Value.Int64 * firstDart.Multiplier))
+
+	if !firstDart.IsBust && !isCheckout(firstDart, currentScore) {
+		secondDart.IsBust = isBust(secondDart, currentScore)
+		if !secondDart.IsBust {
+			secondDart.IsCheckoutAttempt = isCheckoutAttempt(currentScore)
+		}
+		currentScore = currentScore - int((secondDart.Value.Int64 * secondDart.Multiplier))
+
+		if !secondDart.IsBust && !isCheckout(secondDart, currentScore) {
+			thirdDart.IsBust = isBust(thirdDart, currentScore)
+			if !thirdDart.IsBust {
+				thirdDart.IsCheckoutAttempt = isCheckoutAttempt(currentScore)
+			}
+			currentScore = currentScore - int((thirdDart.Value.Int64 * thirdDart.Multiplier))
+		}
+	}
+}
+
+func isBust(dart *Dart, currentScore int) bool {
+	scoreAfterThrow := currentScore - int((dart.Value.Int64 * dart.Multiplier))
+	if isCheckout(dart, currentScore) {
+		return false
+	} else if scoreAfterThrow < 2 {
+		return true
+	}
+	return false
+}
+
+func isCheckoutAttempt(currentScore int) bool {
+	return currentScore == 50 || (currentScore <= 40 && currentScore%2 == 0)
+}
+
+func isCheckout(dart *Dart, currentScore int) bool {
+	return currentScore-int((dart.Value.Int64*dart.Multiplier)) == 0 && dart.Multiplier == 2
 }

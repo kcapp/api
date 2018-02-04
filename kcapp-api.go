@@ -28,6 +28,7 @@ func main() {
 	router.HandleFunc("/match/{id}/players", controllers.GetMatchPlayers).Methods("GET")
 	router.HandleFunc("/match/{id}/order", controllers.ChangePlayerOrder).Methods("PUT")
 
+	router.HandleFunc("/visit", controllers.AddVisit).Methods("POST")
 	router.HandleFunc("/visit/{id}/modify", controllers.ModifyVisit).Methods("PUT")
 	router.HandleFunc("/visit/{id}", controllers.DeleteVisit).Methods("DELETE")
 
