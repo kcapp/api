@@ -2,10 +2,11 @@ package controllers
 
 import (
 	"encoding/json"
-	"kcapp-api/models"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/kcapp/api/models"
 
 	"github.com/gorilla/mux"
 )
@@ -90,20 +91,27 @@ func GetX01StatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
-// ModifyMatchVisit will modify the scores of the given visit
-func ModifyMatchVisit(w http.ResponseWriter, r *http.Request) {
+// ChangePlayerOrder will modify the order of players for the given match
+func ChangePlayerOrder(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-	var visit models.Visit
-	err := json.NewDecoder(r.Body).Decode(&visit)
+	params := mux.Vars(r)
+	matchID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	orderMap := make(map[string]int)
+	err = json.NewDecoder(r.Body).Decode(&orderMap)
 	if err != nil {
 		log.Println("Unable to deserialize body", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = models.UpdateScore(visit)
+	err = models.ChangePlayerOrder(matchID, orderMap)
 	if err != nil {
-		log.Println("Unable to modify visit", err)
+		log.Println("Unable to change player order", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -133,8 +133,7 @@ func GetMatchPlayers(id int) ([]*Player2Match, error) {
 		SELECT p2m.match_id, p2m.player_id, p2m.order, m.starting_score, m.current_player_id
 		FROM  player2match p2m
 		LEFT JOIN `+"`match`"+` m ON m.id = p2m.match_id
-		WHERE p2m.match_id = ?
-		ORDER BY p2m.order`, id)
+		WHERE p2m.match_id = ?`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -177,4 +176,26 @@ func GetMatchPlayers(id int) ([]*Player2Match, error) {
 		players = append(players, p2m)
 	}
 	return players, nil
+}
+
+// ChangePlayerOrder update the player order and current player for a given match
+func ChangePlayerOrder(matchID int, orderMap map[string]int) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	for playerID, order := range orderMap {
+		_, err = tx.Exec("UPDATE player2match SET `order` = ? WHERE player_id = ? AND match_id = ?", order, playerID, matchID)
+		if err != nil {
+			return err
+		}
+		if order == 1 {
+			_, err = tx.Exec("UPDATE `match` SET current_player_id = ? WHERE id = ?", playerID, matchID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	tx.Commit()
+	return nil
 }

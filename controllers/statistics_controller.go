@@ -2,9 +2,10 @@ package controllers
 
 import (
 	"encoding/json"
-	"kcapp-api/models"
 	"log"
 	"net/http"
+
+	"github.com/kcapp/api/models"
 
 	"github.com/gorilla/mux"
 )

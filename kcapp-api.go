@@ -1,10 +1,12 @@
 package main
 
 import (
-	"kcapp-api/controllers"
-	"kcapp-api/models"
 	"log"
 	"net/http"
+
+	"github.com/kcapp/api/models"
+
+	"github.com/kcapp/api/controllers"
 
 	"github.com/gorilla/mux"
 )
@@ -24,8 +26,10 @@ func main() {
 	router.HandleFunc("/match/{id}", controllers.GetMatch).Methods("GET")
 	router.HandleFunc("/match/{id}/statistics", controllers.GetX01StatisticsForMatch).Methods("GET")
 	router.HandleFunc("/match/{id}/players", controllers.GetMatchPlayers).Methods("GET")
+	router.HandleFunc("/match/{id}/order", controllers.ChangePlayerOrder).Methods("PUT")
 
-	router.HandleFunc("/match/{id}/modify", controllers.ModifyMatchVisit).Methods("PUT")
+	router.HandleFunc("/visit/{id}/modify", controllers.ModifyVisit).Methods("PUT")
+	router.HandleFunc("/visit/{id}", controllers.DeleteVisit).Methods("DELETE")
 
 	router.HandleFunc("/player", controllers.GetPlayers).Methods("GET")
 	router.HandleFunc("/player/{id}", controllers.GetPlayer).Methods("GET")
