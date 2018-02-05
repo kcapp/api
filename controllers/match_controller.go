@@ -62,13 +62,14 @@ func GetMatchPlayers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, err := models.GetMatchPlayers(matchID)
+	playersMap, err := models.GetMatchPlayers(matchID)
 	if err != nil {
 		log.Println("Unable to get players for match", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(match)
+	players, err := models.GetPlayersScore(matchID, playersMap)
+	json.NewEncoder(w).Encode(players)
 }
 
 // GetX01StatisticsForMatch will return X01 statistics for all players in the given match

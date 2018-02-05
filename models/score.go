@@ -262,8 +262,25 @@ func AddVisit(visit Visit) error {
 	// TODO Don't allow to save score for same player twice in a row
 	// Only allow saving score for match.current_player_id ?
 
+	// Set visit modifiers
 	setVisitModifiers(currentScore, visit.FirstDart, visit.SecondDart, visit.ThirdDart)
 	visit.IsBust = visit.FirstDart.IsBust || visit.SecondDart.IsBust || visit.ThirdDart.IsBust
+
+	// Determine who the next player will be
+	players, err := GetMatchPlayers(visit.MatchID)
+	if err != nil {
+		return err
+	}
+
+	currentPlayerOrder := 1
+	order := make(map[int]int)
+	for _, player := range players {
+		if player.PlayerID == visit.PlayerID {
+			currentPlayerOrder = player.Order
+		}
+		order[player.Order] = player.PlayerID
+	}
+	nextPlayerId := order[(currentPlayerOrder%len(players))+1]
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -284,7 +301,7 @@ func AddVisit(visit Visit) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`UPDATE `+"`match`"+` SET current_player_id = ? WHERE id = ?`, visit.PlayerID, visit.MatchID)
+	_, err = tx.Exec(`UPDATE `+"`match`"+` SET current_player_id = ? WHERE id = ?`, nextPlayerId, visit.MatchID)
 	if err != nil {
 		return err
 	}
@@ -296,9 +313,9 @@ func AddVisit(visit Visit) error {
 func getPlayerScore(playerID int, matchID int) (int, error) {
 	var currentScore int
 	err := db.QueryRow(`
-		SELECT m.starting_score - SUM(first_dart * first_dart_multiplier + second_dart * second_dart_multiplier + third_dart * third_dart_multiplier)
+		SELECT m.starting_score - IFNULL(SUM(first_dart * first_dart_multiplier + second_dart * second_dart_multiplier + third_dart * third_dart_multiplier), 0)
 		FROM score s LEFT JOIN `+"`match`"+` m ON m.id = s.match_id
-		WHERE player_id = ? AND match_id = ? AND is_bust = 0`, playerID, matchID).Scan(&currentScore)
+		WHERE player_id = ? AND m.id = ? AND is_bust = 0`, playerID, matchID).Scan(&currentScore)
 	if err != nil {
 		return 0, err
 	}

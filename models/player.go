@@ -216,3 +216,29 @@ func GetPlayersStatistics(ids []int) ([]*StatisticsX01, error) {
 	}
 	return statistics, nil
 }
+
+// GetPlayersScore will get the current score of each player
+func GetPlayersScore(matchID int, playersMap map[int]*Player2Match) ([]*Player2Match, error) {
+	visits, err := GetMatchVisits(matchID)
+	if err != nil {
+		return nil, err
+	}
+	for _, visit := range visits {
+		player := playersMap[visit.PlayerID]
+		if visit.FirstDart.Value.Valid {
+			player.CurrentScore -= visit.FirstDart.Value.Int64 * visit.FirstDart.Multiplier
+		}
+		if visit.SecondDart.Value.Valid {
+			player.CurrentScore -= visit.SecondDart.Value.Int64 * visit.SecondDart.Multiplier
+		}
+		if visit.ThirdDart.Value.Valid {
+			player.CurrentScore -= visit.ThirdDart.Value.Int64 * visit.ThirdDart.Multiplier
+		}
+	}
+
+	players := make([]*Player2Match, 0)
+	for _, p2m := range playersMap {
+		players = append(players, p2m)
+	}
+	return players, nil
+}

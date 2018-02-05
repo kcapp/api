@@ -128,7 +128,7 @@ func GetMatch(id int) (*Match, error) {
 }
 
 // GetMatchPlayers returns a information about current score for players in a match
-func GetMatchPlayers(id int) ([]*Player2Match, error) {
+func GetMatchPlayers(id int) (map[int]*Player2Match, error) {
 	rows, err := db.Query(`
 		SELECT p2m.match_id, p2m.player_id, p2m.order, m.starting_score, m.current_player_id
 		FROM  player2match p2m
@@ -153,29 +153,7 @@ func GetMatchPlayers(id int) ([]*Player2Match, error) {
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
-
-	visits, err := GetMatchVisits(id)
-	if err != nil {
-		return nil, err
-	}
-	for _, visit := range visits {
-		player := playersMap[visit.PlayerID]
-		if visit.FirstDart.Value.Valid {
-			player.CurrentScore -= visit.FirstDart.Value.Int64 * visit.FirstDart.Multiplier
-		}
-		if visit.SecondDart.Value.Valid {
-			player.CurrentScore -= visit.SecondDart.Value.Int64 * visit.SecondDart.Multiplier
-		}
-		if visit.ThirdDart.Value.Valid {
-			player.CurrentScore -= visit.ThirdDart.Value.Int64 * visit.ThirdDart.Multiplier
-		}
-	}
-
-	players := make([]*Player2Match, 0)
-	for _, p2m := range playersMap {
-		players = append(players, p2m)
-	}
-	return players, nil
+	return playersMap, nil
 }
 
 // ChangePlayerOrder update the player order and current player for a given match
