@@ -18,12 +18,12 @@ func main() {
 
 	dbConfig, err := models.GetConfig()
 	if err != nil {
-		fmt.Print(errors.New("Could not load db config yaml file"))
+		log.Fatal(errors.New("Could not load db config yaml file"))
 	}
 
 	connectionString, err := dbConfig.GetMysqlConnectionString()
 	if err != nil {
-		fmt.Print(errors.New("Malformed connection string"))
+		log.Fatal(errors.New("Malformed connection string"))
 	}
 
 	models.InitDB(connectionString)
@@ -56,5 +56,10 @@ func main() {
 	router.HandleFunc("/owe", controllers.GetOwes).Methods("GET")
 	router.HandleFunc("/owe/payback", controllers.RegisterPayback).Methods("PUT")
 
-	log.Println(http.ListenAndServe(":8001", router))
+	apiPort, err := dbConfig.GetAPIPort()
+	if err != nil {
+		log.Fatal(errors.New("Could not read API port"))
+	}
+
+	log.Println(http.ListenAndServe(fmt.Sprintf(":%s", apiPort), router))
 }

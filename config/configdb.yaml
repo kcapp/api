@@ -1,5 +1,8 @@
-address: 127.0.0.1
-port: 3306
-username: developer
-password: abcd1234 
-schema: cakeapp_dev
+db:
+  address: 0.0.0.0
+  dbport: 3366
+  username: developer
+  password: abcd1234 
+  schema: cakeapp_dev
+api:
+  port: 8001

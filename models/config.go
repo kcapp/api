@@ -1,18 +1,30 @@
 package models
 
 import (
+	"fmt"
 	"io/ioutil"
 
 	yaml "gopkg.in/yaml.v2"
 )
 
-// Config type
-type Config struct {
+// DBConfig stuct config
+type DBConfig struct {
 	Address  string `yaml:"address"`
-	Port     string `yaml:"port"`
+	Dbport   string `yaml:"dbport"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
 	Schema   string `yaml:"schema"`
+}
+
+// APIConfig struct config
+type APIConfig struct {
+	Port string `yaml:"port"`
+}
+
+// Config type
+type Config struct {
+	DBConfig  DBConfig  `yaml:"db"`
+	APIConfig APIConfig `yaml:"api"`
 }
 
 // GetConfig loads configuration from yaml file
@@ -32,15 +44,17 @@ func GetConfig() (*Config, error) {
 
 // GetMysqlConnectionString returns mysql connection string
 func (config *Config) GetMysqlConnectionString() (string, error) {
-	connectionString := config.Username +
-		":" +
-		config.Password +
-		"@(" +
-		config.Address +
-		":" +
-		config.Port +
-		")/" +
-		config.Schema
+	return fmt.Sprintf(
+			"%s:%s@(%s:%s)/%s",
+			config.DBConfig.Username,
+			config.DBConfig.Password,
+			config.DBConfig.Address,
+			config.DBConfig.Dbport,
+			config.DBConfig.Schema),
+		nil
+}
 
-	return connectionString, nil
+// GetAPIPort returns API configuration
+func (config *Config) GetAPIPort() (string, error) {
+	return fmt.Sprintf("%s", config.APIConfig.Port), nil
 }
