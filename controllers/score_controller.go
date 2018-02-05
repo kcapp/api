@@ -20,6 +20,12 @@ func AddVisit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	err = visit.ValidateInput()
+	if err != nil {
+		log.Println("Invalid visit", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	err = models.AddVisit(visit)
 	if err != nil {

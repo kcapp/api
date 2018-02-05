@@ -1,6 +1,10 @@
 package models
 
-import "github.com/guregu/null"
+import (
+	"errors"
+
+	"github.com/guregu/null"
+)
 
 // Visit struct used for storing matches
 type Visit struct {
@@ -15,12 +19,72 @@ type Visit struct {
 	UpdatedAt  string `json:"updated_at"`
 }
 
+// ValidateInput will verify the input does not containg any errors
+func (visit Visit) ValidateInput() error {
+	err := visit.FirstDart.ValidateInput()
+	if err != nil {
+		return err
+	}
+	err = visit.SecondDart.ValidateInput()
+	if err != nil {
+		return err
+	}
+	err = visit.ThirdDart.ValidateInput()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Dart struct used for storing darts
 type Dart struct {
 	Value             null.Int `json:"value"`
 	Multiplier        int64    `json:"multiplier"`
 	IsCheckoutAttempt bool     `json:"is_checkout"`
 	IsBust            bool     `json:"is_bust,omitempty"`
+}
+
+// SetModifiers will set IsBust and IsCheckoutAttempt modifiers for the given dartø
+func (dart Dart) SetModifiers(currentScore int) {
+	scoreAfterThrow := currentScore - dart.getScore()
+	if scoreAfterThrow == 0 && dart.Multiplier == 2 {
+		// Check if this throw was a checkout
+		dart.IsBust = false
+		dart.IsCheckoutAttempt = true
+	} else if scoreAfterThrow < 2 {
+		dart.IsBust = true
+		dart.IsCheckoutAttempt = false
+	} else {
+		dart.IsBust = false
+		if currentScore == 50 || (currentScore <= 40 && currentScore%2 == 0) {
+			dart.IsCheckoutAttempt = true
+		} else {
+			dart.IsCheckoutAttempt = false
+		}
+	}
+
+}
+
+// ValidateInput will verify that the dart contains valid values
+func (dart Dart) ValidateInput() error {
+	if dart.Value.Int64 < 0 {
+		return errors.New("Value cannot be less than 0")
+	} else if dart.Value.Int64 > 25 || (dart.Value.Int64 > 20 && dart.Value.Int64 < 25) {
+		return errors.New("Value has to be 20 or less (or 25 (bull))")
+	} else if dart.Multiplier > 3 || dart.Multiplier < 1 {
+		return errors.New("Multiplier has to be one of 1 (single), 2 (douhle), 3 (triple)")
+	}
+
+	// Make sure multiplier is 1 on miss
+	if !dart.Value.Valid || dart.Value.Int64 == 0 {
+		dart.Multiplier = 1
+	}
+	return nil
+}
+
+// getScore will get the actual score of the dart (value * multiplier)
+func (dart Dart) getScore() int {
+	return int(dart.Value.Int64 * dart.Multiplier)
 }
 
 // GetPlayerVisits will return all visits for a given player
@@ -196,24 +260,23 @@ func AddVisit(visit Visit) error {
 	}
 
 	// TODO Don't allow to save score for same player twice in a row
+	// Only allow saving score for match.current_player_id ?
 
 	setVisitModifiers(currentScore, visit.FirstDart, visit.SecondDart, visit.ThirdDart)
 	visit.IsBust = visit.FirstDart.IsBust || visit.SecondDart.IsBust || visit.ThirdDart.IsBust
 
-	stmt, err := db.Prepare(`
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`
 		INSERT INTO score(
 			match_id, player_id,
 			first_dart, first_dart_multiplier, is_checkout_first,
 			second_dart, second_dart_multiplier, is_checkout_second,
 			third_dart, third_dart_multiplier, is_checkout_third,
 			is_bust, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec(visit.MatchID, visit.PlayerID,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`, visit.MatchID, visit.PlayerID,
 		visit.FirstDart.Value, visit.FirstDart.Multiplier, visit.FirstDart.IsCheckoutAttempt,
 		visit.SecondDart.Value, visit.SecondDart.Multiplier, visit.SecondDart.IsCheckoutAttempt,
 		visit.ThirdDart.Value, visit.ThirdDart.Multiplier, visit.ThirdDart.IsCheckoutAttempt,
@@ -221,13 +284,11 @@ func AddVisit(visit Visit) error {
 	if err != nil {
 		return err
 	}
-
-	// TODO set current player
-	stmt, err = db.Prepare(`UPDATE ` + "`match`" + ` SET current_player_id = ? WHERE id = ?`)
+	_, err = tx.Exec(`UPDATE `+"`match`"+` SET current_player_id = ? WHERE id = ?`, visit.PlayerID, visit.MatchID)
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	tx.Commit()
 
 	return nil
 }
@@ -245,54 +306,24 @@ func getPlayerScore(playerID int, matchID int) (int, error) {
 }
 
 func setVisitModifiers(currentScore int, firstDart *Dart, secondDart *Dart, thirdDart *Dart) {
-	// Make sure to write multipliers as 1 (single) on miss
-	if !firstDart.Value.Valid || firstDart.Value.Int64 == 0 {
-		firstDart.Multiplier = 1
-	}
-	if !secondDart.Value.Valid || secondDart.Value.Int64 == 0 {
+	firstDart.SetModifiers(currentScore)
+	currentScore = currentScore - firstDart.getScore()
+	if currentScore < 2 {
+		// If first dart is bust/checkout, then second/third dart doesn't count
+		secondDart.Value.Valid = false
 		secondDart.Multiplier = 1
-	}
-	if !thirdDart.Value.Valid || thirdDart.Value.Int64 == 0 {
+		thirdDart.Value.Valid = false
 		thirdDart.Multiplier = 1
-	}
-
-	firstDart.IsBust = isBust(firstDart, currentScore)
-	if !firstDart.IsBust {
-		firstDart.IsCheckoutAttempt = isCheckoutAttempt(currentScore)
-	}
-	currentScore = currentScore - int((firstDart.Value.Int64 * firstDart.Multiplier))
-
-	if !firstDart.IsBust && !isCheckout(firstDart, currentScore) {
-		secondDart.IsBust = isBust(secondDart, currentScore)
-		if !secondDart.IsBust {
-			secondDart.IsCheckoutAttempt = isCheckoutAttempt(currentScore)
-		}
-		currentScore = currentScore - int((secondDart.Value.Int64 * secondDart.Multiplier))
-
-		if !secondDart.IsBust && !isCheckout(secondDart, currentScore) {
-			thirdDart.IsBust = isBust(thirdDart, currentScore)
-			if !thirdDart.IsBust {
-				thirdDart.IsCheckoutAttempt = isCheckoutAttempt(currentScore)
-			}
-			currentScore = currentScore - int((thirdDart.Value.Int64 * thirdDart.Multiplier))
+	} else {
+		secondDart.SetModifiers(currentScore)
+		currentScore = currentScore - secondDart.getScore()
+		if currentScore < 2 {
+			// If second dart is bust, then third dart doesn't count
+			thirdDart.Value.Valid = false
+			thirdDart.Multiplier = 1
+		} else {
+			thirdDart.SetModifiers(currentScore)
+			currentScore = currentScore - thirdDart.getScore()
 		}
 	}
-}
-
-func isBust(dart *Dart, currentScore int) bool {
-	scoreAfterThrow := currentScore - int((dart.Value.Int64 * dart.Multiplier))
-	if isCheckout(dart, currentScore) {
-		return false
-	} else if scoreAfterThrow < 2 {
-		return true
-	}
-	return false
-}
-
-func isCheckoutAttempt(currentScore int) bool {
-	return currentScore == 50 || (currentScore <= 40 && currentScore%2 == 0)
-}
-
-func isCheckout(dart *Dart, currentScore int) bool {
-	return currentScore-int((dart.Value.Int64*dart.Multiplier)) == 0 && dart.Multiplier == 2
 }
