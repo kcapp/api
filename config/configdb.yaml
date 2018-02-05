@@ -1,0 +1,5 @@
+address: 127.0.0.1
+port: 3306
+username: developer
+password: abcd1234 
+schema: cakeapp_dev

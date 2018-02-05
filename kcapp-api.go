@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -13,7 +15,18 @@ import (
 
 // our main function
 func main() {
-	models.InitDB("developer:abcd1234@(10.12.100.66:3306)/cakeapp_dev")
+
+	dbConfig, err := models.GetConfig()
+	if err != nil {
+		fmt.Print(errors.New("Could not load db config yaml file"))
+	}
+
+	connectionString, err := dbConfig.GetMysqlConnectionString()
+	if err != nil {
+		fmt.Print(errors.New("Malformed connection string"))
+	}
+
+	models.InitDB(connectionString)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/game", controllers.NewGame).Methods("POST")
