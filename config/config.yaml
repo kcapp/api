@@ -1,8 +1,8 @@
 db:
-  address: 0.0.0.0
-  dbport: 3366
+  address: localhost
+  port: 3306
   username: developer
-  password: abcd1234 
+  password: abcd1234
   schema: cakeapp_dev
 api:
   port: 8001

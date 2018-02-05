@@ -10,7 +10,7 @@ import (
 // DBConfig stuct config
 type DBConfig struct {
 	Address  string `yaml:"address"`
-	Dbport   string `yaml:"dbport"`
+	Port     int    `yaml:"port"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
 	Schema   string `yaml:"schema"`
@@ -18,7 +18,7 @@ type DBConfig struct {
 
 // APIConfig struct config
 type APIConfig struct {
-	Port string `yaml:"port"`
+	Port int `yaml:"port"`
 }
 
 // Config type
@@ -29,11 +29,11 @@ type Config struct {
 
 // GetConfig loads configuration from yaml file
 func GetConfig() (*Config, error) {
-	config := new(Config)
-	yamlFile, err := ioutil.ReadFile("config/configdb.yaml")
+	yamlFile, err := ioutil.ReadFile("config/config.yaml")
 	if err != nil {
 		return nil, err
 	}
+	config := new(Config)
 	err = yaml.Unmarshal(yamlFile, config)
 	if err != nil {
 		return nil, err
@@ -43,18 +43,12 @@ func GetConfig() (*Config, error) {
 }
 
 // GetMysqlConnectionString returns mysql connection string
-func (config *Config) GetMysqlConnectionString() (string, error) {
+func (config *Config) GetMysqlConnectionString() string {
 	return fmt.Sprintf(
-			"%s:%s@(%s:%s)/%s",
-			config.DBConfig.Username,
-			config.DBConfig.Password,
-			config.DBConfig.Address,
-			config.DBConfig.Dbport,
-			config.DBConfig.Schema),
-		nil
-}
-
-// GetAPIPort returns API configuration
-func (config *Config) GetAPIPort() (string, error) {
-	return fmt.Sprintf("%s", config.APIConfig.Port), nil
+		"%s:%s@(%s:%d)/%s",
+		config.DBConfig.Username,
+		config.DBConfig.Password,
+		config.DBConfig.Address,
+		config.DBConfig.Port,
+		config.DBConfig.Schema)
 }

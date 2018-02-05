@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,18 +14,11 @@ import (
 
 // our main function
 func main() {
-
-	dbConfig, err := models.GetConfig()
+	config, err := models.GetConfig()
 	if err != nil {
-		log.Fatal(errors.New("Could not load db config yaml file"))
+		panic(err)
 	}
-
-	connectionString, err := dbConfig.GetMysqlConnectionString()
-	if err != nil {
-		log.Fatal(errors.New("Malformed connection string"))
-	}
-
-	models.InitDB(connectionString)
+	models.InitDB(config.GetMysqlConnectionString())
 
 	router := mux.NewRouter()
 	router.HandleFunc("/game", controllers.NewGame).Methods("POST")
@@ -56,10 +48,5 @@ func main() {
 	router.HandleFunc("/owe", controllers.GetOwes).Methods("GET")
 	router.HandleFunc("/owe/payback", controllers.RegisterPayback).Methods("PUT")
 
-	apiPort, err := dbConfig.GetAPIPort()
-	if err != nil {
-		log.Fatal(errors.New("Could not read API port"))
-	}
-
-	log.Println(http.ListenAndServe(fmt.Sprintf(":%s", apiPort), router))
+	log.Println(http.ListenAndServe(fmt.Sprintf(":%d", config.APIConfig.Port), router))
 }
