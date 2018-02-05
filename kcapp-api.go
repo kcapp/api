@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -13,7 +14,11 @@ import (
 
 // our main function
 func main() {
-	models.InitDB("developer:abcd1234@(10.12.100.66:3306)/cakeapp_dev")
+	config, err := models.GetConfig()
+	if err != nil {
+		panic(err)
+	}
+	models.InitDB(config.GetMysqlConnectionString())
 
 	router := mux.NewRouter()
 	router.HandleFunc("/game", controllers.NewGame).Methods("POST")
@@ -43,5 +48,5 @@ func main() {
 	router.HandleFunc("/owe", controllers.GetOwes).Methods("GET")
 	router.HandleFunc("/owe/payback", controllers.RegisterPayback).Methods("PUT")
 
-	log.Println(http.ListenAndServe(":8001", router))
+	log.Println(http.ListenAndServe(fmt.Sprintf(":%d", config.APIConfig.Port), router))
 }
