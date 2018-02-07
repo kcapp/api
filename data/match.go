@@ -14,10 +14,9 @@ func NewMatch(gameID int, startingScore int, players []int) (*models.Match, erro
 		return nil, err
 	}
 
-	// TODO Shift players to get correct order
+	// Shift players to get correct order
 	id, players := players[0], players[1:]
 	players = append(players, id)
-
 	res, err := tx.Exec("INSERT INTO `match` (starting_score, current_player_id, game_id, created_at) VALUES (?, ?, ?, NOW()) ",
 		startingScore, players[0], gameID)
 	if err != nil {
@@ -40,6 +39,32 @@ func NewMatch(gameID int, startingScore int, players []int) (*models.Match, erro
 	log.Printf("[%d] Started new match", matchID)
 
 	return GetMatch(int(matchID))
+}
+
+// FinishMatch will finalize a match by updating the winner and writing statistics for each player
+func FinishMatch(visit models.Visit) (*models.Match, error) {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	err = AddVisit(visit)
+	if err != nil {
+		return nil, err
+	}
+	// Update match with winner
+
+	// Write statistics for each player
+
+	// Check if game is finished or not
+
+	// If game is finished, payback owes
+
+	tx.Commit()
+
+	// TODO Logging
+
+	return nil, nil
 }
 
 // GetMatchesForGame returns all matches for the given game ID

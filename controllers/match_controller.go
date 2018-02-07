@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/kcapp/api/data"
+	"github.com/kcapp/api/models"
 
 	"github.com/gorilla/mux"
 )
@@ -112,6 +113,31 @@ func ChangePlayerOrder(w http.ResponseWriter, r *http.Request) {
 	err = data.ChangePlayerOrder(matchID, orderMap)
 	if err != nil {
 		log.Println("Unable to change player order", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// FinishMatch will finalize a match
+func FinishMatch(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	var visit models.Visit
+	err := json.NewDecoder(r.Body).Decode(&visit)
+	if err != nil {
+		log.Println("Unable to deserialize body", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = visit.ValidateInput()
+	if err != nil {
+		log.Println("Invalid visit", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = data.FinishMatch(visit)
+	if err != nil {
+		log.Println("Unable to add visit", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
