@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/kcapp/api/data"
 	"github.com/kcapp/api/models"
 
 	"github.com/gorilla/mux"
@@ -22,7 +23,7 @@ func NewGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	game, err := models.NewGame(gameInput)
+	game, err := data.NewGame(gameInput)
 	if err != nil {
 		log.Println("Unable to start new game", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -41,7 +42,7 @@ func ContinueGame(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	game, err := models.ContinueGame(id)
+	game, err := data.ContinueGame(id)
 	if err != nil {
 		log.Println("Unable to get game: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -53,7 +54,7 @@ func ContinueGame(w http.ResponseWriter, r *http.Request) {
 // GetGames will return a list of all games
 func GetGames(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-	games, err := models.GetGames()
+	games, err := data.GetGames()
 	if err != nil {
 		log.Println("Unable to get games", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -72,7 +73,7 @@ func GetGame(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	game, err := models.GetGame(id)
+	game, err := data.GetGame(id)
 	if err != nil {
 		log.Println("Unable to get game: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -92,7 +93,7 @@ func GetX01StatisticsForGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats, err := models.GetX01StatisticsForGame(gameID)
+	stats, err := data.GetX01StatisticsForGame(gameID)
 	if err != nil {
 		log.Println("Unable to get statistics", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/kcapp/api/data"
 	"github.com/kcapp/api/models"
 )
 
@@ -27,7 +28,7 @@ func AddVisit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = models.AddVisit(visit)
+	err = data.AddVisit(visit)
 	if err != nil {
 		log.Println("Unable to add visit", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -46,7 +47,7 @@ func ModifyVisit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = models.ModifyVisit(visit)
+	err = data.ModifyVisit(visit)
 	if err != nil {
 		log.Println("Unable to modify visit", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -64,7 +65,7 @@ func DeleteVisit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = models.DeleteVisit(id)
+	err = data.DeleteVisit(id)
 	if err != nil {
 		log.Println("Unable to delete visit: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/kcapp/api/models"
+	"github.com/kcapp/api/data"
 
 	"github.com/gorilla/mux"
 )
@@ -22,7 +22,7 @@ func GetMatchesForGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	matches, err := models.GetMatchesForGame(gameID)
+	matches, err := data.GetMatchesForGame(gameID)
 	if err != nil {
 		log.Println("Unable to get matches", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -42,7 +42,7 @@ func GetMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, err := models.GetMatch(matchID)
+	match, err := data.GetMatch(matchID)
 	if err != nil {
 		log.Println("Unable to get match", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -62,13 +62,12 @@ func GetMatchPlayers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	playersMap, err := models.GetMatchPlayers(matchID)
+	players, err := data.GetMatchPlayers(matchID)
 	if err != nil {
 		log.Println("Unable to get players for match", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	players, err := models.GetPlayersScore(matchID, playersMap)
 	json.NewEncoder(w).Encode(players)
 }
 
@@ -83,7 +82,7 @@ func GetX01StatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats, err := models.GetX01StatisticsForMatch(matchID)
+	stats, err := data.GetX01StatisticsForMatch(matchID)
 	if err != nil {
 		log.Println("Unable to get statistics", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -110,7 +109,7 @@ func ChangePlayerOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = models.ChangePlayerOrder(matchID, orderMap)
+	err = data.ChangePlayerOrder(matchID, orderMap)
 	if err != nil {
 		log.Println("Unable to change player order", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

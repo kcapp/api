@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/kcapp/api/data"
 	"github.com/kcapp/api/models"
 
 	"github.com/gorilla/mux"
@@ -14,7 +15,7 @@ import (
 // GetPlayers will return a map containing all players
 func GetPlayers(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-	players, err := models.GetPlayers()
+	players, err := data.GetPlayers()
 	if err != nil {
 		log.Println("Unable to get players", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -48,7 +49,7 @@ func GetPlayerStatistics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats, err := models.GetPlayerStatistics(id)
+	stats, err := data.GetPlayerStatistics(id)
 	if err != nil {
 		log.Println("Unable to get player statistics")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -74,7 +75,7 @@ func GetPlayersStatistics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats, err := models.GetPlayersStatistics(ids)
+	stats, err := data.GetPlayersStatistics(ids)
 	if err != nil {
 		log.Println("Unable to get players statistics")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -87,7 +88,7 @@ func GetPlayersStatistics(w http.ResponseWriter, r *http.Request) {
 func AddPlayer(w http.ResponseWriter, r *http.Request) {
 	var player models.Player
 	_ = json.NewDecoder(r.Body).Decode(&player)
-	err := models.AddPlayer(player)
+	err := data.AddPlayer(player)
 	if err != nil {
 		log.Println("Unable to add player", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

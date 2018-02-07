@@ -5,13 +5,14 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/kcapp/api/data"
 	"github.com/kcapp/api/models"
 )
 
 // GetOwes will return a list of all games
 func GetOwes(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-	owes, err := models.GetOwes()
+	owes, err := data.GetOwes()
 	if err != nil {
 		log.Println("Unable to get owes", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -31,7 +32,7 @@ func RegisterPayback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = models.RegisterPayback(owe)
+	err = data.RegisterPayback(owe)
 	if err != nil {
 		log.Println("Unable to register payback", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

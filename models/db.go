@@ -7,17 +7,18 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var db *sql.DB
+// DB point to our database
+var DB *sql.DB
 
 // InitDB will initialize the database with the given datasource
 func InitDB(dataSourceName string) {
 	var err error
-	db, err = sql.Open("mysql", dataSourceName)
+	DB, err = sql.Open("mysql", dataSourceName)
 	if err != nil {
 		log.Panic(err)
 	}
 
-	if err = db.Ping(); err != nil {
+	if err = DB.Ping(); err != nil {
 		log.Panic(err)
 	}
 }
