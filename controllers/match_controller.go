@@ -52,6 +52,18 @@ func GetMatch(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(match)
 }
 
+// GetActiveMatches will return a list of all matches which are currently active
+func GetActiveMatches(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	matches, err := data.GetActiveMatches()
+	if err != nil {
+		log.Println("Unable to get matches", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(matches)
+}
+
 // GetMatchPlayers will return a match specified by the given id
 func GetMatchPlayers(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
@@ -135,9 +147,9 @@ func FinishMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.FinishMatch(visit)
+	_, err = data.FinishMatch(visit)
 	if err != nil {
-		log.Println("Unable to add visit", err)
+		log.Println("Unable to finalize match", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

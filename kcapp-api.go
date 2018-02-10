@@ -28,6 +28,9 @@ func main() {
 	router.HandleFunc("/game/{id}/statistics", controllers.GetX01StatisticsForGame).Methods("GET")
 	router.HandleFunc("/game/{id}/matches", controllers.GetMatchesForGame).Methods("GET")
 
+	router.HandleFunc("/gametype", controllers.GetGamesTypes).Methods("GET")
+
+	router.HandleFunc("/match/active", controllers.GetActiveMatches).Methods("GET")
 	router.HandleFunc("/match/{id}", controllers.GetMatch).Methods("GET")
 	router.HandleFunc("/match/{id}/statistics", controllers.GetX01StatisticsForMatch).Methods("GET")
 	router.HandleFunc("/match/{id}/players", controllers.GetMatchPlayers).Methods("GET")
@@ -48,6 +51,8 @@ func main() {
 
 	router.HandleFunc("/owe", controllers.GetOwes).Methods("GET")
 	router.HandleFunc("/owe/payback", controllers.RegisterPayback).Methods("PUT")
+
+	router.HandleFunc("/owetype", controllers.GetOweTypes).Methods("GET")
 
 	log.Println(http.ListenAndServe(fmt.Sprintf(":%d", config.APIConfig.Port), router))
 }

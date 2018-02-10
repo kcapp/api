@@ -50,7 +50,7 @@ func GetGames() ([]*models.Game, error) {
 			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
 			gt.id, gt.name, gt.short_name, gt.wins_required, gt.matches_required,
 			ot.id, ot.item,
-			GROUP_CONCAT(DISTINCT p2m.player_id) AS 'players'
+			GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
 		FROM game g
 		LEFT JOIN game_type gt ON gt.id = g.game_type_id
 		LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
@@ -98,7 +98,7 @@ func GetGame(id int) (*models.Game, error) {
             g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
 			gt.id, gt.name, gt.short_name, gt.wins_required, gt.matches_required,
 			ot.id, ot.item,
-			GROUP_CONCAT(DISTINCT p2m.player_id) AS 'players'
+			GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
         FROM game g
 		LEFT JOIN game_type gt ON gt.id = g.game_type_id
 		LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
@@ -112,11 +112,10 @@ func GetGame(id int) (*models.Game, error) {
 		g.OweType = ot
 	}
 	g.Players = util.StringToIntArray(players)
-	matches, err := GetMatchesForGame(id)
+	g.Matches, err = GetMatchesForGame(id)
 	if err != nil {
 		return nil, err
 	}
-	g.Matches = matches
 	return g, nil
 }
 
@@ -145,4 +144,28 @@ func ContinueGame(id int) (*models.Match, error) {
 func DeleteGame(id int) (*models.Game, error) {
 	// TODO
 	return nil, nil
+}
+
+// GetGameTypes will return all game types
+func GetGameTypes() ([]*models.GameType, error) {
+	rows, err := models.DB.Query("SELECT id, wins_required, matches_required, `name`, short_name FROM game_type")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	types := make([]*models.GameType, 0)
+	for rows.Next() {
+		gt := new(models.GameType)
+		err := rows.Scan(&gt.ID, &gt.WinsRequired, &gt.MatchesRequired, &gt.Name, &gt.ShortName)
+		if err != nil {
+			return nil, err
+		}
+		types = append(types, gt)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return types, nil
 }

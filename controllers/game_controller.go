@@ -76,7 +76,7 @@ func GetGame(w http.ResponseWriter, r *http.Request) {
 	game, err := data.GetGame(id)
 	if err != nil {
 		log.Println("Unable to get game: ", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Unable to get game", http.StatusBadRequest)
 		return
 	}
 	json.NewEncoder(w).Encode(game)
@@ -100,4 +100,16 @@ func GetX01StatisticsForGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(stats)
+}
+
+// GetGamesTypes will return all game types
+func GetGamesTypes(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	types, err := data.GetGameTypes()
+	if err != nil {
+		log.Println("Unable to get game types", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(types)
 }

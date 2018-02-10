@@ -59,3 +59,27 @@ func RegisterPayback(owe models.Owe) error {
 	log.Printf("Player %d paid back %d %s to player %d", owe.PlayerOwerID, owe.Amount, owe.OweType.Item.String, owe.PlayerOweeID)
 	return nil
 }
+
+// GetOweTypes will return all owe types
+func GetOweTypes() ([]*models.OweType, error) {
+	rows, err := models.DB.Query("SELECT id, item FROM owe_type")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	types := make([]*models.OweType, 0)
+	for rows.Next() {
+		ot := new(models.OweType)
+		err := rows.Scan(&ot.ID, &ot.Item)
+		if err != nil {
+			return nil, err
+		}
+		types = append(types, ot)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return types, nil
+}

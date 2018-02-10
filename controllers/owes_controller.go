@@ -39,3 +39,15 @@ func RegisterPayback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// GetOweTypes will return all owe types
+func GetOweTypes(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	owes, err := data.GetOweTypes()
+	if err != nil {
+		log.Println("Unable to get owe types", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(owes)
+}

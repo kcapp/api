@@ -103,6 +103,42 @@ func GetMatchesForGame(gameID int) ([]*models.Match, error) {
 	return matches, nil
 }
 
+// GetActiveMatches returns all matches which are currently live
+func GetActiveMatches() ([]*models.Match, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			m.id, end_time, starting_score, is_finished,
+			current_player_id, winner_id, m.created_at, m.updated_at,
+			m.game_id, GROUP_CONCAT(p2m.player_id ORDER BY p2m.order ASC)
+		FROM ` + "`match`" + ` m
+		LEFT JOIN player2match p2m ON p2m.match_id = m.id
+		WHERE m.is_finished <> 1
+		GROUP BY m.id
+		ORDER BY id ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	matches := make([]*models.Match, 0)
+	for rows.Next() {
+		m := new(models.Match)
+		var players string
+		err := rows.Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
+			&m.GameID, &players)
+		if err != nil {
+			return nil, err
+		}
+		m.Players = util.StringToIntArray(players)
+		matches = append(matches, m)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return matches, nil
+}
+
 // GetMatch returns a match with the given ID
 func GetMatch(id int) (*models.Match, error) {
 	m := new(models.Match)
