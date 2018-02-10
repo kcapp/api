@@ -26,7 +26,10 @@ func NewMatch(gameID int, startingScore int, players []int) (*models.Match, erro
 	if err != nil {
 		return nil, err
 	}
-	tx.Exec("UPDATE game SET current_match_id = ? WHERE id = ?", matchID, gameID)
+	_, err = tx.Exec("UPDATE game SET current_match_id = ? WHERE id = ?", matchID, gameID)
+	if err != nil {
+		return nil, err
+	}
 
 	for idx, playerID := range players {
 		order := idx + 1
@@ -42,29 +45,100 @@ func NewMatch(gameID int, startingScore int, players []int) (*models.Match, erro
 }
 
 // FinishMatch will finalize a match by updating the winner and writing statistics for each player
-func FinishMatch(visit models.Visit) (*models.Match, error) {
+func FinishMatch(visit models.Visit) error {
 	tx, err := models.DB.Begin()
 	if err != nil {
-		return nil, err
+		return err
+	}
+	match, err := GetMatch(visit.MatchID)
+	if err != nil {
+		return err
 	}
 
 	err = AddVisit(visit)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// Update match with winner
+	_, err = tx.Exec(`UPDATE `+"`match`"+` SET current_player_id = ?, winner_id = ?, is_finished = 1, end_time = NOW() WHERE id = ?`,
+		visit.PlayerID, visit.PlayerID, visit.MatchID)
+	if err != nil {
+		return err
+	}
 
 	// Write statistics for each player
+	statisticsMap, err := calculateStatistics(visit.MatchID, visit.PlayerID, match.StartingScore)
+	for playerID, stats := range statisticsMap {
+		_, err = tx.Exec(`
+			INSERT INTO statistics_x01
+				(match_id, player_id, ppd, first_nine_ppd, checkout_percentage, darts_thrown, 60s_plus, 
+				 100s_plus, 140s_plus, 180s, accuracy_20, accuracy_19, overall_accuracy)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.MatchID, playerID, stats.PPD, stats.FirstNinePPD,
+			stats.CheckoutPercentage, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
+			stats.Score180s, stats.AccuracyStatistics.Accuracy20, stats.AccuracyStatistics.Accuracy19, stats.AccuracyStatistics.AccuracyOverall)
+		if err != nil {
+			return err
+		}
+		log.Printf("Inserting match statistics for player %d", playerID)
+	}
 
 	// Check if game is finished or not
+	game, err := GetGame(match.GameID)
+	if err != nil {
+		return err
+	}
+	winsMap, err := GetWinsPerPlayer(game.ID)
+	if err != nil {
+		return err
+	}
 
-	// If game is finished, payback owes
+	// Determine how many matches has been played, and how many current player has won
+	playedMatches := 1
+	currentPlayerWins := 1
+	for playerID, wins := range winsMap {
+		playedMatches += wins
+		if playerID == visit.PlayerID {
+			currentPlayerWins += wins
+		}
+	}
 
+	if currentPlayerWins == game.GameType.WinsRequired {
+		// Game finished, current player won
+		_, err = tx.Exec("UPDATE game SET is_finished = 1, winner_id = ? WHERE id = ?", visit.PlayerID, game.ID)
+		if err != nil {
+			return err
+		}
+		log.Printf("Game %d finished with player %d winning", game.ID, visit.PlayerID)
+		// Add owes between players in game
+		if game.OweType != nil {
+			for _, playerID := range game.Players {
+				if playerID == visit.PlayerID {
+					// Don't add payback to ourself
+					continue
+				}
+				_, err = tx.Exec(`
+					INSERT INTO owes (player_ower_id, player_owee_id, owe_type_id, amount)
+					VALUES (?, ?, ?, 1)
+					ON DUPLICATE KEY UPDATE amount = amount + 1`, playerID, visit.PlayerID, game.OweTypeID)
+				if err != nil {
+					return err
+				}
+				log.Printf("Added owes of %s from player %d to player %d", game.OweType.Item.String, playerID, visit.PlayerID)
+			}
+		}
+	} else if game.GameType.MatchesRequired.Valid && playedMatches == int(game.GameType.MatchesRequired.Int64) {
+		// Game finished, draw
+		_, err = tx.Exec("UPDATE game SET is_finished = 1 WHERE id = ?", game.ID)
+		if err != nil {
+			return err
+		}
+		log.Printf("Game %d finished with a Draw", game.ID)
+	} else {
+		// Game is not finished
+		log.Printf("Game %d is not finished, continuing to next leg", game.ID)
+	}
 	tx.Commit()
-
-	// TODO Logging
-
-	return nil, nil
+	return nil
 }
 
 // GetMatchesForGame returns all matches for the given game ID
@@ -172,7 +246,6 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 			p2m.match_id,
 			p2m.player_id,
 			p2m.order,
-			m.starting_score,
 			p2m.player_id = m.current_player_id AS 'is_current_player',
 			m.starting_score - IFNULL(
 				SUM(first_dart * first_dart_multiplier) + 
@@ -191,7 +264,7 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 	players := make([]*models.Player2Match, 0)
 	for rows.Next() {
 		p2m := new(models.Player2Match)
-		err := rows.Scan(&p2m.MatchID, &p2m.PlayerID, &p2m.Order, &p2m.CurrentScore, &p2m.IsCurrentPlayer, &p2m.CurrentScore)
+		err := rows.Scan(&p2m.MatchID, &p2m.PlayerID, &p2m.Order, &p2m.IsCurrentPlayer, &p2m.CurrentScore)
 		if err != nil {
 			return nil, err
 		}
@@ -226,4 +299,99 @@ func ChangePlayerOrder(matchID int, orderMap map[string]int) error {
 	log.Printf("[%d] Changed player order to %v", matchID, orderMap)
 
 	return nil
+}
+
+func calculateStatistics(matchID int, winnerID int, startingScore int) (map[int]*models.StatisticsX01, error) {
+	visits, err := GetMatchVisits(matchID)
+	if err != nil {
+		return nil, err
+	}
+
+	players, err := GetMatchPlayers(matchID)
+	if err != nil {
+		return nil, err
+	}
+	statisticsMap := make(map[int]*models.StatisticsX01)
+	playersMap := make(map[int]*models.Player2Match)
+	for _, player := range players {
+		stats := new(models.StatisticsX01)
+		stats.AccuracyStatistics = new(models.AccuracyStatistics)
+		statisticsMap[player.PlayerID] = stats
+
+		playersMap[player.PlayerID] = player
+		player.CurrentScore = startingScore
+	}
+
+	for _, visit := range visits {
+		player := playersMap[visit.PlayerID]
+		stats := statisticsMap[visit.PlayerID]
+
+		currentScore := player.CurrentScore
+		if visit.FirstDart.IsCheckout(currentScore) {
+			stats.CheckoutAttempts++
+		}
+		currentScore -= visit.FirstDart.GetScore()
+		if visit.SecondDart.IsCheckout(currentScore) {
+			stats.CheckoutAttempts++
+		}
+		currentScore -= visit.SecondDart.GetScore()
+		if visit.ThirdDart.IsCheckout(currentScore) {
+			stats.CheckoutAttempts++
+		}
+		currentScore -= visit.ThirdDart.GetScore()
+
+		if visit.IsBust {
+			continue
+		}
+
+		visitScore := visit.GetScore()
+		if stats.DartsThrown < 9 {
+			stats.FirstNinePPD += float32(visitScore)
+		}
+		stats.PPD += float32(visitScore)
+
+		if visitScore >= 60 && visitScore < 100 {
+			stats.Score60sPlus++
+		} else if visitScore >= 100 && visitScore < 140 {
+			stats.Score100sPlus++
+		} else if visitScore >= 140 && visitScore < 180 {
+			stats.Score140sPlus++
+		} else if visitScore == 180 {
+			stats.Score180s++
+		}
+
+		// Get accuracy stats
+		accuracyScore := player.CurrentScore
+		if visit.FirstDart.Value.Valid {
+			stats.AccuracyStatistics.GetAccuracyStats(accuracyScore, visit.FirstDart)
+			stats.DartsThrown++
+			accuracyScore -= visit.FirstDart.GetScore()
+		}
+		if visit.SecondDart.Value.Valid {
+			stats.AccuracyStatistics.GetAccuracyStats(accuracyScore, visit.SecondDart)
+			stats.DartsThrown++
+			accuracyScore -= visit.SecondDart.GetScore()
+		}
+		if visit.ThirdDart.Value.Valid {
+			stats.AccuracyStatistics.GetAccuracyStats(accuracyScore, visit.ThirdDart)
+			stats.DartsThrown++
+			accuracyScore -= visit.ThirdDart.GetScore()
+		}
+
+		player.CurrentScore = currentScore
+	}
+
+	for playerID, stats := range statisticsMap {
+		stats.PPD = stats.PPD / float32(stats.DartsThrown)
+		stats.FirstNinePPD = stats.FirstNinePPD / 9
+		if playerID == winnerID {
+			stats.CheckoutPercentage = float32(100 / stats.CheckoutAttempts)
+		} else {
+			stats.CheckoutPercentage = 0
+		}
+
+		stats.AccuracyStatistics.SetAccuracy()
+	}
+
+	return statisticsMap, nil
 }

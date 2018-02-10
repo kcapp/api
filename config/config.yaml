@@ -1,5 +1,5 @@
 db:
-  address: localhost
+  address: 10.12.100.66
   port: 3306
   username: developer
   password: abcd1234

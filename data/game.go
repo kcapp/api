@@ -163,9 +163,33 @@ func GetGameTypes() ([]*models.GameType, error) {
 		}
 		types = append(types, gt)
 	}
+
+	return types, nil
+}
+
+// GetWinsPerPlayer gets the number of wins per player for the given game
+func GetWinsPerPlayer(id int) (map[int]int, error) {
+	rows, err := models.DB.Query(`
+		SELECT IFNULL(m.winner_id, 0), COUNT(m.winner_id) AS 'wins' FROM `+"`match`"+` m
+		LEFT JOIN game g ON g.id = m.game_id
+		WHERE m.game_id = ? GROUP BY m.winner_id`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	winsMap := make(map[int]int)
+	for rows.Next() {
+		var playerID int
+		var wins int
+		err := rows.Scan(&playerID, &wins)
+		if err != nil {
+			return nil, err
+		}
+		winsMap[playerID] = wins
+	}
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
-
-	return types, nil
+	return winsMap, nil
 }

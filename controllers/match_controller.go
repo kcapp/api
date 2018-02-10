@@ -147,7 +147,7 @@ func FinishMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = data.FinishMatch(visit)
+	err = data.FinishMatch(visit)
 	if err != nil {
 		log.Println("Unable to finalize match", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

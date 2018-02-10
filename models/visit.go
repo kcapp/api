@@ -1,19 +1,5 @@
 package models
 
-import (
-	"errors"
-
-	"github.com/guregu/null"
-)
-
-// Dart struct used for storing darts
-type Dart struct {
-	Value             null.Int `json:"value"`
-	Multiplier        int64    `json:"multiplier"`
-	IsCheckoutAttempt bool     `json:"is_checkout"`
-	IsBust            bool     `json:"is_bust,omitempty"`
-}
-
 // Visit struct used for storing matches
 type Visit struct {
 	ID         int    `json:"id"`
@@ -44,52 +30,10 @@ func (visit Visit) ValidateInput() error {
 	return nil
 }
 
-// SetModifiers will set IsBust and IsCheckoutAttempt modifiers for the given dartø
-func (dart Dart) SetModifiers(currentScore int) {
-	scoreAfterThrow := currentScore - dart.getScore()
-	if scoreAfterThrow == 0 && dart.Multiplier == 2 {
-		// Check if this throw was a checkout
-		dart.IsBust = false
-		dart.IsCheckoutAttempt = true
-	} else if scoreAfterThrow < 2 {
-		dart.IsBust = true
-		dart.IsCheckoutAttempt = false
-	} else {
-		dart.IsBust = false
-		if currentScore == 50 || (currentScore <= 40 && currentScore%2 == 0) {
-			dart.IsCheckoutAttempt = true
-		} else {
-			dart.IsCheckoutAttempt = false
-		}
-	}
-}
-
-// ValidateInput will verify that the dart contains valid values
-func (dart Dart) ValidateInput() error {
-	if dart.Value.Int64 < 0 {
-		return errors.New("Value cannot be less than 0")
-	} else if dart.Value.Int64 > 25 || (dart.Value.Int64 > 20 && dart.Value.Int64 < 25) {
-		return errors.New("Value has to be 20 or less (or 25 (bull))")
-	} else if dart.Multiplier > 3 || dart.Multiplier < 1 {
-		return errors.New("Multiplier has to be one of 1 (single), 2 (douhle), 3 (triple)")
-	}
-
-	// Make sure multiplier is 1 on miss
-	if !dart.Value.Valid || dart.Value.Int64 == 0 {
-		dart.Multiplier = 1
-	}
-	return nil
-}
-
-// getScore will get the actual score of the dart (value * multiplier)
-func (dart Dart) getScore() int {
-	return int(dart.Value.Int64 * dart.Multiplier)
-}
-
 // SetVisitModifiers will set IsBust and IsCheckoutAttempt on all darts
 func (visit Visit) SetVisitModifiers(currentScore int) {
 	visit.FirstDart.SetModifiers(currentScore)
-	currentScore = currentScore - visit.FirstDart.getScore()
+	currentScore = currentScore - visit.FirstDart.GetScore()
 	if currentScore < 2 {
 		// If first dart is bust/checkout, then second/third dart doesn't count
 		visit.SecondDart.Value.Valid = false
@@ -98,14 +42,14 @@ func (visit Visit) SetVisitModifiers(currentScore int) {
 		visit.ThirdDart.Multiplier = 1
 	} else {
 		visit.SecondDart.SetModifiers(currentScore)
-		currentScore = currentScore - visit.SecondDart.getScore()
+		currentScore = currentScore - visit.SecondDart.GetScore()
 		if currentScore < 2 {
 			// If second dart is bust, then third dart doesn't count
 			visit.ThirdDart.Value.Valid = false
 			visit.ThirdDart.Multiplier = 1
 		} else {
 			visit.ThirdDart.SetModifiers(currentScore)
-			currentScore = currentScore - visit.ThirdDart.getScore()
+			currentScore = currentScore - visit.ThirdDart.GetScore()
 		}
 	}
 }
@@ -162,4 +106,9 @@ func GetHitsMap(visits []*Visit) (map[int64]*Hits, int) {
 		}
 	}
 	return hitsMap, dartsThrown
+}
+
+// GetScore will return the total points scored during the given visit
+func (visit Visit) GetScore() int {
+	return visit.FirstDart.GetScore() + visit.SecondDart.GetScore() + visit.ThirdDart.GetScore()
 }
