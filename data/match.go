@@ -79,7 +79,7 @@ func FinishMatch(visit models.Visit) error {
 		if err != nil {
 			return err
 		}
-		log.Printf("Inserting match statistics for player %d", playerID)
+		log.Printf("[%d] Inserting match statistics for player %d", visit.MatchID, playerID)
 	}
 
 	// Check if game is finished or not
@@ -247,10 +247,9 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 			p2m.player_id,
 			p2m.order,
 			p2m.player_id = m.current_player_id AS 'is_current_player',
-			m.starting_score - IFNULL(
-				SUM(first_dart * first_dart_multiplier) + 
-				SUM(second_dart * second_dart_multiplier) + 
-				SUM(third_dart * third_dart_multiplier), 0) AS 'current_score'
+			m.starting_score - (IFNULL(SUM(first_dart * first_dart_multiplier), 0) + 
+				IFNULL(SUM(second_dart * second_dart_multiplier), 0) + 
+				IFNULL(SUM(third_dart * third_dart_multiplier), 0)) AS 'current_score'
 		FROM player2match p2m 
 		LEFT JOIN `+"`match`"+` m ON m.id = p2m.match_id
 		LEFT JOIN score s ON s.match_id = p2m.match_id AND s.player_id = p2m.player_id
@@ -327,15 +326,15 @@ func calculateStatistics(matchID int, winnerID int, startingScore int) (map[int]
 		stats := statisticsMap[visit.PlayerID]
 
 		currentScore := player.CurrentScore
-		if visit.FirstDart.IsCheckout(currentScore) {
+		if visit.FirstDart.IsCheckoutAttempt(currentScore) {
 			stats.CheckoutAttempts++
 		}
 		currentScore -= visit.FirstDart.GetScore()
-		if visit.SecondDart.IsCheckout(currentScore) {
+		if visit.SecondDart.IsCheckoutAttempt(currentScore) {
 			stats.CheckoutAttempts++
 		}
 		currentScore -= visit.SecondDart.GetScore()
-		if visit.ThirdDart.IsCheckout(currentScore) {
+		if visit.ThirdDart.IsCheckoutAttempt(currentScore) {
 			stats.CheckoutAttempts++
 		}
 		currentScore -= visit.ThirdDart.GetScore()

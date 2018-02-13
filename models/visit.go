@@ -1,5 +1,11 @@
 package models
 
+import (
+	"errors"
+
+	"github.com/guregu/null"
+)
+
 // Visit struct used for storing matches
 type Visit struct {
 	ID         int    `json:"id"`
@@ -15,6 +21,9 @@ type Visit struct {
 
 // ValidateInput will verify the input does not containg any errors
 func (visit Visit) ValidateInput() error {
+	if visit.FirstDart == nil {
+		return errors.New("First dart cannot be null")
+	}
 	err := visit.FirstDart.ValidateInput()
 	if err != nil {
 		return err
@@ -30,28 +39,41 @@ func (visit Visit) ValidateInput() error {
 	return nil
 }
 
-// SetVisitModifiers will set IsBust and IsCheckoutAttempt on all darts
-func (visit Visit) SetVisitModifiers(currentScore int) {
-	visit.FirstDart.SetModifiers(currentScore)
-	currentScore = currentScore - visit.FirstDart.GetScore()
-	if currentScore < 2 {
-		// If first dart is bust/checkout, then second/third dart doesn't count
-		visit.SecondDart.Value.Valid = false
-		visit.SecondDart.Multiplier = 1
-		visit.ThirdDart.Value.Valid = false
-		visit.ThirdDart.Multiplier = 1
-	} else {
-		visit.SecondDart.SetModifiers(currentScore)
-		currentScore = currentScore - visit.SecondDart.GetScore()
-		if currentScore < 2 {
-			// If second dart is bust, then third dart doesn't count
-			visit.ThirdDart.Value.Valid = false
-			visit.ThirdDart.Multiplier = 1
+// SetIsBust will set IsBust for the given visit
+func (visit *Visit) SetIsBust(currentScore int) {
+	isBust := false
+	isBust = visit.FirstDart.IsBust(currentScore)
+	if !isBust {
+		currentScore = currentScore - visit.FirstDart.GetScore()
+		isBust = visit.SecondDart.IsBust(currentScore)
+		if !isBust {
+			currentScore = currentScore - visit.SecondDart.GetScore()
+			isBust = visit.ThirdDart.IsBust(currentScore)
 		} else {
-			visit.ThirdDart.SetModifiers(currentScore)
-			currentScore = currentScore - visit.ThirdDart.GetScore()
+			// Invalidate third dart if second was bust
+			visit.ThirdDart.Value = null.IntFromPtr(nil)
+		}
+	} else {
+		// Invalidate second/third dart if first was bust
+		visit.SecondDart.Value = null.IntFromPtr(nil)
+		visit.ThirdDart.Value = null.IntFromPtr(nil)
+	}
+
+	if !isBust {
+		// If this visit was not a bust, make sure that darts are set
+		// as 0 (miss) instead of 'nil' (not thrown)
+		if !visit.FirstDart.Value.Valid {
+			visit.FirstDart.Value = null.IntFrom(0)
+		}
+		if !visit.SecondDart.Value.Valid {
+			visit.SecondDart.Value = null.IntFrom(0)
+		}
+		if !visit.ThirdDart.Value.Valid {
+			visit.ThirdDart.Value = null.IntFrom(0)
 		}
 	}
+
+	visit.IsBust = isBust
 }
 
 // GetHitsMap will return a map where key is dart and value is count of single,double,triple hits

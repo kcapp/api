@@ -16,9 +16,7 @@ func AddVisit(visit models.Visit) error {
 	// TODO Don't allow to save score for same player twice in a row
 	// Only allow saving score for match.current_player_id ?
 
-	// Set visit modifiers
-	visit.SetVisitModifiers(currentScore)
-	visit.IsBust = visit.FirstDart.IsBust || visit.SecondDart.IsBust || visit.ThirdDart.IsBust
+	visit.SetIsBust(currentScore)
 
 	// Determine who the next player will be
 	players, err := GetMatchPlayers(visit.MatchID)
@@ -43,14 +41,15 @@ func AddVisit(visit models.Visit) error {
 	_, err = tx.Exec(`
 		INSERT INTO score(
 			match_id, player_id,
-			first_dart, first_dart_multiplier, is_checkout_first,
-			second_dart, second_dart_multiplier, is_checkout_second,
-			third_dart, third_dart_multiplier, is_checkout_third,
+			first_dart, first_dart_multiplier,
+			second_dart, second_dart_multiplier,
+			third_dart, third_dart_multiplier,
 			is_bust, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`, visit.MatchID, visit.PlayerID,
-		visit.FirstDart.Value, visit.FirstDart.Multiplier, visit.FirstDart.IsCheckoutAttempt,
-		visit.SecondDart.Value, visit.SecondDart.Multiplier, visit.SecondDart.IsCheckoutAttempt,
-		visit.ThirdDart.Value, visit.ThirdDart.Multiplier, visit.ThirdDart.IsCheckoutAttempt,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+		visit.MatchID, visit.PlayerID,
+		visit.FirstDart.Value, visit.FirstDart.Multiplier,
+		visit.SecondDart.Value, visit.SecondDart.Multiplier,
+		visit.ThirdDart.Value, visit.ThirdDart.Multiplier,
 		visit.IsBust)
 	if err != nil {
 		return err
@@ -61,8 +60,9 @@ func AddVisit(visit models.Visit) error {
 	}
 	tx.Commit()
 
-	log.Printf("[%d] Added score for player %d, throws: (%d-%d, %d-%d, %d-%d)", visit.MatchID, visit.PlayerID, visit.FirstDart.Value.Int64,
-		visit.FirstDart.Multiplier, visit.SecondDart.Value.Int64, visit.SecondDart.Multiplier, visit.ThirdDart.Value.Int64, visit.ThirdDart.Multiplier)
+	log.Printf("[%d] Added score for player %d, (%d-%d, %d-%d, %d-%d, %t)", visit.MatchID, visit.PlayerID, visit.FirstDart.Value.Int64,
+		visit.FirstDart.Multiplier, visit.SecondDart.Value.Int64, visit.SecondDart.Multiplier, visit.ThirdDart.Value.Int64, visit.ThirdDart.Multiplier,
+		visit.IsBust)
 
 	return nil
 }
@@ -127,9 +127,9 @@ func GetPlayerVisits(id int) ([]*models.Visit, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			id, match_id, player_id, 
-			first_dart, first_dart_multiplier, is_checkout_first,
-			second_dart, second_dart_multiplier, is_checkout_second,
-			third_dart, third_dart_multiplier, is_checkout_third,
+			first_dart, first_dart_multiplier,
+			second_dart, second_dart_multiplier,
+			third_dart, third_dart_multiplier,
 			is_bust,
 			created_at,
 			updated_at
@@ -147,9 +147,9 @@ func GetPlayerVisits(id int) ([]*models.Visit, error) {
 		v.SecondDart = new(models.Dart)
 		v.ThirdDart = new(models.Dart)
 		err := rows.Scan(&v.ID, &v.MatchID, &v.PlayerID,
-			&v.FirstDart.Value, &v.FirstDart.Multiplier, &v.FirstDart.IsCheckoutAttempt,
-			&v.SecondDart.Value, &v.SecondDart.Multiplier, &v.SecondDart.IsCheckoutAttempt,
-			&v.ThirdDart.Value, &v.ThirdDart.Multiplier, &v.ThirdDart.IsCheckoutAttempt,
+			&v.FirstDart.Value, &v.FirstDart.Multiplier,
+			&v.SecondDart.Value, &v.SecondDart.Multiplier,
+			&v.ThirdDart.Value, &v.ThirdDart.Multiplier,
 			&v.IsBust, &v.CreatedAt, &v.UpdatedAt)
 		if err != nil {
 			return nil, err
@@ -168,9 +168,9 @@ func GetMatchVisits(id int) ([]*models.Visit, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			id, match_id, player_id, 
-			first_dart, first_dart_multiplier, is_checkout_first,
-			second_dart, second_dart_multiplier, is_checkout_second,
-			third_dart, third_dart_multiplier, is_checkout_third,
+			first_dart, first_dart_multiplier,
+			second_dart, second_dart_multiplier,
+			third_dart, third_dart_multiplier,
 			is_bust,
 			created_at,
 			updated_at
@@ -188,9 +188,9 @@ func GetMatchVisits(id int) ([]*models.Visit, error) {
 		v.SecondDart = new(models.Dart)
 		v.ThirdDart = new(models.Dart)
 		err := rows.Scan(&v.ID, &v.MatchID, &v.PlayerID,
-			&v.FirstDart.Value, &v.FirstDart.Multiplier, &v.FirstDart.IsCheckoutAttempt,
-			&v.SecondDart.Value, &v.SecondDart.Multiplier, &v.SecondDart.IsCheckoutAttempt,
-			&v.ThirdDart.Value, &v.ThirdDart.Multiplier, &v.ThirdDart.IsCheckoutAttempt,
+			&v.FirstDart.Value, &v.FirstDart.Multiplier,
+			&v.SecondDart.Value, &v.SecondDart.Multiplier,
+			&v.ThirdDart.Value, &v.ThirdDart.Multiplier,
 			&v.IsBust, &v.CreatedAt, &v.UpdatedAt)
 		if err != nil {
 			return nil, err
@@ -213,17 +213,17 @@ func GetVisit(id int) (*models.Visit, error) {
 	err := models.DB.QueryRow(`
 		SELECT
 			id, match_id, player_id, 
-			first_dart, first_dart_multiplier, is_checkout_first,
-			second_dart, second_dart_multiplier, is_checkout_second,
-			third_dart, third_dart_multiplier, is_checkout_third,
+			first_dart, first_dart_multiplier,
+			second_dart, second_dart_multiplier,
+			third_dart, third_dart_multiplier,
 			is_bust,
 			created_at,
 			updated_at
 		FROM score s
 		WHERE s.id = ?`, id).Scan(&v.ID, &v.MatchID, &v.PlayerID,
-		&v.FirstDart.Value, &v.FirstDart.Multiplier, &v.FirstDart.IsCheckoutAttempt,
-		&v.SecondDart.Value, &v.SecondDart.Multiplier, &v.SecondDart.IsCheckoutAttempt,
-		&v.ThirdDart.Value, &v.ThirdDart.Multiplier, &v.ThirdDart.IsCheckoutAttempt,
+		&v.FirstDart.Value, &v.FirstDart.Multiplier,
+		&v.SecondDart.Value, &v.SecondDart.Multiplier,
+		&v.ThirdDart.Value, &v.ThirdDart.Multiplier,
 		&v.IsBust, &v.CreatedAt, &v.UpdatedAt)
 	if err != nil {
 		return nil, err
