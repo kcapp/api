@@ -34,8 +34,13 @@ func GetPlayer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	log.Println(id)
-	// TODO
+	player, err := data.GetPlayer(id)
+	if err != nil {
+		log.Println("Unable to get player", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(player)
 }
 
 // GetPlayerStatistics will return statistics for the given player

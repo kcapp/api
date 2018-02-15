@@ -116,6 +116,9 @@ func GetGame(id int) (*models.Game, error) {
 	if err != nil {
 		return nil, err
 	}
+	if g.IsFinished {
+		g.EndTime = g.Matches[len(g.Matches)-1].Endtime.String
+	}
 	return g, nil
 }
 

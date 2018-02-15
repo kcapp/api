@@ -28,6 +28,18 @@ func GetPlayers() (map[int]*models.Player, error) {
 	return players, nil
 }
 
+// GetPlayer returns the player for the given ID
+func GetPlayer(id int) (*models.Player, error) {
+	p := new(models.Player)
+	err := models.DB.QueryRow(`
+		SELECT p.id, p.name, p.nickname, p.games_played, p.games_won, p.created_at
+		FROM player p WHERE p.id = ?`, id).Scan(&p.ID, &p.Name, &p.Nickname, &p.GamesPlayed, &p.GamesWon, &p.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
 // AddPlayer will add a new player to the database
 func AddPlayer(player models.Player) error {
 	// Prepare statement for inserting data

@@ -13,6 +13,7 @@ type Game struct {
 	WinnerID       null.Int  `json:"winner_id"`
 	CreatedAt      string    `json:"created_at"`
 	UpdatedAt      string    `json:"updated_at"`
+	EndTime        string    `json:"end_time,omitempty"`
 	OweTypeID      null.Int  `json:"owe_type_id"`
 	OweType        *OweType  `json:"owe_type,omitempty"`
 	Players        []int     `json:"players"`
