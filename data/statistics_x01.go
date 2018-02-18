@@ -312,3 +312,49 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01) 
 	err = rows.Err()
 	return err
 }
+
+// GetPlayerProgression will get progression of statistics over time for the given player
+func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			s.player_id,
+			SUM(s.ppd) / COUNT(s.match_id) AS 'ppd',
+			SUM(s.first_nine_ppd) / COUNT(s.match_id) AS 'first_nine_ppd',
+			SUM(s.checkout_percentage) / COUNT(s.match_id) AS 'checkout_percentage',
+			CAST(SUM(s.60s_plus) / COUNT(g.id) AS UNSIGNED) AS '60s_plus',
+			CAST(SUM(s.100s_plus) / COUNT(g.id) AS UNSIGNED) AS '100s_plus',
+			CAST(SUM(s.140s_plus) / COUNT(g.id) AS UNSIGNED) AS '140s_plus',
+			CAST(SUM(s.180s)  / COUNT(g.id) AS UNSIGNED) AS '180s',
+			SUM(s.accuracy_20) / COUNT(s.match_id) AS 'accuracy_20',
+			SUM(s.accuracy_19) / COUNT(s.match_id) AS 'accuracy_19',
+			SUM(s.overall_accuracy) / COUNT(s.match_id) AS 'accuracy_overall',
+			DATE(g.updated_at) AS 'date'
+		FROM statistics_x01 s
+		JOIN `+"`match`"+` m ON m.id = s.match_id
+		JOIN game g ON g.id = m.game_id
+		WHERE player_id = ?
+		GROUP BY date
+		ORDER BY date DESC
+		LIMIT 100`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	statisticsMap := make(map[string]*models.StatisticsX01)
+	for rows.Next() {
+		var date string
+		s := new(models.StatisticsX01)
+		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.CheckoutPercentage, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus,
+			&s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &date)
+		if err != nil {
+			return nil, err
+		}
+		statisticsMap[date] = s
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return statisticsMap, nil
+}

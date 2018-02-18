@@ -101,6 +101,26 @@ func AddPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetPlayerProgression will return statistics for the given player
+func GetPlayerProgression(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	stats, err := data.GetPlayerProgression(id)
+	if err != nil {
+		log.Println("Unable to get player progression", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(stats)
+}
+
 func sliceAtoi(sa []string) ([]int, error) {
 	si := make([]int, 0, len(sa))
 	for _, a := range sa {
