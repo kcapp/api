@@ -71,7 +71,7 @@ func FinishMatch(visit models.Visit) error {
 	for playerID, stats := range statisticsMap {
 		_, err = tx.Exec(`
 			INSERT INTO statistics_x01
-				(match_id, player_id, ppd, first_nine_ppd, checkout_percentage, darts_thrown, 60s_plus, 
+				(match_id, player_id, ppd, first_nine_ppd, checkout_percentage, darts_thrown, 60s_plus,
 				 100s_plus, 140s_plus, 180s, accuracy_20, accuracy_19, overall_accuracy)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.MatchID, playerID, stats.PPD, stats.FirstNinePPD,
 			stats.CheckoutPercentage, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
@@ -242,15 +242,15 @@ func GetMatch(id int) (*models.Match, error) {
 // GetMatchPlayers returns a information about current score for players in a match
 func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 	rows, err := models.DB.Query(`
-		SELECT 
+		SELECT
 			p2m.match_id,
 			p2m.player_id,
 			p2m.order,
 			p2m.player_id = m.current_player_id AS 'is_current_player',
-			m.starting_score - (IFNULL(SUM(first_dart * first_dart_multiplier), 0) + 
-				IFNULL(SUM(second_dart * second_dart_multiplier), 0) + 
+			m.starting_score - (IFNULL(SUM(first_dart * first_dart_multiplier), 0) +
+				IFNULL(SUM(second_dart * second_dart_multiplier), 0) +
 				IFNULL(SUM(third_dart * third_dart_multiplier), 0)) AS 'current_score'
-		FROM player2match p2m 
+		FROM player2match p2m
 		LEFT JOIN `+"`match`"+` m ON m.id = p2m.match_id
 		LEFT JOIN score s ON s.match_id = p2m.match_id AND s.player_id = p2m.player_id
 		WHERE p2m.match_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
@@ -272,6 +272,19 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
+
+	match, err := GetMatch(id)
+	if err != nil {
+		return nil, err
+	}
+	winsMap, err := GetWinsPerPlayer(match.GameID)
+	if err != nil {
+		return nil, err
+	}
+	for _, player := range players {
+		player.Wins = winsMap[player.PlayerID]
+	}
+
 	return players, nil
 }
 
