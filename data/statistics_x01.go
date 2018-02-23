@@ -321,10 +321,10 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 			SUM(s.ppd) / COUNT(s.match_id) AS 'ppd',
 			SUM(s.first_nine_ppd) / COUNT(s.match_id) AS 'first_nine_ppd',
 			SUM(s.checkout_percentage) / COUNT(s.match_id) AS 'checkout_percentage',
-			CAST(SUM(s.60s_plus) / COUNT(g.id) AS UNSIGNED) AS '60s_plus',
-			CAST(SUM(s.100s_plus) / COUNT(g.id) AS UNSIGNED) AS '100s_plus',
-			CAST(SUM(s.140s_plus) / COUNT(g.id) AS UNSIGNED) AS '140s_plus',
-			CAST(SUM(s.180s)  / COUNT(g.id) AS UNSIGNED) AS '180s',
+			SUM(s.60s_plus) AS '60s_plus',
+			SUM(s.100s_plus) AS '100s_plus',
+			SUM(s.140s_plus) AS '140s_plus',
+			SUM(s.180s) AS '180s',
 			SUM(s.accuracy_20) / COUNT(s.match_id) AS 'accuracy_20',
 			SUM(s.accuracy_19) / COUNT(s.match_id) AS 'accuracy_19',
 			SUM(s.overall_accuracy) / COUNT(s.match_id) AS 'accuracy_overall',
@@ -333,9 +333,8 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 		JOIN `+"`match`"+` m ON m.id = s.match_id
 		JOIN game g ON g.id = m.game_id
 		WHERE player_id = ?
-		GROUP BY date
-		ORDER BY date DESC
-		LIMIT 100`, id)
+		GROUP BY YEAR(g.updateD_at), WEEK(g.updated_at)
+		ORDER BY date DESC`, id)
 	if err != nil {
 		return nil, err
 	}
