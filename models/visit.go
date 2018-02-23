@@ -43,11 +43,11 @@ func (visit Visit) ValidateInput() error {
 func (visit *Visit) SetIsBust(currentScore int) {
 	isBust := false
 	isBust = visit.FirstDart.IsBust(currentScore)
-	if !isBust {
-		currentScore = currentScore - visit.FirstDart.GetScore()
+	currentScore = currentScore - visit.FirstDart.GetScore()
+	if !isBust && currentScore > 0 {
 		isBust = visit.SecondDart.IsBust(currentScore)
-		if !isBust {
-			currentScore = currentScore - visit.SecondDart.GetScore()
+		currentScore = currentScore - visit.SecondDart.GetScore()
+		if !isBust && currentScore > 0 {
 			isBust = visit.ThirdDart.IsBust(currentScore)
 		} else {
 			// Invalidate third dart if second was bust
@@ -59,7 +59,7 @@ func (visit *Visit) SetIsBust(currentScore int) {
 		visit.ThirdDart.Value = null.IntFromPtr(nil)
 	}
 
-	if !isBust {
+	if !isBust && currentScore > 0 {
 		// If this visit was not a bust, make sure that darts are set
 		// as 0 (miss) instead of 'nil' (not thrown)
 		if !visit.FirstDart.Value.Valid {

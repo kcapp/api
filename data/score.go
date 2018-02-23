@@ -71,7 +71,7 @@ func AddVisit(visit models.Visit) error {
 func ModifyVisit(visit models.Visit) error {
 	// FIXME: We need to check if this is a checkout/bust
 	stmt, err := models.DB.Prepare(`
-		UPDATE score SET 
+		UPDATE score SET
     		first_dart = ?,
     		first_dart_multiplier = ?,
     		second_dart = ?,
@@ -126,7 +126,7 @@ func DeleteVisit(id int) error {
 func GetPlayerVisits(id int) ([]*models.Visit, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			id, match_id, player_id, 
+			id, match_id, player_id,
 			first_dart, first_dart_multiplier,
 			second_dart, second_dart_multiplier,
 			third_dart, third_dart_multiplier,
@@ -167,7 +167,7 @@ func GetPlayerVisits(id int) ([]*models.Visit, error) {
 func GetMatchVisits(id int) ([]*models.Visit, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			id, match_id, player_id, 
+			id, match_id, player_id,
 			first_dart, first_dart_multiplier,
 			second_dart, second_dart_multiplier,
 			third_dart, third_dart_multiplier,
@@ -212,7 +212,7 @@ func GetVisit(id int) (*models.Visit, error) {
 	v.ThirdDart = new(models.Dart)
 	err := models.DB.QueryRow(`
 		SELECT
-			id, match_id, player_id, 
+			id, match_id, player_id,
 			first_dart, first_dart_multiplier,
 			second_dart, second_dart_multiplier,
 			third_dart, third_dart_multiplier,

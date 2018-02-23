@@ -13,12 +13,17 @@ type Dart struct {
 }
 
 // IsBust will check if the given dart is a bust
-func (dart Dart) IsBust(currentScore int) bool {
+func (dart *Dart) IsBust(currentScore int) bool {
 	scoreAfterThrow := currentScore - dart.GetScore()
 	if scoreAfterThrow == 0 && dart.Multiplier == 2 {
 		return false
 	} else if scoreAfterThrow < 2 {
 		return true
+	}
+
+	// If the throw is not a bust, make sure the dart is valid
+	if !dart.Value.Valid {
+		dart.Value = null.IntFrom(0)
 	}
 	return false
 }
