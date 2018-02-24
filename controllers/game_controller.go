@@ -102,6 +102,18 @@ func GetX01StatisticsForGame(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
+// GetGamesModes will return all game modes
+func GetGamesModes(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	modes, err := data.GetGameModes()
+	if err != nil {
+		log.Println("Unable to get game modes", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(modes)
+}
+
 // GetGamesTypes will return all game types
 func GetGamesTypes(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

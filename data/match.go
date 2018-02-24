@@ -54,39 +54,58 @@ func FinishMatch(visit models.Visit) error {
 	if err != nil {
 		return err
 	}
+	// Write statistics for each player
+	game, err := GetGame(match.GameID)
+	if err != nil {
+		return err
+	}
 
 	err = AddVisit(visit)
 	if err != nil {
 		return err
 	}
-	// Update match with winner
-	_, err = tx.Exec(`UPDATE `+"`match`"+` SET current_player_id = ?, winner_id = ?, is_finished = 1, end_time = NOW() WHERE id = ?`,
-		visit.PlayerID, visit.PlayerID, visit.MatchID)
-	if err != nil {
-		return err
-	}
 
-	// Write statistics for each player
-	statisticsMap, err := calculateStatistics(visit.MatchID, visit.PlayerID, match.StartingScore)
-	for playerID, stats := range statisticsMap {
-		_, err = tx.Exec(`
-			INSERT INTO statistics_x01
-				(match_id, player_id, ppd, first_nine_ppd, checkout_percentage, darts_thrown, 60s_plus,
-				 100s_plus, 140s_plus, 180s, accuracy_20, accuracy_19, overall_accuracy)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.MatchID, playerID, stats.PPD, stats.FirstNinePPD,
-			stats.CheckoutPercentage, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
-			stats.Score180s, stats.AccuracyStatistics.Accuracy20, stats.AccuracyStatistics.Accuracy19, stats.AccuracyStatistics.AccuracyOverall)
+	// Update match with winner
+	winnerID := visit.PlayerID
+	if game.GameType.ID == 2 {
+		// For 9 Dart Shootout we need to check the scores of each player
+		// to determine which player won the match with the highest score
+		scores, err := GetPlayersScore(visit.MatchID)
 		if err != nil {
 			return err
 		}
-		log.Printf("[%d] Inserting match statistics for player %d", visit.MatchID, playerID)
+		highScore := 0
+		for playerID, score := range scores {
+			if score > highScore {
+				highScore = score
+				winnerID = playerID
+			}
+		}
 	}
-
-	// Check if game is finished or not
-	game, err := GetGame(match.GameID)
+	_, err = tx.Exec(`UPDATE `+"`match`"+` SET current_player_id = ?, winner_id = ?, is_finished = 1, end_time = NOW() WHERE id = ?`,
+		winnerID, winnerID, visit.MatchID)
 	if err != nil {
 		return err
 	}
+
+	if game.GameType.ID == 1 {
+		statisticsMap, err := calculateStatistics(visit.MatchID, visit.PlayerID, match.StartingScore)
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+				INSERT INTO statistics_x01
+					(match_id, player_id, ppd, first_nine_ppd, checkout_percentage, darts_thrown, 60s_plus,
+					 100s_plus, 140s_plus, 180s, accuracy_20, accuracy_19, overall_accuracy)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.MatchID, playerID, stats.PPD, stats.FirstNinePPD,
+				stats.CheckoutPercentage, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
+				stats.Score180s, stats.AccuracyStatistics.Accuracy20, stats.AccuracyStatistics.Accuracy19, stats.AccuracyStatistics.AccuracyOverall)
+			if err != nil {
+				return err
+			}
+			log.Printf("[%d] Inserting match statistics for player %d", visit.MatchID, playerID)
+		}
+	}
+
+	// Check if game is finished or not
 	winsMap, err := GetWinsPerPlayer(game.ID)
 	if err != nil {
 		return err
@@ -102,7 +121,7 @@ func FinishMatch(visit models.Visit) error {
 		}
 	}
 
-	if currentPlayerWins == game.GameType.WinsRequired {
+	if currentPlayerWins == game.GameMode.WinsRequired {
 		// Game finished, current player won
 		_, err = tx.Exec("UPDATE game SET is_finished = 1, winner_id = ? WHERE id = ?", visit.PlayerID, game.ID)
 		if err != nil {
@@ -126,7 +145,7 @@ func FinishMatch(visit models.Visit) error {
 				log.Printf("Added owes of %s from player %d to player %d", game.OweType.Item.String, playerID, visit.PlayerID)
 			}
 		}
-	} else if game.GameType.MatchesRequired.Valid && playedMatches == int(game.GameType.MatchesRequired.Int64) {
+	} else if game.GameMode.MatchesRequired.Valid && playedMatches == int(game.GameMode.MatchesRequired.Int64) {
 		// Game finished, draw
 		_, err = tx.Exec("UPDATE game SET is_finished = 1 WHERE id = ?", game.ID)
 		if err != nil {
@@ -250,7 +269,7 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 			m.starting_score - (IFNULL(SUM(first_dart * first_dart_multiplier), 0) +
 				IFNULL(SUM(second_dart * second_dart_multiplier), 0) +
 				IFNULL(SUM(third_dart * third_dart_multiplier), 0))
-				* IF(g.game_type_id = 7,  -1, 1) AS 'current_score'
+				* IF(g.game_type_id = 2,  -1, 1) AS 'current_score'
 		FROM player2match p2m
 		LEFT JOIN `+"`match`"+` m ON m.id = p2m.match_id
 		LEFT JOIN score s ON s.match_id = p2m.match_id AND s.player_id = p2m.player_id

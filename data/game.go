@@ -14,7 +14,7 @@ func NewGame(game models.Game) (*models.Game, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := tx.Exec("INSERT INTO game (game_type_id, owe_type_id, created_at) VALUES (?, ?, NOW())", game.GameType.ID, game.OweTypeID)
+	res, err := tx.Exec("INSERT INTO game (game_type_id, game_mode_id, owe_type_id, created_at) VALUES (?, ?, ?, NOW())", game.GameType.ID, game.GameMode.ID, game.OweTypeID)
 	if err != nil {
 		return nil, err
 	}
@@ -48,11 +48,13 @@ func GetGames() ([]*models.Game, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
-			gt.id, gt.name, gt.short_name, gt.wins_required, gt.matches_required,
+			gt.id, gt.name, gt.description,
+			gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required,
 			ot.id, ot.item,
 			GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
 		FROM game g
-		LEFT JOIN game_type gt ON gt.id = g.game_type_id
+		JOIN game_type gt ON gt.id = g.game_type_id
+		JOIN game_mode gm ON gm.id = g.game_mode_id
 		LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
 		LEFT JOIN player2match p2m ON p2m.game_id = g.id
 		GROUP BY g.id`)
@@ -65,10 +67,12 @@ func GetGames() ([]*models.Game, error) {
 	for rows.Next() {
 		g := new(models.Game)
 		g.GameType = new(models.GameType)
+		g.GameMode = new(models.GameMode)
 		ot := new(models.OweType)
 		var players string
 		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID,
-			&g.GameType.ID, &g.GameType.Name, &g.GameType.ShortName, &g.GameType.WinsRequired, &g.GameType.MatchesRequired,
+			&g.GameType.ID, &g.GameType.Name, &g.GameType.Description,
+			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.MatchesRequired,
 			&ot.ID, &ot.Item, &players)
 		if err != nil {
 			return nil, err
@@ -91,20 +95,24 @@ func GetGames() ([]*models.Game, error) {
 func GetGame(id int) (*models.Game, error) {
 	g := new(models.Game)
 	g.GameType = new(models.GameType)
+	g.GameMode = new(models.GameMode)
 	ot := new(models.OweType)
 	var players string
 	err := models.DB.QueryRow(`
         SELECT
-            g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
-			gt.id, gt.name, gt.short_name, gt.wins_required, gt.matches_required,
+			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
+			gt.id, gt.name, gt.description,
+			gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required,
 			ot.id, ot.item,
 			GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
-        FROM game g
-		LEFT JOIN game_type gt ON gt.id = g.game_type_id
+		FROM game g
+		JOIN game_type gt ON gt.id = g.game_type_id
+		JOIN game_mode gm ON gm.id = g.game_mode_id
 		LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
 		LEFT JOIN player2match p2m ON p2m.game_id = g.id
 		WHERE g.id = ?`, id).Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID,
-		&g.GameType.ID, &g.GameType.Name, &g.GameType.ShortName, &g.GameType.WinsRequired, &g.GameType.MatchesRequired, &ot.ID, &ot.Item, &players)
+		&g.GameType.ID, &g.GameType.Name, &g.GameType.Description, &g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName,
+		&g.GameMode.WinsRequired, &g.GameMode.MatchesRequired, &ot.ID, &ot.Item, &players)
 	if err != nil {
 		return nil, err
 	}
@@ -149,9 +157,30 @@ func DeleteGame(id int) (*models.Game, error) {
 	return nil, nil
 }
 
+// GetGameModes will return all game modes
+func GetGameModes() ([]*models.GameMode, error) {
+	rows, err := models.DB.Query("SELECT id, wins_required, matches_required, `name`, short_name FROM game_mode")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	modes := make([]*models.GameMode, 0)
+	for rows.Next() {
+		gm := new(models.GameMode)
+		err := rows.Scan(&gm.ID, &gm.WinsRequired, &gm.MatchesRequired, &gm.Name, &gm.ShortName)
+		if err != nil {
+			return nil, err
+		}
+		modes = append(modes, gm)
+	}
+
+	return modes, nil
+}
+
 // GetGameTypes will return all game types
 func GetGameTypes() ([]*models.GameType, error) {
-	rows, err := models.DB.Query("SELECT id, wins_required, matches_required, `name`, short_name FROM game_type")
+	rows, err := models.DB.Query("SELECT id, `name`, description FROM game_type")
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +189,7 @@ func GetGameTypes() ([]*models.GameType, error) {
 	types := make([]*models.GameType, 0)
 	for rows.Next() {
 		gt := new(models.GameType)
-		err := rows.Scan(&gt.ID, &gt.WinsRequired, &gt.MatchesRequired, &gt.Name, &gt.ShortName)
+		err := rows.Scan(&gt.ID, &gt.Name, &gt.Description)
 		if err != nil {
 			return nil, err
 		}

@@ -55,23 +55,42 @@ func AddPlayer(player models.Player) error {
 
 // GetPlayerScore will get the score for the given player in the given match
 func GetPlayerScore(playerID int, matchID int) (int, error) {
-	var score int
-	err := models.DB.QueryRow(`
+	scores, err := GetPlayersScore(matchID)
+	if err != nil {
+		return 0, err
+	}
+	return scores[playerID], nil
+}
+
+// GetPlayersScore will get the score for all players in the given match
+func GetPlayersScore(matchID int) (map[int]int, error) {
+	rows, err := models.DB.Query(`
 		SELECT
+			IFNULL(s.player_id, 0),
 			m.starting_score - IFNULL(
 				SUM(first_dart * first_dart_multiplier) +
 				SUM(second_dart * second_dart_multiplier) +
 				SUM(third_dart * third_dart_multiplier), 0)
-				* IF(g.game_type_id = 7,  -1, 1)
+				* IF(g.game_type_id = 2,  -1, 1)
 				AS 'current_score'
 		FROM player2match p2m
 		LEFT JOIN `+"`match`"+` m ON m.id = p2m.match_id
 		LEFT JOIN score s ON s.match_id = p2m.match_id AND s.player_id = p2m.player_id
 		LEFT JOIN game g on g.id = m.game_id
-		WHERE p2m.match_id = ? AND p2m.player_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
-		GROUP BY p2m.player_id`, matchID, playerID).Scan(&score)
-	if err != nil {
-		return 0, err
+		WHERE p2m.match_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
+		GROUP BY p2m.player_id`, matchID)
+	scores := make(map[int]int)
+	for rows.Next() {
+		var playerID int
+		var score int
+		err := rows.Scan(&playerID, &score)
+		if err != nil {
+			return nil, err
+		}
+		scores[playerID] = score
 	}
-	return score, nil
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return scores, nil
 }
