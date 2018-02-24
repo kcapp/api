@@ -249,10 +249,12 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 			p2m.player_id = m.current_player_id AS 'is_current_player',
 			m.starting_score - (IFNULL(SUM(first_dart * first_dart_multiplier), 0) +
 				IFNULL(SUM(second_dart * second_dart_multiplier), 0) +
-				IFNULL(SUM(third_dart * third_dart_multiplier), 0)) AS 'current_score'
+				IFNULL(SUM(third_dart * third_dart_multiplier), 0))
+				* IF(g.game_type_id = 7,  -1, 1) AS 'current_score'
 		FROM player2match p2m
 		LEFT JOIN `+"`match`"+` m ON m.id = p2m.match_id
 		LEFT JOIN score s ON s.match_id = p2m.match_id AND s.player_id = p2m.player_id
+		LEFT JOIN game g on g.id = m.game_id
 		WHERE p2m.match_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
 		GROUP BY p2m.player_id`, id)
 	if err != nil {

@@ -16,7 +16,18 @@ func AddVisit(visit models.Visit) error {
 	// TODO Don't allow to save score for same player twice in a row
 	// Only allow saving score for match.current_player_id ?
 
-	visit.SetIsBust(currentScore)
+	match, err := GetMatch(visit.MatchID)
+	if err != nil {
+		return err
+	}
+	game, err := GetGame(match.GameID)
+	if err != nil {
+		return err
+	}
+
+	if game.GameType.ID != 7 {
+		visit.SetIsBust(currentScore)
+	}
 
 	// Determine who the next player will be
 	players, err := GetMatchPlayers(visit.MatchID)
