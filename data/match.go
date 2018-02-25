@@ -88,8 +88,20 @@ func FinishMatch(visit models.Visit) error {
 		return err
 	}
 
-	if game.GameType.ID == 1 {
-		statisticsMap, err := calculateStatistics(visit.MatchID, visit.PlayerID, match.StartingScore)
+	if game.GameType.ID == 2 {
+		statisticsMap, err := calculateShootoutStatistics(visit.MatchID)
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+				INSERT INTO statistics_shootout(match_id, player_id, ppd, 60s_plus, 100s_plus, 140s_plus, 180s)
+				VALUES (?, ?, ?, ?, ?, ?, ?)`, visit.MatchID, playerID, stats.PPD, stats.Score60sPlus,
+				stats.Score100sPlus, stats.Score140sPlus, stats.Score180s)
+			if err != nil {
+				return err
+			}
+			log.Printf("[%d] Inserting shootout statistics for player %d", visit.MatchID, playerID)
+		}
+	} else {
+		statisticsMap, err := calculateX01Statistics(visit.MatchID, visit.PlayerID, match.StartingScore)
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_x01
@@ -101,7 +113,7 @@ func FinishMatch(visit models.Visit) error {
 			if err != nil {
 				return err
 			}
-			log.Printf("[%d] Inserting match statistics for player %d", visit.MatchID, playerID)
+			log.Printf("[%d] Inserting x01 statistics for player %d", visit.MatchID, playerID)
 		}
 	}
 
@@ -335,7 +347,7 @@ func ChangePlayerOrder(matchID int, orderMap map[string]int) error {
 	return nil
 }
 
-func calculateStatistics(matchID int, winnerID int, startingScore int) (map[int]*models.StatisticsX01, error) {
+func calculateX01Statistics(matchID int, winnerID int, startingScore int) (map[int]*models.StatisticsX01, error) {
 	visits, err := GetMatchVisits(matchID)
 	if err != nil {
 		return nil, err
@@ -427,5 +439,44 @@ func calculateStatistics(matchID int, winnerID int, startingScore int) (map[int]
 		stats.AccuracyStatistics.SetAccuracy()
 	}
 
+	return statisticsMap, nil
+}
+
+func calculateShootoutStatistics(matchID int) (map[int]*models.StatisticsShootout, error) {
+	visits, err := GetMatchVisits(matchID)
+	if err != nil {
+		return nil, err
+	}
+
+	players, err := GetMatchPlayers(matchID)
+	if err != nil {
+		return nil, err
+	}
+	statisticsMap := make(map[int]*models.StatisticsShootout)
+	for _, player := range players {
+		stats := new(models.StatisticsShootout)
+		statisticsMap[player.PlayerID] = stats
+	}
+
+	for _, visit := range visits {
+		stats := statisticsMap[visit.PlayerID]
+
+		visitScore := visit.GetScore()
+		stats.PPD += float32(visitScore)
+
+		if visitScore >= 60 && visitScore < 100 {
+			stats.Score60sPlus++
+		} else if visitScore >= 100 && visitScore < 140 {
+			stats.Score100sPlus++
+		} else if visitScore >= 140 && visitScore < 180 {
+			stats.Score140sPlus++
+		} else if visitScore == 180 {
+			stats.Score180s++
+		}
+	}
+
+	for _, stats := range statisticsMap {
+		stats.PPD = stats.PPD / float32(9)
+	}
 	return statisticsMap, nil
 }

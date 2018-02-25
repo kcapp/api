@@ -115,6 +115,39 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 	return stats, nil
 }
 
+// GetShootoutStatisticsForMatch will return statistics for all players in the given match
+func GetShootoutStatisticsForMatch(id int) ([]*models.StatisticsShootout, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			m.id,
+			p.id,
+			SUM(s.ppd) / COUNT(p.id),
+			SUM(60s_plus),
+			SUM(100s_plus),
+			SUM(140s_plus),
+			SUM(180s) AS '180s'
+		FROM statistics_shootout s
+			JOIN player p ON p.id = s.player_id
+			JOIN `+"`match`"+` m ON m.id = s.match_id
+			JOIN game g ON g.id = m.game_id
+		WHERE m.id = ? GROUP BY p.id`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	stats := make([]*models.StatisticsShootout, 0)
+	for rows.Next() {
+		s := new(models.StatisticsShootout)
+		err := rows.Scan(&s.MatchID, &s.PlayerID, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+		if err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	return stats, nil
+}
+
 // GetX01StatisticsForGame will return statistics for all players in the given game
 func GetX01StatisticsForGame(id int) ([]*models.StatisticsX01, error) {
 	rows, err := models.DB.Query(`

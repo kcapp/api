@@ -95,13 +95,36 @@ func GetX01StatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats, err := data.GetX01StatisticsForMatch(matchID)
+	match, err := data.GetMatch(matchID)
 	if err != nil {
-		log.Println("Unable to get statistics", err)
+		log.Println("Unable to get match")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(stats)
+	game, err := data.GetGame(match.GameID)
+	if err != nil {
+		log.Println("Unable to get Game")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if game.GameType.ID == 2 {
+		stats, err := data.GetShootoutStatisticsForMatch(matchID)
+		if err != nil {
+			log.Println("Unable to get statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else {
+		stats, err := data.GetX01StatisticsForMatch(matchID)
+		if err != nil {
+			log.Println("Unable to get statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	}
 }
 
 // ChangePlayerOrder will modify the order of players for the given match
