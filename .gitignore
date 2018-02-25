@@ -17,3 +17,6 @@ debug
 
 # Visual Studio Code files
 .vscode
+
+# Once pushed, ignore config directory
+config/

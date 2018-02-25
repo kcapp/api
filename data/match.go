@@ -275,7 +275,8 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 		LEFT JOIN score s ON s.match_id = p2m.match_id AND s.player_id = p2m.player_id
 		LEFT JOIN game g on g.id = m.game_id
 		WHERE p2m.match_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
-		GROUP BY p2m.player_id`, id)
+		GROUP BY p2m.player_id
+		ORDER BY p2m.order ASC`, id)
 	if err != nil {
 		return nil, err
 	}

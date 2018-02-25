@@ -28,8 +28,13 @@ type Config struct {
 }
 
 // GetConfig loads configuration from yaml file
-func GetConfig() (*Config, error) {
-	yamlFile, err := ioutil.ReadFile("config/config.yaml")
+func GetConfig(configFileParam string) (*Config, error) {
+	// Default location
+	configFilePath := "config/config.yaml"
+	if len(configFileParam) > 0 {
+		configFilePath = configFileParam
+	}
+	yamlFile, err := ioutil.ReadFile(configFilePath)
 	if err != nil {
 		return nil, err
 	}

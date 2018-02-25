@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/kcapp/api/models"
 
@@ -14,7 +15,13 @@ import (
 
 // our main function
 func main() {
-	config, err := models.GetConfig()
+	var configFileParam string
+
+	if len(os.Args) > 1 {
+		configFileParam = os.Args[1]
+	}
+
+	config, err := models.GetConfig(configFileParam)
 	if err != nil {
 		panic(err)
 	}
