@@ -19,4 +19,4 @@ debug
 .vscode
 
 # Once pushed, ignore config directory
-config/
+config/congig.yaml
