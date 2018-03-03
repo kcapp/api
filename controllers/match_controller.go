@@ -177,3 +177,22 @@ func FinishMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// DeleteMatch will delete a match
+func DeleteMatch(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	matchID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = data.DeleteMatch(matchID)
+	if err != nil {
+		log.Println("Unable to delete match", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}

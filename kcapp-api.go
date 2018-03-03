@@ -39,6 +39,7 @@ func main() {
 
 	router.HandleFunc("/match/active", controllers.GetActiveMatches).Methods("GET")
 	router.HandleFunc("/match/{id}", controllers.GetMatch).Methods("GET")
+	router.HandleFunc("/match/{id}", controllers.DeleteMatch).Methods("DELETE")
 	router.HandleFunc("/match/{id}/statistics", controllers.GetX01StatisticsForMatch).Methods("GET")
 	router.HandleFunc("/match/{id}/players", controllers.GetMatchPlayers).Methods("GET")
 	router.HandleFunc("/match/{id}/order", controllers.ChangePlayerOrder).Methods("PUT")

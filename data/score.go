@@ -64,10 +64,12 @@ func AddVisit(visit models.Visit) error {
 		visit.ThirdDart.Value, visit.ThirdDart.Multiplier,
 		visit.IsBust)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 	_, err = tx.Exec(`UPDATE `+"`match`"+` SET current_player_id = ? WHERE id = ?`, nextPlayerID, visit.MatchID)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 	tx.Commit()
@@ -121,11 +123,13 @@ func DeleteVisit(id int) error {
 	// Delete the visit
 	_, err = tx.Exec("DELETE FROM score WHERE id = ?", id)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 	// Set current player to the player of the last visit
 	_, err = tx.Exec("UPDATE `match` SET current_player_id = ? WHERE id = ?", visit.PlayerID, visit.MatchID)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 	tx.Commit()

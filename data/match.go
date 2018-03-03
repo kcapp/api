@@ -1,6 +1,7 @@
 package data
 
 import (
+	"database/sql"
 	"log"
 
 	"github.com/kcapp/api/models"
@@ -20,14 +21,17 @@ func NewMatch(gameID int, startingScore int, players []int) (*models.Match, erro
 	res, err := tx.Exec("INSERT INTO `match` (starting_score, current_player_id, game_id, created_at) VALUES (?, ?, ?, NOW()) ",
 		startingScore, players[0], gameID)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	matchID, err := res.LastInsertId()
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	_, err = tx.Exec("UPDATE game SET current_match_id = ? WHERE id = ?", matchID, gameID)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
@@ -35,6 +39,7 @@ func NewMatch(gameID int, startingScore int, players []int) (*models.Match, erro
 		order := idx + 1
 		res, err = tx.Exec("INSERT INTO player2match (player_id, match_id, `order`, game_id) VALUES (?, ?, ?, ?)", playerID, matchID, order, gameID)
 		if err != nil {
+			tx.Rollback()
 			return nil, err
 		}
 	}
@@ -85,6 +90,7 @@ func FinishMatch(visit models.Visit) error {
 	_, err = tx.Exec(`UPDATE `+"`match`"+` SET current_player_id = ?, winner_id = ?, is_finished = 1, end_time = NOW() WHERE id = ?`,
 		winnerID, winnerID, visit.MatchID)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
@@ -96,6 +102,7 @@ func FinishMatch(visit models.Visit) error {
 				VALUES (?, ?, ?, ?, ?, ?, ?)`, visit.MatchID, playerID, stats.PPD, stats.Score60sPlus,
 				stats.Score100sPlus, stats.Score140sPlus, stats.Score180s)
 			if err != nil {
+				tx.Rollback()
 				return err
 			}
 			log.Printf("[%d] Inserting shootout statistics for player %d", visit.MatchID, playerID)
@@ -111,6 +118,7 @@ func FinishMatch(visit models.Visit) error {
 				stats.CheckoutPercentage, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
 				stats.Score180s, stats.AccuracyStatistics.Accuracy20, stats.AccuracyStatistics.Accuracy19, stats.AccuracyStatistics.AccuracyOverall)
 			if err != nil {
+				tx.Rollback()
 				return err
 			}
 			log.Printf("[%d] Inserting x01 statistics for player %d", visit.MatchID, playerID)
@@ -120,6 +128,7 @@ func FinishMatch(visit models.Visit) error {
 	// Check if game is finished or not
 	winsMap, err := GetWinsPerPlayer(game.ID)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
@@ -137,6 +146,7 @@ func FinishMatch(visit models.Visit) error {
 		// Game finished, current player won
 		_, err = tx.Exec("UPDATE game SET is_finished = 1, winner_id = ? WHERE id = ?", visit.PlayerID, game.ID)
 		if err != nil {
+			tx.Rollback()
 			return err
 		}
 		log.Printf("Game %d finished with player %d winning", game.ID, visit.PlayerID)
@@ -152,6 +162,7 @@ func FinishMatch(visit models.Visit) error {
 					VALUES (?, ?, ?, 1)
 					ON DUPLICATE KEY UPDATE amount = amount + 1`, playerID, visit.PlayerID, game.OweTypeID)
 				if err != nil {
+					tx.Rollback()
 					return err
 				}
 				log.Printf("Added owes of %s from player %d to player %d", game.OweType.Item.String, playerID, visit.PlayerID)
@@ -161,6 +172,7 @@ func FinishMatch(visit models.Visit) error {
 		// Game finished, draw
 		_, err = tx.Exec("UPDATE game SET is_finished = 1 WHERE id = ?", game.ID)
 		if err != nil {
+			tx.Rollback()
 			return err
 		}
 		log.Printf("Game %d finished with a Draw", game.ID)
@@ -331,11 +343,13 @@ func ChangePlayerOrder(matchID int, orderMap map[string]int) error {
 	for playerID, order := range orderMap {
 		_, err = tx.Exec("UPDATE player2match SET `order` = ? WHERE player_id = ? AND match_id = ?", order, playerID, matchID)
 		if err != nil {
+			tx.Rollback()
 			return err
 		}
 		if order == 1 {
 			_, err = tx.Exec("UPDATE `match` SET current_player_id = ? WHERE id = ?", playerID, matchID)
 			if err != nil {
+				tx.Rollback()
 				return err
 			}
 		}
@@ -345,6 +359,44 @@ func ChangePlayerOrder(matchID int, orderMap map[string]int) error {
 	log.Printf("[%d] Changed player order to %v", matchID, orderMap)
 
 	return nil
+}
+
+// DeleteMatch will delete the current match and update game with previous match
+func DeleteMatch(matchID int) error {
+	match, err := GetMatch(matchID)
+	if err != nil {
+		return err
+	}
+
+	game, err := GetGame(match.GameID)
+	if err != nil {
+		return err
+	}
+
+	return models.Transaction(models.DB, func(tx *sql.Tx) error {
+		if _, err = tx.Exec("DELETE FROM `match` WHERE id = ?", matchID); err != nil {
+			return err
+		}
+		var previousMatch *int
+		err := models.DB.QueryRow("SELECT MAX(id) FROM `match` WHERE game_id = ? AND is_finished = 1", game.ID).Scan(&previousMatch)
+		if err != nil {
+			return err
+		}
+		if previousMatch == nil {
+			if _, err = tx.Exec("DELETE FROM game WHERE id = ?", game.ID); err != nil {
+				return err
+			}
+			log.Printf("Delete game without any match %d", game.ID)
+		} else {
+			_, err = tx.Exec("UPDATE game SET current_match_id = ? WHERE id = ?", previousMatch, game.ID)
+			if err != nil {
+				return err
+			}
+			log.Printf("[%d] Updated current match of game %d", previousMatch, game.ID)
+		}
+		log.Printf("[%d] Deleted match", matchID)
+		return nil
+	})
 }
 
 func calculateX01Statistics(matchID int, winnerID int, startingScore int) (map[int]*models.StatisticsX01, error) {

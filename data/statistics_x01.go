@@ -228,6 +228,9 @@ func GetPlayersStatistics(ids []int) ([]*models.StatisticsX01, error) {
 		return nil, err
 	}
 	rows, err := models.DB.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
 	statisticsMap := make(map[int]*models.StatisticsX01)
@@ -279,6 +282,9 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01) e
 		return err
 	}
 	rows, err := models.DB.Query(q, args...)
+	if err != nil {
+		return err
+	}
 	defer rows.Close()
 
 	rawStatistics := make([]*models.StatisticsX01, 0)
@@ -331,6 +337,9 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01) 
 		return err
 	}
 	rows, err := models.DB.Query(q, args...)
+	if err != nil {
+		return err
+	}
 	defer rows.Close()
 
 	for rows.Next() {

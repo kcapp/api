@@ -66,7 +66,7 @@ func GetPlayerScore(playerID int, matchID int) (int, error) {
 func GetPlayersScore(matchID int) (map[int]int, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			IFNULL(s.player_id, 0),
+			p2m.player_id,
 			m.starting_score - IFNULL(
 				SUM(first_dart * first_dart_multiplier) +
 				SUM(second_dart * second_dart_multiplier) +
@@ -79,6 +79,11 @@ func GetPlayersScore(matchID int) (map[int]int, error) {
 		LEFT JOIN game g on g.id = m.game_id
 		WHERE p2m.match_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
 		GROUP BY p2m.player_id`, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
 	scores := make(map[int]int)
 	for rows.Next() {
 		var playerID int

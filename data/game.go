@@ -16,18 +16,22 @@ func NewGame(game models.Game) (*models.Game, error) {
 	}
 	res, err := tx.Exec("INSERT INTO game (game_type_id, game_mode_id, owe_type_id, created_at) VALUES (?, ?, ?, NOW())", game.GameType.ID, game.GameMode.ID, game.OweTypeID)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	gameID, err := res.LastInsertId()
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	res, err = tx.Exec("INSERT INTO `match` (starting_score, current_player_id, game_id, created_at) VALUES (?, ?, ?, NOW()) ", game.Matches[0].StartingScore, game.Players[0], gameID)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	matchID, err := res.LastInsertId()
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	tx.Exec("UPDATE game SET current_match_id = ? WHERE id = ?", matchID, gameID)
@@ -35,6 +39,7 @@ func NewGame(game models.Game) (*models.Game, error) {
 		order := idx + 1
 		res, err = tx.Exec("INSERT INTO player2match (player_id, match_id, `order`, game_id) VALUES (?, ?, ?, ?)", playerID, matchID, order, gameID)
 		if err != nil {
+			tx.Rollback()
 			return nil, err
 		}
 	}
@@ -159,7 +164,7 @@ func DeleteGame(id int) (*models.Game, error) {
 
 // GetGameModes will return all game modes
 func GetGameModes() ([]*models.GameMode, error) {
-	rows, err := models.DB.Query("SELECT id, wins_required, matches_required, `name`, short_name FROM game_mode")
+	rows, err := models.DB.Query("SELECT id, wins_required, matches_required, `name`, short_name FROM game_mode ORDER BY wins_required")
 	if err != nil {
 		return nil, err
 	}
