@@ -93,6 +93,7 @@ func FinishMatch(visit models.Visit) error {
 		tx.Rollback()
 		return err
 	}
+	log.Printf("[%d] Finished with player %d winning", visit.MatchID, winnerID)
 
 	if game.GameType.ID == 2 {
 		statisticsMap, err := calculateShootoutStatistics(visit.MatchID)
@@ -137,23 +138,23 @@ func FinishMatch(visit models.Visit) error {
 	currentPlayerWins := 1
 	for playerID, wins := range winsMap {
 		playedMatches += wins
-		if playerID == visit.PlayerID {
+		if playerID == winnerID {
 			currentPlayerWins += wins
 		}
 	}
 
 	if currentPlayerWins == game.GameMode.WinsRequired {
 		// Game finished, current player won
-		_, err = tx.Exec("UPDATE game SET is_finished = 1, winner_id = ? WHERE id = ?", visit.PlayerID, game.ID)
+		_, err = tx.Exec("UPDATE game SET is_finished = 1, winner_id = ? WHERE id = ?", winnerID, game.ID)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
-		log.Printf("Game %d finished with player %d winning", game.ID, visit.PlayerID)
+		log.Printf("Game %d finished with player %d winning", game.ID, winnerID)
 		// Add owes between players in game
 		if game.OweType != nil {
 			for _, playerID := range game.Players {
-				if playerID == visit.PlayerID {
+				if playerID == winnerID {
 					// Don't add payback to ourself
 					continue
 				}

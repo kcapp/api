@@ -10,12 +10,12 @@ import (
 // GetOwes will return all current owes between players
 func GetOwes() ([]*models.Owe, error) {
 	rows, err := models.DB.Query(`
-		SELECT 
+		SELECT
 			o.player_ower_id,
 			o.player_owee_id,
 			ot.id, ot.item,
-			o. amount 
-		FROM owes o 
+			o. amount
+		FROM owes o
 		JOIN owe_type ot ON ot.id = o.owe_type_id
 		WHERE o.amount > 0`)
 	if err != nil {
@@ -56,7 +56,7 @@ func RegisterPayback(owe models.Owe) error {
 	if updatedRows == 0 {
 		return errors.New("No rows were updated when registering payback")
 	}
-	log.Printf("Player %d paid back %d %s to player %d", owe.PlayerOwerID, owe.Amount, owe.OweType.Item.String, owe.PlayerOweeID)
+	log.Printf("Player %d paid back %d items %d to player %d", owe.PlayerOwerID, owe.Amount, owe.OweType.ID.Int64, owe.PlayerOweeID)
 	return nil
 }
 

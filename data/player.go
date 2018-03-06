@@ -1,6 +1,8 @@
 package data
 
 import (
+	"log"
+
 	"github.com/kcapp/api/models"
 )
 
@@ -50,6 +52,7 @@ func AddPlayer(player models.Player) error {
 	defer stmt.Close()
 
 	_, err = stmt.Exec(player.Name, player.Nickname)
+	log.Printf("Created new player %s", player.Name)
 	return err
 }
 
