@@ -378,6 +378,8 @@ func DeleteMatch(matchID int) error {
 		if _, err = tx.Exec("DELETE FROM `match` WHERE id = ?", matchID); err != nil {
 			return err
 		}
+		log.Printf("[%d] Deleted match", matchID)
+
 		var previousMatch *int
 		err := models.DB.QueryRow("SELECT MAX(id) FROM `match` WHERE game_id = ? AND is_finished = 1", game.ID).Scan(&previousMatch)
 		if err != nil {
@@ -395,7 +397,6 @@ func DeleteMatch(matchID int) error {
 			}
 			log.Printf("[%d] Updated current match of game %d", previousMatch, game.ID)
 		}
-		log.Printf("[%d] Deleted match", matchID)
 		return nil
 	})
 }

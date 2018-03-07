@@ -209,8 +209,8 @@ func GetPlayersStatistics(ids []int) ([]*models.StatisticsX01, error) {
 	q, args, err := sqlx.In(`
 		SELECT
 			p.id,
-			SUM(s.ppd) / p.games_played,
-			SUM(s.first_nine_ppd) / p.games_played,
+			SUM(s.ppd) / COUNT(DISTINCT m.id),
+			SUM(s.first_nine_ppd) / COUNT(DISTINCT m.id),
 			SUM(s.60s_plus),
 			SUM(s.100s_plus),
 			SUM(s.140s_plus),
@@ -222,7 +222,9 @@ func GetPlayersStatistics(ids []int) ([]*models.StatisticsX01, error) {
 		FROM statistics_x01 s
 		JOIN player p ON p.id = s.player_id
 		JOIN `+"`match`"+` m ON m.id = s.match_id
+		JOIN game g ON g.id = m.game_id
 		WHERE s.player_id IN (?)
+		AND g.is_finished = 1
 		GROUP BY s.player_id`, ids)
 	if err != nil {
 		return nil, err

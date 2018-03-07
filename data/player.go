@@ -8,6 +8,11 @@ import (
 
 // GetPlayers returns a map of all players
 func GetPlayers() (map[int]*models.Player, error) {
+	played, err := GetGamesPlayedPerPlayer()
+	if err != nil {
+		return nil, err
+	}
+
 	rows, err := models.DB.Query(`SELECT p.id, p.name, p.nickname, p.games_played, p.games_won, p.created_at FROM player p`)
 	if err != nil {
 		return nil, err
@@ -22,6 +27,13 @@ func GetPlayers() (map[int]*models.Player, error) {
 			return nil, err
 		}
 		players[p.ID] = p
+
+		if val, ok := played[p.ID]; ok {
+			p.GamesPlayed = val.GamesPlayed
+			p.GamesWon = val.GamesWon
+			p.MatchesPlayed = val.MatchesPlayed
+			p.MatchesWon = val.MatchesWon
+		}
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
@@ -101,4 +113,59 @@ func GetPlayersScore(matchID int) (map[int]int, error) {
 		return nil, err
 	}
 	return scores, nil
+}
+
+// GetGamesPlayedPerPlayer will get the number of games and matches played and won for each player
+func GetGamesPlayedPerPlayer() (map[int]*models.Player, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			player_id,
+			MAX(games_played) AS 'games_played',
+			MAX(games_won) AS 'games_won',
+			MAX(matches_played) AS 'matches_played',
+			MAX(matches_won) AS 'matches_won'
+		FROM (
+			SELECT
+				p2m.player_id,
+				COUNT(DISTINCT g.id) AS 'games_played',
+				0 AS 'games_won',
+				COUNT(DISTINCT m.id) AS 'matches_played',
+				0 AS 'matches_won'
+			FROM player2match p2m
+			JOIN game g ON g.id = p2m.game_id
+			JOIN ` + "`match`" + ` m ON m.id = p2m.match_id
+			WHERE m.is_finished = 1
+			GROUP BY p2m.player_id
+			UNION ALL
+			SELECT
+				p2m.player_id,
+				0 AS 'games_played',
+				COUNT(DISTINCT g.id) AS 'games_won',
+				0 AS 'matches_played',
+				COUNT(DISTINCT m.id) AS 'matches_won'
+			FROM game g
+			JOIN ` + "`match`" + ` m ON m.game_id = g.id
+			JOIN player2match p2m ON p2m.player_id = g.winner_id AND p2m.game_id = g.id
+			WHERE m.is_finished = 1
+			GROUP BY g.winner_id
+		) games
+		GROUP BY player_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	played := make(map[int]*models.Player)
+	for rows.Next() {
+		p := new(models.Player)
+		err := rows.Scan(&p.ID, &p.GamesPlayed, &p.GamesWon, &p.MatchesPlayed, &p.MatchesWon)
+		if err != nil {
+			return nil, err
+		}
+		played[p.ID] = p
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return played, nil
 }
