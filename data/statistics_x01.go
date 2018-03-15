@@ -119,39 +119,6 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 	return stats, nil
 }
 
-// GetShootoutStatisticsForMatch will return statistics for all players in the given match
-func GetShootoutStatisticsForMatch(id int) ([]*models.StatisticsShootout, error) {
-	rows, err := models.DB.Query(`
-		SELECT
-			m.id,
-			p.id,
-			SUM(s.ppd) / COUNT(p.id),
-			SUM(60s_plus),
-			SUM(100s_plus),
-			SUM(140s_plus),
-			SUM(180s) AS '180s'
-		FROM statistics_shootout s
-			JOIN player p ON p.id = s.player_id
-			JOIN `+"`match`"+` m ON m.id = s.match_id
-			JOIN game g ON g.id = m.game_id
-		WHERE m.id = ? GROUP BY p.id`, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	stats := make([]*models.StatisticsShootout, 0)
-	for rows.Next() {
-		s := new(models.StatisticsShootout)
-		err := rows.Scan(&s.MatchID, &s.PlayerID, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
-		if err != nil {
-			return nil, err
-		}
-		stats = append(stats, s)
-	}
-	return stats, nil
-}
-
 // GetX01StatisticsForGame will return statistics for all players in the given game
 func GetX01StatisticsForGame(id int) ([]*models.StatisticsX01, error) {
 	rows, err := models.DB.Query(`
@@ -272,6 +239,51 @@ func GetPlayersStatistics(ids []int) ([]*models.StatisticsX01, error) {
 	return statistics, nil
 }
 
+// GetPlayerProgression will get progression of statistics over time for the given player
+func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			s.player_id,
+			SUM(s.ppd) / COUNT(s.match_id) AS 'ppd',
+			SUM(s.first_nine_ppd) / COUNT(s.match_id) AS 'first_nine_ppd',
+			SUM(s.checkout_percentage) / COUNT(s.match_id) AS 'checkout_percentage',
+			SUM(s.60s_plus) AS '60s_plus',
+			SUM(s.100s_plus) AS '100s_plus',
+			SUM(s.140s_plus) AS '140s_plus',
+			SUM(s.180s) AS '180s',
+			SUM(s.accuracy_20) / COUNT(s.match_id) AS 'accuracy_20',
+			SUM(s.accuracy_19) / COUNT(s.match_id) AS 'accuracy_19',
+			SUM(s.overall_accuracy) / COUNT(s.match_id) AS 'accuracy_overall',
+			DATE(g.updated_at) AS 'date'
+		FROM statistics_x01 s
+		JOIN `+"`match`"+` m ON m.id = s.match_id
+		JOIN game g ON g.id = m.game_id
+		WHERE player_id = ?
+		GROUP BY YEAR(g.updateD_at), WEEK(g.updated_at)
+		ORDER BY date DESC`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	statisticsMap := make(map[string]*models.StatisticsX01)
+	for rows.Next() {
+		var date string
+		s := new(models.StatisticsX01)
+		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.CheckoutPercentage, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus,
+			&s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &date)
+		if err != nil {
+			return nil, err
+		}
+		statisticsMap[date] = s
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return statisticsMap, nil
+}
+
 // getBestStatistics will calculate Best PPD, Best First 9, Best 301 and Best 501 for the given players
 func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01) error {
 	q, args, err := sqlx.In(`
@@ -361,49 +373,4 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01) 
 	}
 	err = rows.Err()
 	return err
-}
-
-// GetPlayerProgression will get progression of statistics over time for the given player
-func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
-	rows, err := models.DB.Query(`
-		SELECT
-			s.player_id,
-			SUM(s.ppd) / COUNT(s.match_id) AS 'ppd',
-			SUM(s.first_nine_ppd) / COUNT(s.match_id) AS 'first_nine_ppd',
-			SUM(s.checkout_percentage) / COUNT(s.match_id) AS 'checkout_percentage',
-			SUM(s.60s_plus) AS '60s_plus',
-			SUM(s.100s_plus) AS '100s_plus',
-			SUM(s.140s_plus) AS '140s_plus',
-			SUM(s.180s) AS '180s',
-			SUM(s.accuracy_20) / COUNT(s.match_id) AS 'accuracy_20',
-			SUM(s.accuracy_19) / COUNT(s.match_id) AS 'accuracy_19',
-			SUM(s.overall_accuracy) / COUNT(s.match_id) AS 'accuracy_overall',
-			DATE(g.updated_at) AS 'date'
-		FROM statistics_x01 s
-		JOIN `+"`match`"+` m ON m.id = s.match_id
-		JOIN game g ON g.id = m.game_id
-		WHERE player_id = ?
-		GROUP BY YEAR(g.updateD_at), WEEK(g.updated_at)
-		ORDER BY date DESC`, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	statisticsMap := make(map[string]*models.StatisticsX01)
-	for rows.Next() {
-		var date string
-		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.CheckoutPercentage, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus,
-			&s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &date)
-		if err != nil {
-			return nil, err
-		}
-		statisticsMap[date] = s
-	}
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return statisticsMap, nil
 }
