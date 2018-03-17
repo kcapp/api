@@ -285,6 +285,11 @@ func GetMatch(id int) (*models.Match, error) {
 
 // GetMatchPlayers returns a information about current score for players in a match
 func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
+	match, err := GetMatch(id)
+	if err != nil {
+		return nil, err
+	}
+
 	rows, err := models.DB.Query(`
 		SELECT
 			p2m.match_id,
@@ -308,6 +313,7 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 	}
 	defer rows.Close()
 
+	lowestScore := match.StartingScore
 	players := make([]*models.Player2Match, 0)
 	for rows.Next() {
 		p2m := new(models.Player2Match)
@@ -317,13 +323,11 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 			return nil, err
 		}
 		players = append(players, p2m)
+		if p2m.CurrentScore < lowestScore {
+			lowestScore = p2m.CurrentScore
+		}
 	}
 	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	match, err := GetMatch(id)
-	if err != nil {
 		return nil, err
 	}
 
@@ -341,6 +345,9 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 		player.Wins = winsMap[player.PlayerID]
 		if visit, ok := lastVisits[player.PlayerID]; ok {
 			player.Modifiers.IsViliusVisit = visit.IsViliusVisit()
+		}
+		if lowestScore < 171 && player.CurrentScore > 199 {
+			player.Modifiers.IsBeerGame = true
 		}
 	}
 
