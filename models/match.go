@@ -23,10 +23,16 @@ type Match struct {
 
 // Player2Match struct used for stroring players in a match
 type Player2Match struct {
-	MatchID         int  `json:"match_id"`
-	PlayerID        int  `json:"player_id"`
-	Order           int  `json:"order"`
-	CurrentScore    int  `json:"current_score"`
-	IsCurrentPlayer bool `json:"is_current_player"`
-	Wins            int  `json:"wins,omitempty"`
+	MatchID         int              `json:"match_id"`
+	PlayerID        int              `json:"player_id"`
+	Order           int              `json:"order"`
+	CurrentScore    int              `json:"current_score"`
+	IsCurrentPlayer bool             `json:"is_current_player"`
+	Wins            int              `json:"wins,omitempty"`
+	Modifiers       *PlayerModifiers `json:"modifiers,omitempty"`
+}
+
+// PlayerModifiers struct used for storing visit modifiers for a player
+type PlayerModifiers struct {
+	IsViliusVisit bool `json:"is_vilius_visit"`
 }

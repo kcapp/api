@@ -76,6 +76,19 @@ func (visit *Visit) SetIsBust(currentScore int) {
 	visit.IsBust = isBust
 }
 
+// IsViliusVisit will check if this visit was a "Vilius Visit" (Two 20s and a Miss)
+func (visit Visit) IsViliusVisit() bool {
+	if visit.FirstDart.Multiplier != 1 || visit.SecondDart.Multiplier != 1 || visit.ThirdDart.Multiplier != 1 {
+		return false
+	}
+	if (visit.FirstDart.Value.Int64 == 20 && visit.SecondDart.Value.Int64 == 0 && visit.ThirdDart.Value.Int64 == 20) ||
+		(visit.FirstDart.Value.Int64 == 0 && visit.SecondDart.Value.Int64 == 20 && visit.ThirdDart.Value.Int64 == 20) ||
+		(visit.FirstDart.Value.Int64 == 20 && visit.SecondDart.Value.Int64 == 20 && visit.ThirdDart.Value.Int64 == 0) {
+		return true
+	}
+	return false
+}
+
 // GetHitsMap will return a map where key is dart and value is count of single,double,triple hits
 func GetHitsMap(visits []*Visit) (map[int64]*Hits, int) {
 	hitsMap := make(map[int64]*Hits)

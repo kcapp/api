@@ -246,3 +246,43 @@ func GetVisit(id int) (*models.Visit, error) {
 	}
 	return v, nil
 }
+
+// GetLastVisits will return the last N visit for the given match
+func GetLastVisits(matchID int, num int) (map[int]*models.Visit, error) {
+	rows, err := models.DB.Query(`
+			SELECT
+				player_id,
+				player_id,
+				first_dart, first_dart_multiplier,
+				second_dart, second_dart_multiplier,
+				third_dart, third_dart_multiplier
+			FROM score
+			WHERE match_id = ? AND is_bust = 0
+			ORDER BY id DESC LIMIT ?`, matchID, num)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	visits := make(map[int]*models.Visit)
+	for rows.Next() {
+		var playerID int
+		v := new(models.Visit)
+		v.FirstDart = new(models.Dart)
+		v.SecondDart = new(models.Dart)
+		v.ThirdDart = new(models.Dart)
+		err := rows.Scan(&playerID, &v.PlayerID,
+			&v.FirstDart.Value, &v.FirstDart.Multiplier,
+			&v.SecondDart.Value, &v.SecondDart.Multiplier,
+			&v.ThirdDart.Value, &v.ThirdDart.Multiplier)
+		if err != nil {
+			return nil, err
+		}
+		visits[playerID] = v
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return visits, nil
+}
