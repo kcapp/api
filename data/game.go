@@ -62,7 +62,8 @@ func GetGames() ([]*models.Game, error) {
 		JOIN game_mode gm ON gm.id = g.game_mode_id
 		LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
 		LEFT JOIN player2match p2m ON p2m.game_id = g.id
-		GROUP BY g.id`)
+		GROUP BY g.id
+		ORDER BY g.id`)
 	if err != nil {
 		return nil, err
 	}
