@@ -23,6 +23,7 @@ type StatisticsX01 struct {
 	AccuracyOverall    null.Float          `json:"accuracy_overall"`
 	AccuracyStatistics *AccuracyStatistics `json:"accuracy,omitempty"`
 	Hits               map[int64]*Hits     `json:"hits,omitempty"`
+	Visits             []*Visit            `json:"visits,omitempty"`
 	GamesPlayed        int                 `json:"games_played,omitempty"`
 	GamesWon           int                 `json:"games_won,omitempty"`
 	BestPPD            float32             `json:"best_ppd,omitempty"`

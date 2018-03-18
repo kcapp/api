@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/guregu/null"
 )
@@ -64,4 +65,9 @@ func (dart Dart) IsCheckoutAttempt(currentScore int) bool {
 		return true
 	}
 	return false
+}
+
+// GetString will return a string representing the dart of the fomat "<multiplier>-<value>"
+func (dart Dart) GetString() string {
+	return fmt.Sprintf("%d-%d", dart.Multiplier, dart.Value.Int64)
 }

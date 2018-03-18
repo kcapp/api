@@ -252,7 +252,6 @@ func GetLastVisits(matchID int, num int) (map[int]*models.Visit, error) {
 	rows, err := models.DB.Query(`
 			SELECT
 				player_id,
-				player_id,
 				first_dart, first_dart_multiplier,
 				second_dart, second_dart_multiplier,
 				third_dart, third_dart_multiplier
@@ -266,22 +265,75 @@ func GetLastVisits(matchID int, num int) (map[int]*models.Visit, error) {
 
 	visits := make(map[int]*models.Visit)
 	for rows.Next() {
-		var playerID int
 		v := new(models.Visit)
 		v.FirstDart = new(models.Dart)
 		v.SecondDart = new(models.Dart)
 		v.ThirdDart = new(models.Dart)
-		err := rows.Scan(&playerID, &v.PlayerID,
+		err := rows.Scan(&v.PlayerID,
 			&v.FirstDart.Value, &v.FirstDart.Multiplier,
 			&v.SecondDart.Value, &v.SecondDart.Multiplier,
 			&v.ThirdDart.Value, &v.ThirdDart.Multiplier)
 		if err != nil {
 			return nil, err
 		}
-		visits[playerID] = v
+		visits[v.PlayerID] = v
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
+	}
+
+	return visits, nil
+}
+
+// GetPlayerVisitCount will return a count of each visit for a given player
+func GetPlayerVisitCount(playerID int) ([]*models.Visit, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			player_id,
+			first_dart, first_dart_multiplier,
+			second_dart, second_dart_multiplier,
+			third_dart, third_dart_multiplier,
+			COUNT(*) AS 'visits'
+		FROM score s
+		WHERE player_id = ?
+		GROUP BY
+			player_id, first_dart, first_dart_multiplier,
+			second_dart, second_dart_multiplier,
+			third_dart, third_dart_multiplier`, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	m := make(map[string]*models.Visit)
+	for rows.Next() {
+		v := new(models.Visit)
+		v.FirstDart = new(models.Dart)
+		v.SecondDart = new(models.Dart)
+		v.ThirdDart = new(models.Dart)
+		err := rows.Scan(&v.PlayerID,
+			&v.FirstDart.Value, &v.FirstDart.Multiplier,
+			&v.SecondDart.Value, &v.SecondDart.Multiplier,
+			&v.ThirdDart.Value, &v.ThirdDart.Multiplier,
+			&v.Count)
+		if err != nil {
+			return nil, err
+		}
+
+		s := v.GetVisitString()
+		if val, ok := m[s]; ok {
+			val.Count += v.Count
+		} else {
+			m[s] = v
+		}
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	visits := make([]*models.Visit, 0)
+	for _, v := range m {
+		visits = append(visits, v)
 	}
 
 	return visits, nil

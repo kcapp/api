@@ -60,10 +60,19 @@ func GetPlayerStatistics(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	visits, err := data.GetPlayerVisitCount(id)
+	if err != nil {
+		log.Println("Unable to get visits for player", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	stats.Visits = visits
+
 	json.NewEncoder(w).Encode(stats)
 }
 
-// GetPlayersStatistics will return statistics for the given player
+// GetPlayersStatistics will return statistics for the given players
 func GetPlayersStatistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 

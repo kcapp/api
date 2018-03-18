@@ -2,6 +2,8 @@ package models
 
 import (
 	"errors"
+	"sort"
+	"strings"
 
 	"github.com/guregu/null"
 )
@@ -17,6 +19,7 @@ type Visit struct {
 	IsBust     bool   `json:"is_bust"`
 	CreatedAt  string `json:"created_at"`
 	UpdatedAt  string `json:"updated_at"`
+	Count      int    `json:"count,omitempty"`
 }
 
 // ValidateInput will verify the input does not containg any errors
@@ -87,6 +90,13 @@ func (visit Visit) IsViliusVisit() bool {
 		return true
 	}
 	return false
+}
+
+// GetVisitString will return a (sorted) string based on the darts thrown. This will make sure common visits will be the same
+func (visit Visit) GetVisitString() string {
+	strs := []string{visit.FirstDart.GetString(), visit.SecondDart.GetString(), visit.ThirdDart.GetString()}
+	sort.Strings(strs)
+	return strings.Join(strs, " ")
 }
 
 // GetHitsMap will return a map where key is dart and value is count of single,double,triple hits
