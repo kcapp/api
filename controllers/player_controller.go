@@ -68,6 +68,9 @@ func GetPlayerStatistics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	stats.Visits = visits
+	for _, v := range visits {
+		stats.TotalVisits += v.Count
+	}
 
 	json.NewEncoder(w).Encode(stats)
 }

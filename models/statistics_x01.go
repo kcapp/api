@@ -14,6 +14,7 @@ type StatisticsX01 struct {
 	CheckoutPercentage float32             `json:"checkout_percentage"`
 	CheckoutAttempts   int                 `json:"-"`
 	DartsThrown        int                 `json:"darts_thrown"`
+	TotalVisits        int                 `json:"total_visits,omitempty"`
 	Score60sPlus       int                 `json:"scores_60s_plus"`
 	Score100sPlus      int                 `json:"scores_100s_plus"`
 	Score140sPlus      int                 `json:"scores_140s_plus"`
@@ -30,6 +31,7 @@ type StatisticsX01 struct {
 	BestFirstNinePPD   float32             `json:"best_first_nine_ppd,omitempty"`
 	Best301            int                 `json:"best_301,omitempty"`
 	Best501            int                 `json:"best_501,omitempty"`
+	Best701            int                 `json:"best_701,omitempty"`
 	HighestCheckout    int                 `json:"highest_checkout,omitempty"`
 	StartingScore      null.Int            `json:"-"`
 }

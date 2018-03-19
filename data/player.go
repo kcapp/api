@@ -45,12 +45,23 @@ func GetPlayers() (map[int]*models.Player, error) {
 // GetPlayer returns the player for the given ID
 func GetPlayer(id int) (*models.Player, error) {
 	p := new(models.Player)
-	err := models.DB.QueryRow(`
-		SELECT p.id, p.name, p.nickname, p.games_played, p.games_won, p.created_at
-		FROM player p WHERE p.id = ?`, id).Scan(&p.ID, &p.Name, &p.Nickname, &p.GamesPlayed, &p.GamesWon, &p.CreatedAt)
+	err := models.DB.QueryRow(`SELECT p.id, p.name, p.nickname, p.created_at FROM player p WHERE p.id = ?`, id).Scan(&p.ID, &p.Name, &p.Nickname, &p.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
+
+	pld, err := GetGamesPlayedPerPlayer()
+	if err != nil {
+		return nil, err
+	}
+	played := pld[p.ID]
+	if played != nil {
+		p.GamesPlayed = played.GamesPlayed
+		p.GamesWon = played.GamesWon
+		p.MatchesPlayed = played.MatchesPlayed
+		p.MatchesWon = played.MatchesWon
+	}
+
 	return p, nil
 }
 

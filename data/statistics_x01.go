@@ -168,13 +168,17 @@ func GetPlayerStatistics(id int) (*models.StatisticsX01, error) {
 	if err != nil {
 		return nil, err
 	}
-	stats := statistics[0]
-	visits, err := GetPlayerVisits(id)
-	if err != nil {
-		return nil, err
+	if len(statistics) > 0 {
+		stats := statistics[0]
+		visits, err := GetPlayerVisits(id)
+		if err != nil {
+			return nil, err
+		}
+		stats.Hits, stats.DartsThrown = models.GetHitsMap(visits)
+
+		return stats, nil
 	}
-	stats.Hits, stats.DartsThrown = models.GetHitsMap(visits)
-	return stats, nil
+	return new(models.StatisticsX01), nil
 }
 
 // GetPlayersStatistics will get statistics about all the the given player IDs
@@ -327,6 +331,9 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01) e
 		}
 		if stat.StartingScore.Int64 == 501 && (stat.DartsThrown < real.Best501 || real.Best501 == 0) {
 			real.Best501 = stat.DartsThrown
+		}
+		if stat.StartingScore.Int64 == 701 && (stat.DartsThrown < real.Best701 || real.Best701 == 0) {
+			real.Best701 = stat.DartsThrown
 		}
 		if stat.PPD > real.BestPPD {
 			real.BestPPD = stat.PPD
