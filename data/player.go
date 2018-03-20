@@ -180,3 +180,80 @@ func GetGamesPlayedPerPlayer() (map[int]*models.Player, error) {
 	}
 	return played, nil
 }
+
+// GetPlayerCheckouts will return a list containing all checkouts done by the given player
+func GetPlayerCheckouts(playerID int) (map[int][]*models.Visit, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			player_id,
+			first_dart, first_dart_multiplier,
+			second_dart, second_dart_multiplier,
+			third_dart, third_dart_multiplier,
+			(IFNULL(first_dart, 0) * first_dart_multiplier +
+				IFNULL(second_dart, 0) * second_dart_multiplier +
+				IFNULL(third_dart, 0) * third_dart_multiplier) AS 'checkout'
+		FROM score WHERE id IN (
+			SELECT MAX(id) FROM score WHERE match_id IN (
+				SELECT id FROM `+"`match`"+` WHERE winner_id = ?) GROUP BY match_id)
+		ORDER BY checkout`, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	playerVisits := make(map[int]map[string][]*models.Visit)
+	for rows.Next() {
+		var checkout int
+		v := new(models.Visit)
+		v.FirstDart = new(models.Dart)
+		v.SecondDart = new(models.Dart)
+		v.ThirdDart = new(models.Dart)
+		err := rows.Scan(&v.PlayerID,
+			&v.FirstDart.Value, &v.FirstDart.Multiplier,
+			&v.SecondDart.Value, &v.SecondDart.Multiplier,
+			&v.ThirdDart.Value, &v.ThirdDart.Multiplier,
+			&checkout)
+		if err != nil {
+			return nil, err
+		}
+
+		s := v.GetVisitString()
+		if visits, ok := playerVisits[checkout]; ok {
+			if val, ok := visits[s]; ok {
+				val = append(val, v)
+			} else {
+				arr := make([]*models.Visit, 0)
+				arr = append(arr, v)
+				visits[s] = arr
+			}
+		} else {
+			visits := make(map[string][]*models.Visit)
+			arr := make([]*models.Visit, 0)
+			arr = append(arr, v)
+			visits[s] = arr
+			playerVisits[checkout] = visits
+		}
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	checkouts := make(map[int][]*models.Visit)
+	for i := 2; i < 171; i++ {
+		if i == 169 || i == 168 || i == 166 || i == 165 || i == 163 || i == 162 || i == 159 {
+			// Skip values which cannot be checkouts
+			continue
+		}
+		if val, ok := playerVisits[i]; ok {
+			v := make([]*models.Visit, 0)
+			for _, visits := range val {
+				v = append(v, visits...)
+			}
+			checkouts[i] = v
+		} else {
+			checkouts[i] = nil
+		}
+	}
+
+	return checkouts, nil
+}
