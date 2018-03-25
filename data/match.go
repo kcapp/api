@@ -277,6 +277,16 @@ func GetMatch(id int) (*models.Match, error) {
 	if err != nil {
 		return nil, err
 	}
+	dartsThrown := 0
+	visitCount := 0
+	for _, visit := range visits {
+		if visitCount%len(m.Players) == 0 {
+			dartsThrown += 3
+		}
+		visit.DartsThrown = dartsThrown
+		visitCount++
+	}
+
 	m.Visits = visits
 	m.Hits, m.DartsThrown = models.GetHitsMap(visits)
 

@@ -10,16 +10,17 @@ import (
 
 // Visit struct used for storing matches
 type Visit struct {
-	ID         int    `json:"id"`
-	MatchID    int    `json:"match_id"`
-	PlayerID   int    `json:"player_id"`
-	FirstDart  *Dart  `json:"first_dart"`
-	SecondDart *Dart  `json:"second_dart"`
-	ThirdDart  *Dart  `json:"third_dart"`
-	IsBust     bool   `json:"is_bust"`
-	CreatedAt  string `json:"created_at"`
-	UpdatedAt  string `json:"updated_at"`
-	Count      int    `json:"count,omitempty"`
+	ID          int    `json:"id"`
+	MatchID     int    `json:"match_id"`
+	PlayerID    int    `json:"player_id"`
+	FirstDart   *Dart  `json:"first_dart"`
+	SecondDart  *Dart  `json:"second_dart"`
+	ThirdDart   *Dart  `json:"third_dart"`
+	IsBust      bool   `json:"is_bust"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+	Count       int    `json:"count,omitempty"`
+	DartsThrown int    `json:"darts_thrown,omitempty"`
 }
 
 // ValidateInput will verify the input does not containg any errors

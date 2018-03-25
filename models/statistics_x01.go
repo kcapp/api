@@ -23,8 +23,8 @@ type StatisticsX01 struct {
 	Accuracy19         null.Float          `json:"accuracy_19"`
 	AccuracyOverall    null.Float          `json:"accuracy_overall"`
 	AccuracyStatistics *AccuracyStatistics `json:"accuracy,omitempty"`
-	Hits               map[int64]*Hits     `json:"hits,omitempty"`
 	Visits             []*Visit            `json:"visits,omitempty"`
+	Hits               map[int64]*Hits     `json:"hits,omitempty"`
 	GamesPlayed        int                 `json:"games_played,omitempty"`
 	GamesWon           int                 `json:"games_won,omitempty"`
 	BestPPD            float32             `json:"best_ppd,omitempty"`
@@ -34,6 +34,14 @@ type StatisticsX01 struct {
 	Best701            int                 `json:"best_701,omitempty"`
 	HighestCheckout    int                 `json:"highest_checkout,omitempty"`
 	StartingScore      null.Int            `json:"-"`
+}
+
+// CheckoutStatistics stuct used for storing detailed checkout statistics
+type CheckoutStatistics struct {
+	Checkout  int      `json:"checkout"`
+	Count     int      `json:"count"`
+	Completed bool     `json:"completed"`
+	Visits    []*Visit `json:"visits,omitempty"`
 }
 
 // Hits sturct used to store summary of hits for players/matches
