@@ -2,6 +2,8 @@ package data
 
 import (
 	"log"
+	"sort"
+	"strings"
 
 	"github.com/kcapp/api/models"
 )
@@ -259,6 +261,16 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 			for _, visits := range visitMap {
 				v = append(v, visits...)
 			}
+			// Sort the visits to get similar ones together
+			sort.Slice(v, func(i, j int) bool {
+				switch strings.Compare(v[i].GetVisitString(), v[j].GetVisitString()) {
+				case -1:
+					return false
+				case 1:
+					return true
+				}
+				return v[i].GetVisitString() > v[j].GetVisitString()
+			})
 			checkout.Visits = v
 			checkout.Completed = true
 		} else {
