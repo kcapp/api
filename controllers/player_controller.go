@@ -154,6 +154,33 @@ func GetPlayerCheckouts(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(checkouts)
 }
 
+// GetPlayerHeadToHead will return head to head statistics between the given players
+func GetPlayerHeadToHead(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	player1, err := strconv.Atoi(params["player_1"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	player2, err := strconv.Atoi(params["player_2"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	head2head, err := data.GetPlayerHeadToHead(player1, player2)
+	if err != nil {
+		log.Println("Unable to get player head to head statistics")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(head2head)
+}
+
 func sliceAtoi(sa []string) ([]int, error) {
 	si := make([]int, 0, len(sa))
 	for _, a := range sa {

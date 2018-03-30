@@ -231,3 +231,84 @@ func GetWinsPerPlayer(id int) (map[int]int, error) {
 	}
 	return winsMap, nil
 }
+
+// GetHeadToHeadGames will return the last N games between two players
+func GetHeadToHeadGames(player1 int, player2 int, limit int) ([]*models.Game, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
+			gt.id, gt.name, gt.description,
+			gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required
+		FROM game g
+			JOIN game_type gt ON gt.id = g.game_type_id
+			JOIN game_mode gm ON gm.id = g.game_mode_id
+			JOIN player2match p2m ON p2m.game_id = g.id
+		WHERE g.id IN (SELECT  game_id  FROM player2match  GROUP BY game_id  HAVING COUNT(DISTINCT player_id) = 2)
+			AND g.is_finished = 1
+			AND p2m.player_id IN (?, ?)
+		GROUP BY g.id
+			HAVING COUNT(DISTINCT p2m.player_id) = 2
+		ORDER BY g.id DESC LIMIT ?`, player1, player2, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	games := make([]*models.Game, 0)
+	for rows.Next() {
+		g := new(models.Game)
+		g.GameType = new(models.GameType)
+		g.GameMode = new(models.GameMode)
+		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID,
+			&g.GameType.ID, &g.GameType.Name, &g.GameType.Description,
+			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.MatchesRequired)
+		if err != nil {
+			return nil, err
+		}
+		games = append(games, g)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return games, nil
+}
+
+// GetPlayerLastGames will return the last N games for the given player
+func GetPlayerLastGames(playerID int, limit int) ([]*models.Game, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
+			gt.id, gt.name, gt.description,
+			gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required
+		FROM game g
+			JOIN game_type gt ON gt.id = g.game_type_id
+			JOIN game_mode gm ON gm.id = g.game_mode_id
+			JOIN player2match p2m ON p2m.game_id = g.id
+		WHERE g.id IN (SELECT  game_id  FROM player2match  GROUP BY game_id  HAVING COUNT(DISTINCT player_id) = 2)
+			AND g.is_finished = 1
+			AND p2m.player_id IN (?)
+		GROUP BY g.id
+		ORDER BY g.id DESC LIMIT ?`, playerID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	games := make([]*models.Game, 0)
+	for rows.Next() {
+		g := new(models.Game)
+		g.GameType = new(models.GameType)
+		g.GameMode = new(models.GameMode)
+		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID,
+			&g.GameType.ID, &g.GameType.Name, &g.GameType.Description,
+			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.MatchesRequired)
+		if err != nil {
+			return nil, err
+		}
+		games = append(games, g)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return games, nil
+}

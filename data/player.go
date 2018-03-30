@@ -3,7 +3,6 @@ package data
 import (
 	"log"
 	"sort"
-	"strings"
 
 	"github.com/kcapp/api/models"
 )
@@ -193,12 +192,16 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 			s.third_dart, s.third_dart_multiplier,
 			(IFNULL(s.first_dart, 0) * s.first_dart_multiplier +
 				IFNULL(s.second_dart, 0) * s.second_dart_multiplier +
-				IFNULL(s.third_dart, 0) * s.third_dart_multiplier) AS 'checkout'
+				IFNULL(s.third_dart, 0) * s.third_dart_multiplier) AS 'checkout',
+			COUNT(*)
 		FROM score s
 		WHERE s.id IN (SELECT MAX(id) FROM score WHERE match_id IN (
 				SELECT m.id FROM `+"`match`"+` m
 				JOIN game g ON g.id = m.game_id
 				WHERE g.game_type_id = 1 AND m.winner_id = ?) GROUP BY match_id)
+		GROUP BY s.first_dart, s.first_dart_multiplier,
+			s.second_dart, s.second_dart_multiplier,
+			s.third_dart, s.third_dart_multiplier
 		ORDER BY checkout`, playerID)
 	if err != nil {
 		return nil, err
@@ -217,30 +220,29 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 			&v.FirstDart.Value, &v.FirstDart.Multiplier,
 			&v.SecondDart.Value, &v.SecondDart.Multiplier,
 			&v.ThirdDart.Value, &v.ThirdDart.Multiplier,
-			&checkout)
+			&checkout, &v.Count)
 		if err != nil {
 			return nil, err
 		}
-
 		s := v.GetVisitString()
 		if visitMap, ok := playerVisits[checkout]; ok {
 			if visits, ok := visitMap[s]; ok {
-				visits = append(visits, v)
+				visitMap[s] = append(visits, v)
 			} else {
 				visits := make([]*models.Visit, 0)
 				visitMap[s] = append(visits, v)
 			}
 		} else {
 			visitMap := make(map[string][]*models.Visit)
-			arr := make([]*models.Visit, 0)
-			visitMap[s] = append(arr, v)
+			visits := make([]*models.Visit, 0)
+			visitMap[s] = append(visits, v)
 			playerVisits[checkout] = visitMap
 		}
 
 		if _, ok := checkoutCount[checkout]; ok {
-			checkoutCount[checkout]++
+			checkoutCount[checkout] += v.Count
 		} else {
-			checkoutCount[checkout] = 1
+			checkoutCount[checkout] = v.Count
 		}
 	}
 	if err = rows.Err(); err != nil {
@@ -257,21 +259,21 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 		checkout.Checkout = i
 
 		if visitMap, ok := playerVisits[i]; ok {
-			v := make([]*models.Visit, 0)
-			for _, visits := range visitMap {
-				v = append(v, visits...)
+			visits := make([]*models.Visit, 0)
+			for _, v := range visitMap {
+				visits = append(visits, v...)
 			}
-			// Sort the visits to get similar ones together
-			sort.Slice(v, func(i, j int) bool {
-				switch strings.Compare(v[i].GetVisitString(), v[j].GetVisitString()) {
-				case -1:
-					return false
-				case 1:
+			// Sort the visits by most common
+			sort.Slice(visits, func(i, j int) bool {
+				if visits[i].Count > visits[j].Count {
 					return true
 				}
-				return v[i].GetVisitString() > v[j].GetVisitString()
+				if visits[i].Count < visits[j].Count {
+					return false
+				}
+				return true
 			})
-			checkout.Visits = v
+			checkout.Visits = visits
 			checkout.Completed = true
 		} else {
 			checkout.Completed = false
@@ -284,4 +286,70 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 	}
 
 	return checkouts, nil
+}
+
+// GetPlayerHeadToHead will return head to head statistics between the two players
+func GetPlayerHeadToHead(player1 int, player2 int) (*models.StatisticsHead2Head, error) {
+	head2head := new(models.StatisticsHead2Head)
+
+	head2headGames, err := GetHeadToHeadGames(player1, player2, 5)
+	if err != nil {
+		return nil, err
+	}
+	head2head.LastGamesHeadToHead = head2headGames
+
+	games1, err := GetPlayerLastGames(player1, 5)
+	if err != nil {
+		return nil, err
+	}
+	games2, err := GetPlayerLastGames(player2, 5)
+	if err != nil {
+		return nil, err
+	}
+	games := make(map[int][]*models.Game)
+	games[player1] = games1
+	games[player2] = games2
+	head2head.LastGames = games
+
+	visits1, err := GetPlayerVisitCount(player1)
+	if err != nil {
+		return nil, err
+	}
+	visits2, err := GetPlayerVisitCount(player2)
+	if err != nil {
+		return nil, err
+	}
+	visits := make(map[int][]*models.Visit)
+	visits[player1] = visits1
+	visits[player2] = visits2
+	head2head.PlayerVisits = visits
+
+	checkouts1, err := GetPlayerCheckouts(player1)
+	if err != nil {
+		return nil, err
+	}
+	checkouts2, err := GetPlayerCheckouts(player2)
+	if err != nil {
+		return nil, err
+	}
+	checkouts := make(map[int][]*models.CheckoutStatistics)
+	checkouts[player1] = checkouts1
+	checkouts[player2] = checkouts2
+	head2head.PlayerCheckouts = checkouts
+
+	playerIDs := make([]int, 2)
+	playerIDs[0] = player1
+	playerIDs[1] = player2
+
+	stats, err := GetPlayersStatistics(playerIDs)
+	if err != nil {
+		return nil, err
+	}
+	statistics := make(map[int]*models.StatisticsX01)
+	for _, stat := range stats {
+		statistics[stat.PlayerID] = stat
+	}
+	head2head.PlayerStatistics = statistics
+
+	return head2head, nil
 }
