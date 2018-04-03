@@ -161,10 +161,10 @@ func GetX01StatisticsForGame(id int) ([]*models.StatisticsX01, error) {
 	return stats, nil
 }
 
-// GetPlayerStatistics will get statistics about the given player id
-func GetPlayerStatistics(id int) (*models.StatisticsX01, error) {
+// GetPlayerX01Statistics will get statistics about the given player id
+func GetPlayerX01Statistics(id int) (*models.StatisticsX01, error) {
 	ids := []int{id}
-	statistics, err := GetPlayersStatistics(ids)
+	statistics, err := GetPlayersX01Statistics(ids)
 	if err != nil {
 		return nil, err
 	}
@@ -181,8 +181,11 @@ func GetPlayerStatistics(id int) (*models.StatisticsX01, error) {
 	return new(models.StatisticsX01), nil
 }
 
-// GetPlayersStatistics will get statistics about all the the given player IDs
-func GetPlayersStatistics(ids []int) ([]*models.StatisticsX01, error) {
+// GetPlayersX01Statistics will get statistics about all the the given player IDs
+func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.StatisticsX01, error) {
+	if len(startingScores) == 0 {
+		startingScores = []int{301, 501, 701}
+	}
 	q, args, err := sqlx.In(`
 		SELECT
 			p.id,
@@ -201,8 +204,10 @@ func GetPlayersStatistics(ids []int) ([]*models.StatisticsX01, error) {
 		JOIN `+"`match`"+` m ON m.id = s.match_id
 		JOIN game g ON g.id = m.game_id
 		WHERE s.player_id IN (?)
+		AND m.starting_score IN (?)
 		AND g.is_finished = 1
-		GROUP BY s.player_id`, ids)
+		AND g.game_type_id = 1
+		GROUP BY s.player_id`, ids, startingScores)
 	if err != nil {
 		return nil, err
 	}

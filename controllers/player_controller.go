@@ -43,8 +43,8 @@ func GetPlayer(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(player)
 }
 
-// GetPlayerStatistics will return statistics for the given player
-func GetPlayerStatistics(w http.ResponseWriter, r *http.Request) {
+// GetPlayerX01Statistics will return statistics for the given player
+func GetPlayerX01Statistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
 	id, err := strconv.Atoi(params["id"])
@@ -54,7 +54,7 @@ func GetPlayerStatistics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats, err := data.GetPlayerStatistics(id)
+	stats, err := data.GetPlayerX01Statistics(id)
 	if err != nil {
 		log.Println("Unable to get player statistics")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -75,8 +75,8 @@ func GetPlayerStatistics(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
-// GetPlayersStatistics will return statistics for the given players
-func GetPlayersStatistics(w http.ResponseWriter, r *http.Request) {
+// GetPlayersX01Statistics will return statistics for the given players
+func GetPlayersX01Statistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 
 	params := r.URL.Query()["id"]
@@ -92,7 +92,7 @@ func GetPlayersStatistics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats, err := data.GetPlayersStatistics(ids)
+	stats, err := data.GetPlayersX01Statistics(ids)
 	if err != nil {
 		log.Println("Unable to get players statistics")
 		http.Error(w, err.Error(), http.StatusInternalServerError)

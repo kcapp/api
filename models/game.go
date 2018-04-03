@@ -4,6 +4,13 @@ import (
 	"github.com/guregu/null"
 )
 
+const (
+	// X01 constant representing GameType 1
+	X01 = 1
+	// SHOOTOUT constant representing GameType 2
+	SHOOTOUT = 2
+)
+
 // Game struct used for storing games
 type Game struct {
 	ID             int       `json:"id"`

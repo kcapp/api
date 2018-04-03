@@ -108,7 +108,7 @@ func GetX01StatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if game.GameType.ID == 2 {
+	if game.GameType.ID == models.SHOOTOUT {
 		stats, err := data.GetShootoutStatisticsForMatch(matchID)
 		if err != nil {
 			log.Println("Unable to get statistics", err)

@@ -341,7 +341,8 @@ func GetPlayerHeadToHead(player1 int, player2 int) (*models.StatisticsHead2Head,
 	playerIDs[0] = player1
 	playerIDs[1] = player2
 
-	stats, err := GetPlayersStatistics(playerIDs)
+	// Get 301 Statistics for each player
+	stats, err := GetPlayersX01Statistics(playerIDs, 301)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +350,18 @@ func GetPlayerHeadToHead(player1 int, player2 int) (*models.StatisticsHead2Head,
 	for _, stat := range stats {
 		statistics[stat.PlayerID] = stat
 	}
-	head2head.PlayerStatistics = statistics
+	head2head.Player301Statistics = statistics
+
+	// Get 501 Statistics for each player
+	stats, err = GetPlayersX01Statistics(playerIDs, 501)
+	if err != nil {
+		return nil, err
+	}
+	statistics = make(map[int]*models.StatisticsX01)
+	for _, stat := range stats {
+		statistics[stat.PlayerID] = stat
+	}
+	head2head.Player501Statistics = statistics
 
 	return head2head, nil
 }

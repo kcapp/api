@@ -72,7 +72,7 @@ func FinishMatch(visit models.Visit) error {
 
 	// Update match with winner
 	winnerID := visit.PlayerID
-	if game.GameType.ID == 2 {
+	if game.GameType.ID == models.SHOOTOUT {
 		// For 9 Dart Shootout we need to check the scores of each player
 		// to determine which player won the match with the highest score
 		scores, err := GetPlayersScore(visit.MatchID)
@@ -95,7 +95,7 @@ func FinishMatch(visit models.Visit) error {
 	}
 	log.Printf("[%d] Finished with player %d winning", visit.MatchID, winnerID)
 
-	if game.GameType.ID == 2 {
+	if game.GameType.ID == models.SHOOTOUT {
 		statisticsMap, err := calculateShootoutStatistics(visit.MatchID)
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`

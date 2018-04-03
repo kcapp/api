@@ -7,6 +7,15 @@ import (
 	"github.com/guregu/null"
 )
 
+const (
+	// SINGLE const representing single
+	SINGLE = 1
+	// DOUBLE const representing double
+	DOUBLE = 2
+	// TRIPLE const representing triple
+	TRIPLE = 3
+)
+
 // Dart struct used for storing darts
 type Dart struct {
 	Value      null.Int `json:"value"`
@@ -16,7 +25,7 @@ type Dart struct {
 // IsBust will check if the given dart is a bust
 func (dart *Dart) IsBust(currentScore int) bool {
 	scoreAfterThrow := currentScore - dart.GetScore()
-	if scoreAfterThrow == 0 && dart.Multiplier == 2 {
+	if scoreAfterThrow == 0 && dart.IsDouble() {
 		return false
 	} else if scoreAfterThrow < 2 {
 		return true
@@ -57,7 +66,7 @@ func (dart Dart) IsCheckoutAttempt(currentScore int) bool {
 		// Dart was not actually thrown, player busted/checked out already
 		return false
 	}
-	if currentScore-dart.GetScore() == 0 && dart.Multiplier == 2 {
+	if currentScore-dart.GetScore() == 0 && dart.IsDouble() {
 		// Actual checkout
 		return true
 	} else if currentScore == 50 || (currentScore <= 40 && currentScore%2 == 0) {
@@ -73,4 +82,19 @@ func (dart Dart) GetString() string {
 		return fmt.Sprintf("%d-%d", dart.Multiplier, dart.Value.Int64)
 	}
 	return fmt.Sprintf("%d-NULL", dart.Multiplier)
+}
+
+// IsSingle will check if this dart multipler was a single
+func (dart Dart) IsSingle() bool {
+	return dart.Multiplier == SINGLE
+}
+
+// IsDouble will check if this dart multipler was a double
+func (dart Dart) IsDouble() bool {
+	return dart.Multiplier == DOUBLE
+}
+
+// IsTriple will check if this dart multipler was a triple
+func (dart Dart) IsTriple() bool {
+	return dart.Multiplier == TRIPLE
 }

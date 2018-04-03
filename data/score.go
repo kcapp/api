@@ -25,7 +25,7 @@ func AddVisit(visit models.Visit) error {
 		return err
 	}
 
-	if game.GameType.ID == 1 {
+	if game.GameType.ID == models.X01 {
 		// Only set busts for x01 game modes
 		visit.SetIsBust(currentScore)
 	}

@@ -50,9 +50,9 @@ func main() {
 	router.HandleFunc("/visit/{id}", controllers.DeleteVisit).Methods("DELETE")
 
 	router.HandleFunc("/player", controllers.GetPlayers).Methods("GET")
-	router.HandleFunc("/player/compare", controllers.GetPlayersStatistics).Methods("GET")
+	router.HandleFunc("/player/compare", controllers.GetPlayersX01Statistics).Methods("GET")
 	router.HandleFunc("/player/{id}", controllers.GetPlayer).Methods("GET")
-	router.HandleFunc("/player/{id}/statistics", controllers.GetPlayerStatistics).Methods("GET")
+	router.HandleFunc("/player/{id}/statistics", controllers.GetPlayerX01Statistics).Methods("GET")
 	router.HandleFunc("/player/{id}/progression", controllers.GetPlayerProgression).Methods("GET")
 	router.HandleFunc("/player/{id}/checkouts", controllers.GetPlayerCheckouts).Methods("GET")
 	router.HandleFunc("/player/{player_1}/vs/{player_2}", controllers.GetPlayerHeadToHead).Methods("GET")

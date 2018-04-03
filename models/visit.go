@@ -113,39 +113,39 @@ func GetHitsMap(visits []*Visit) (map[int64]*Hits, int) {
 	for _, visit := range visits {
 		if visit.FirstDart.Value.Valid {
 			hit := hitsMap[visit.FirstDart.Value.Int64]
-			if visit.FirstDart.Multiplier == 1 {
+			if visit.FirstDart.IsSingle() {
 				hit.Singles++
 			}
-			if visit.FirstDart.Multiplier == 2 {
+			if visit.FirstDart.IsDouble() {
 				hit.Doubles++
 			}
-			if visit.FirstDart.Multiplier == 3 {
+			if visit.FirstDart.IsTriple() {
 				hit.Triples++
 			}
 			dartsThrown++
 		}
 		if visit.SecondDart.Value.Valid {
 			hit := hitsMap[visit.SecondDart.Value.Int64]
-			if visit.SecondDart.Multiplier == 1 {
+			if visit.SecondDart.IsSingle() {
 				hit.Singles++
 			}
-			if visit.SecondDart.Multiplier == 2 {
+			if visit.SecondDart.IsDouble() {
 				hit.Doubles++
 			}
-			if visit.SecondDart.Multiplier == 3 {
+			if visit.SecondDart.IsTriple() {
 				hit.Triples++
 			}
 			dartsThrown++
 		}
 		if visit.ThirdDart.Value.Valid {
 			hit := hitsMap[visit.ThirdDart.Value.Int64]
-			if visit.ThirdDart.Multiplier == 1 {
+			if visit.ThirdDart.IsSingle() {
 				hit.Singles++
 			}
-			if visit.ThirdDart.Multiplier == 2 {
+			if visit.ThirdDart.IsDouble() {
 				hit.Doubles++
 			}
-			if visit.ThirdDart.Multiplier == 3 {
+			if visit.ThirdDart.IsTriple() {
 				hit.Triples++
 			}
 			dartsThrown++
