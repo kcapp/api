@@ -292,11 +292,16 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 func GetPlayerHeadToHead(player1 int, player2 int) (*models.StatisticsHead2Head, error) {
 	head2head := new(models.StatisticsHead2Head)
 
-	head2headGames, err := GetHeadToHeadGames(player1, player2, 5)
+	head2headGames, err := GetHeadToHeadGames(player1, player2)
 	if err != nil {
 		return nil, err
 	}
-	head2head.LastGamesHeadToHead = head2headGames
+	head2head.Head2HeadGames = head2headGames
+	head2headWins := make(map[int64]int)
+	for _, game := range head2headGames {
+		head2headWins[game.WinnerID.Int64]++
+	}
+	head2head.Head2HeadWins = head2headWins
 
 	games1, err := GetPlayerLastGames(player1, 5)
 	if err != nil {

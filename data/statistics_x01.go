@@ -189,6 +189,7 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 	q, args, err := sqlx.In(`
 		SELECT
 			p.id,
+			COUNT(DISTINCT m.id),
 			SUM(s.ppd) / COUNT(DISTINCT m.id),
 			SUM(s.first_nine_ppd) / COUNT(DISTINCT m.id),
 			SUM(s.60s_plus),
@@ -220,7 +221,7 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 	statisticsMap := make(map[int]*models.StatisticsX01)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus,
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus,
 			&s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
@@ -232,15 +233,16 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 	}
 
 	// Calculate Best PPD, Best First 9, Best 301 and Best 501
-	err = getBestStatistics(ids, statisticsMap)
-	if err != nil {
-		return nil, err
+	if len(statisticsMap) > 0 {
+		err = getBestStatistics(ids, statisticsMap, startingScores...)
+		if err != nil {
+			return nil, err
+		}
+		err = getHighestCheckout(ids, statisticsMap, startingScores...)
+		if err != nil {
+			return nil, err
+		}
 	}
-	err = getHighestCheckout(ids, statisticsMap)
-	if err != nil {
-		return nil, err
-	}
-
 	statistics := make([]*models.StatisticsX01, 0)
 	for _, s := range statisticsMap {
 		statistics = append(statistics, s)
@@ -294,7 +296,7 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 }
 
 // getBestStatistics will calculate Best PPD, Best First 9, Best 301 and Best 501 for the given players
-func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01) error {
+func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, startingScores ...int) error {
 	q, args, err := sqlx.In(`
 		SELECT
 			p.id,
@@ -306,7 +308,8 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01) e
 		FROM statistics_x01 s
 		JOIN player p ON p.id = s.player_id
 		JOIN `+"`match`"+` m ON m.id = s.match_id
-		WHERE s.player_id IN (?)`, ids)
+		WHERE s.player_id IN (?)
+		AND m.starting_score IN (?)`, ids, startingScores)
 	if err != nil {
 		return err
 	}
@@ -351,7 +354,7 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01) e
 }
 
 // getHighestCheckout will calculate the highest checkout for the given players
-func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01) error {
+func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, startingScores ...int) error {
 	q, args, err := sqlx.In(`
 		SELECT
 			s.player_id,
@@ -363,8 +366,9 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01) 
 		WHERE m.winner_id = s.player_id
 			AND s.player_id IN (?)
 			AND s.id IN (SELECT MAX(s.id) FROM score s JOIN `+"`match`"+`m ON m.id = s.match_id WHERE m.winner_id = s.player_id GROUP BY match_id)
+			AND m.starting_score IN (?)
 		GROUP BY player_id
-		ORDER BY highest_checkout DESC`, ids)
+		ORDER BY highest_checkout DESC`, ids, startingScores)
 	if err != nil {
 		return err
 	}

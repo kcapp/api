@@ -233,7 +233,7 @@ func GetWinsPerPlayer(id int) (map[int]int, error) {
 }
 
 // GetHeadToHeadGames will return the last N games between two players
-func GetHeadToHeadGames(player1 int, player2 int, limit int) ([]*models.Game, error) {
+func GetHeadToHeadGames(player1 int, player2 int) ([]*models.Game, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
@@ -248,7 +248,7 @@ func GetHeadToHeadGames(player1 int, player2 int, limit int) ([]*models.Game, er
 			AND p2m.player_id IN (?, ?)
 		GROUP BY g.id
 			HAVING COUNT(DISTINCT p2m.player_id) = 2
-		ORDER BY g.id DESC LIMIT ?`, player1, player2, limit)
+		ORDER BY g.id DESC`, player1, player2)
 	if err != nil {
 		return nil, err
 	}

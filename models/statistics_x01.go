@@ -27,6 +27,8 @@ type StatisticsX01 struct {
 	Hits               map[int64]*Hits     `json:"hits,omitempty"`
 	GamesPlayed        int                 `json:"games_played,omitempty"`
 	GamesWon           int                 `json:"games_won,omitempty"`
+	MatchesPlayed      int                 `json:"matches_played,omitempty"`
+	MatchesWon         int                 `json:"matches_won,omitempty"`
 	BestPPD            float32             `json:"best_ppd,omitempty"`
 	BestFirstNinePPD   float32             `json:"best_first_nine_ppd,omitempty"`
 	Best301            int                 `json:"best_301,omitempty"`
