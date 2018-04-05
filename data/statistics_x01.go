@@ -300,6 +300,8 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 	q, args, err := sqlx.In(`
 		SELECT
 			p.id,
+			m.winner_id,
+			m.id,
 			s.ppd,
 			s.first_nine_ppd,
 			s.checkout_percentage,
@@ -322,7 +324,7 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 	rawStatistics := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.CheckoutPercentage, &s.DartsThrown, &s.StartingScore)
+		err := rows.Scan(&s.PlayerID, &s.WinnerID, &s.MatchID, &s.PPD, &s.FirstNinePPD, &s.CheckoutPercentage, &s.DartsThrown, &s.StartingScore)
 		if err != nil {
 			return err
 		}
@@ -334,20 +336,49 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 
 	for _, stat := range rawStatistics {
 		real := statisticsMap[stat.PlayerID]
-		if stat.StartingScore.Int64 == 301 && (stat.DartsThrown < real.Best301 || real.Best301 == 0) {
-			real.Best301 = stat.DartsThrown
+		// Only count best statistics when the player actually won the leg
+		if stat.WinnerID == stat.PlayerID {
+			if stat.StartingScore.Int64 == 301 {
+				if real.Best301 == nil {
+					real.Best301 = new(models.BestStatistic)
+				}
+				if stat.DartsThrown < real.Best301.Value || real.Best301.Value == 0 {
+					real.Best301.Value = stat.DartsThrown
+					real.Best301.MatchID = stat.MatchID
+				}
+			}
+			if stat.StartingScore.Int64 == 501 {
+				if real.Best501 == nil {
+					real.Best501 = new(models.BestStatistic)
+				}
+				if stat.DartsThrown < real.Best501.Value || real.Best501.Value == 0 {
+					real.Best501.Value = stat.DartsThrown
+					real.Best501.MatchID = stat.MatchID
+				}
+			}
+			if stat.StartingScore.Int64 == 701 {
+				if real.Best701 == nil {
+					real.Best701 = new(models.BestStatistic)
+				}
+				if stat.DartsThrown < real.Best701.Value || real.Best701.Value == 0 {
+					real.Best701.Value = stat.DartsThrown
+					real.Best701.MatchID = stat.MatchID
+				}
+			}
 		}
-		if stat.StartingScore.Int64 == 501 && (stat.DartsThrown < real.Best501 || real.Best501 == 0) {
-			real.Best501 = stat.DartsThrown
+		if real.BestPPD == nil {
+			real.BestPPD = new(models.BestStatisticFloat)
 		}
-		if stat.StartingScore.Int64 == 701 && (stat.DartsThrown < real.Best701 || real.Best701 == 0) {
-			real.Best701 = stat.DartsThrown
+		if stat.PPD > real.BestPPD.Value {
+			real.BestPPD.Value = stat.PPD
+			real.BestPPD.MatchID = stat.MatchID
 		}
-		if stat.PPD > real.BestPPD {
-			real.BestPPD = stat.PPD
+		if real.BestFirstNinePPD == nil {
+			real.BestFirstNinePPD = new(models.BestStatisticFloat)
 		}
-		if stat.FirstNinePPD > real.BestFirstNinePPD {
-			real.BestFirstNinePPD = stat.FirstNinePPD
+		if stat.FirstNinePPD > real.BestFirstNinePPD.Value {
+			real.BestFirstNinePPD.Value = stat.FirstNinePPD
+			real.BestFirstNinePPD.MatchID = stat.MatchID
 		}
 	}
 	return nil
@@ -358,17 +389,19 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, 
 	q, args, err := sqlx.In(`
 		SELECT
 			s.player_id,
-			MAX(IFNULL(s.first_dart * s.first_dart_multiplier, 0) +
-			IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
-			IFNULL(s.third_dart * s.third_dart_multiplier, 0)) AS 'highest_checkout'
+			s.match_id,
+			IFNULL(s.first_dart * s.first_dart_multiplier, 0) +
+				IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
+				IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
 		FROM score s
 		JOIN `+"`match`"+` m ON m.id = s.match_id
 		WHERE m.winner_id = s.player_id
 			AND s.player_id IN (?)
 			AND s.id IN (SELECT MAX(s.id) FROM score s JOIN `+"`match`"+`m ON m.id = s.match_id WHERE m.winner_id = s.player_id GROUP BY match_id)
 			AND m.starting_score IN (?)
-		GROUP BY player_id
-		ORDER BY highest_checkout DESC`, ids, startingScores)
+		GROUP BY player_id, s.id
+		ORDER BY checkout DESC
+		LIMIT 1`, ids, startingScores)
 	if err != nil {
 		return err
 	}
@@ -380,12 +413,16 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, 
 
 	for rows.Next() {
 		var playerID int
+		var matchID int
 		var checkout int
-		err := rows.Scan(&playerID, &checkout)
+		err := rows.Scan(&playerID, &matchID, &checkout)
 		if err != nil {
 			return err
 		}
-		statisticsMap[playerID].HighestCheckout = checkout
+		highest := new(models.BestStatistic)
+		highest.Value = checkout
+		highest.MatchID = matchID
+		statisticsMap[playerID].HighestCheckout = highest
 	}
 	err = rows.Err()
 	return err

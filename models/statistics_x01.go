@@ -4,11 +4,24 @@ import (
 	"github.com/guregu/null"
 )
 
+// BestStatistic struct used for storing a value and match where the statistic was achieved
+type BestStatistic struct {
+	Value   int `json:"value"`
+	MatchID int `json:"match_id"`
+}
+
+// BestStatisticFloat struct used for storing a value and match where the statistic was achieved
+type BestStatisticFloat struct {
+	Value   float32 `json:"value"`
+	MatchID int     `json:"match_id"`
+}
+
 // StatisticsX01 struct used for storing statistics
 type StatisticsX01 struct {
 	ID                 int                 `json:"id,omitempty"`
 	MatchID            int                 `json:"match_id,omitempty"`
 	PlayerID           int                 `json:"player_id,omitempty"`
+	WinnerID           int                 `json:"winner_id,omitempty"`
 	PPD                float32             `json:"ppd"`
 	FirstNinePPD       float32             `json:"first_nine_ppd"`
 	CheckoutPercentage float32             `json:"checkout_percentage"`
@@ -29,12 +42,12 @@ type StatisticsX01 struct {
 	GamesWon           int                 `json:"games_won,omitempty"`
 	MatchesPlayed      int                 `json:"matches_played,omitempty"`
 	MatchesWon         int                 `json:"matches_won,omitempty"`
-	BestPPD            float32             `json:"best_ppd,omitempty"`
-	BestFirstNinePPD   float32             `json:"best_first_nine_ppd,omitempty"`
-	Best301            int                 `json:"best_301,omitempty"`
-	Best501            int                 `json:"best_501,omitempty"`
-	Best701            int                 `json:"best_701,omitempty"`
-	HighestCheckout    int                 `json:"highest_checkout,omitempty"`
+	BestPPD            *BestStatisticFloat `json:"best_ppd,omitempty"`
+	BestFirstNinePPD   *BestStatisticFloat `json:"best_first_nine_ppd,omitempty"`
+	Best301            *BestStatistic      `json:"best_301,omitempty"`
+	Best501            *BestStatistic      `json:"best_501,omitempty"`
+	Best701            *BestStatistic      `json:"best_701,omitempty"`
+	HighestCheckout    *BestStatistic      `json:"highest_checkout,omitempty"`
 	StartingScore      null.Int            `json:"-"`
 }
 
