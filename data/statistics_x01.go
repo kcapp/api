@@ -388,20 +388,24 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, startingScores ...int) error {
 	q, args, err := sqlx.In(`
 		SELECT
-			s.player_id,
-			s.match_id,
-			IFNULL(s.first_dart * s.first_dart_multiplier, 0) +
-				IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
-				IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
-		FROM score s
-		JOIN `+"`match`"+` m ON m.id = s.match_id
-		WHERE m.winner_id = s.player_id
-			AND s.player_id IN (?)
-			AND s.id IN (SELECT MAX(s.id) FROM score s JOIN `+"`match`"+`m ON m.id = s.match_id WHERE m.winner_id = s.player_id GROUP BY match_id)
-			AND m.starting_score IN (?)
-		GROUP BY player_id, s.id
-		ORDER BY checkout DESC
-		LIMIT 1`, ids, startingScores)
+			player_id,
+			match_id,
+			MAX(checkout)
+		FROM (SELECT
+				s.player_id,
+				s.match_id,
+				IFNULL(s.first_dart * s.first_dart_multiplier, 0) +
+					IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
+					IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
+			FROM score s
+			JOIN `+"`match`"+` m ON m.id = s.match_id
+			WHERE m.winner_id = s.player_id
+				AND s.player_id IN (?)
+				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN `+"`match`"+` m ON m.id = s.match_id WHERE m.winner_id = s.player_id GROUP BY match_id)
+				AND m.starting_score IN (?)
+			GROUP BY s.player_id, s.id
+			ORDER BY checkout DESC) checkouts
+		GROUP BY player_id`, ids, startingScores)
 	if err != nil {
 		return err
 	}

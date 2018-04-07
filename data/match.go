@@ -281,7 +281,7 @@ func GetMatch(id int) (*models.Match, error) {
 	visitCount := 0
 	for _, visit := range visits {
 		if visitCount%len(m.Players) == 0 {
-			dartsThrown += 3
+			dartsThrown += visit.GetDartsThrown()
 		}
 		visit.DartsThrown = dartsThrown
 		visitCount++

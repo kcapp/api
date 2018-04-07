@@ -158,3 +158,15 @@ func GetHitsMap(visits []*Visit) (map[int64]*Hits, int) {
 func (visit Visit) GetScore() int {
 	return visit.FirstDart.GetScore() + visit.SecondDart.GetScore() + visit.ThirdDart.GetScore()
 }
+
+// GetDartsThrown will return the actual number of darts thrown during this visit
+func (visit Visit) GetDartsThrown() int {
+	thrown := 1
+	if visit.SecondDart.Value.Valid {
+		thrown++
+	}
+	if visit.ThirdDart.Value.Valid {
+		thrown++
+	}
+	return thrown
+}
