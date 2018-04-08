@@ -63,6 +63,31 @@ func GetGames(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(games)
 }
 
+// GetGamesLimit will return N games from the given starting point
+func GetGamesLimit(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	start, err := strconv.Atoi(params["start"])
+	if err != nil {
+		log.Println("Invalid start parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	limit, err := strconv.Atoi(params["limit"])
+	if err != nil {
+		log.Println("Invalid limit parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	games, err := data.GetGamesLimit(start, limit)
+	if err != nil {
+		log.Println("Unable to get games", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(games)
+}
+
 // GetGame will reurn a the game with the given ID
 func GetGame(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

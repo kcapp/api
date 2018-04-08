@@ -97,6 +97,56 @@ func GetGames() ([]*models.Game, error) {
 	return games, nil
 }
 
+// GetGamesLimit returns the N games from the given starting point
+func GetGamesLimit(start int, limit int) ([]*models.Game, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
+			gt.id, gt.name, gt.description,
+			gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required,
+			ot.id, ot.item,
+			GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
+		FROM game g
+			JOIN game_type gt ON gt.id = g.game_type_id
+			JOIN game_mode gm ON gm.id = g.game_mode_id
+			LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
+			LEFT JOIN player2match p2m ON p2m.game_id = g.id
+		GROUP BY g.id
+		ORDER BY g.id DESC
+		LIMIT ?, ?`, start, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	games := make([]*models.Game, 0)
+	for rows.Next() {
+		g := new(models.Game)
+		g.GameType = new(models.GameType)
+		g.GameMode = new(models.GameMode)
+		ot := new(models.OweType)
+		var players string
+		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID,
+			&g.GameType.ID, &g.GameType.Name, &g.GameType.Description,
+			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.MatchesRequired,
+			&ot.ID, &ot.Item, &players)
+		if err != nil {
+			return nil, err
+		}
+		if g.OweTypeID.Valid {
+			g.OweType = ot
+		}
+
+		g.Players = util.StringToIntArray(players)
+		games = append(games, g)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return games, nil
+}
+
 // GetGame returns a game with the given ID
 func GetGame(id int) (*models.Game, error) {
 	g := new(models.Game)

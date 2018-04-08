@@ -36,6 +36,7 @@ func main() {
 	router.HandleFunc("/game/{id}", controllers.GetGame).Methods("GET")
 	router.HandleFunc("/game/{id}/statistics", controllers.GetX01StatisticsForGame).Methods("GET")
 	router.HandleFunc("/game/{id}/matches", controllers.GetMatchesForGame).Methods("GET")
+	router.HandleFunc("/game/{start}/{limit}", controllers.GetGamesLimit).Methods("GET")
 
 	router.HandleFunc("/match/active", controllers.GetActiveMatches).Methods("GET")
 	router.HandleFunc("/match/{id}", controllers.GetMatch).Methods("GET")
