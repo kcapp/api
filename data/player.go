@@ -14,7 +14,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 		return nil, err
 	}
 
-	rows, err := models.DB.Query(`SELECT p.id, p.name, p.nickname, p.games_played, p.games_won, p.created_at FROM player p`)
+	rows, err := models.DB.Query(`SELECT p.id, p.name, p.nickname, p.profile_pic_url, p.created_at FROM player p`)
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +23,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.Name, &p.Nickname, &p.GamesPlayed, &p.GamesWon, &p.CreatedAt)
+		err := rows.Scan(&p.ID, &p.Name, &p.Nickname, &p.ProfilePicURL, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -46,7 +46,8 @@ func GetPlayers() (map[int]*models.Player, error) {
 // GetPlayer returns the player for the given ID
 func GetPlayer(id int) (*models.Player, error) {
 	p := new(models.Player)
-	err := models.DB.QueryRow(`SELECT p.id, p.name, p.nickname, p.created_at FROM player p WHERE p.id = ?`, id).Scan(&p.ID, &p.Name, &p.Nickname, &p.CreatedAt)
+	err := models.DB.QueryRow(`SELECT p.id, p.name, p.nickname, p.profile_pic_url, p.created_at FROM player p WHERE p.id = ?`, id).
+		Scan(&p.ID, &p.Name, &p.Nickname, &p.ProfilePicURL, &p.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
