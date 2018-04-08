@@ -7,4 +7,7 @@ Backend API for [kcapp-frontend](https://github.com/kcapp/frontend)
 * Now you have a built `executable` which can be run to start the `API`
 
 ## Configuration
-Configuration is done through `yaml`
+Configuration is done through `yaml`. All options can be set in `config/config.yaml`
+
+### Database
+Information about the database, and its configuration can be found in [kcapp-database](https://github.com/kcapp/database)
