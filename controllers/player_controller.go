@@ -78,7 +78,6 @@ func GetPlayerX01Statistics(w http.ResponseWriter, r *http.Request) {
 // GetPlayersX01Statistics will return statistics for the given players
 func GetPlayersX01Statistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-
 	params := r.URL.Query()["id"]
 	if params == nil {
 		log.Println("No players specified to compare")
@@ -108,6 +107,26 @@ func AddPlayer(w http.ResponseWriter, r *http.Request) {
 	err := data.AddPlayer(player)
 	if err != nil {
 		log.Println("Unable to add player", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// UpdatePlayer will update the given player
+func UpdatePlayer(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var player models.Player
+	_ = json.NewDecoder(r.Body).Decode(&player)
+	err = data.UpdatePlayer(id, player)
+	if err != nil {
+		log.Println("Unable to update player", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
