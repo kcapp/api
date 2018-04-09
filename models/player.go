@@ -13,6 +13,7 @@ type Player struct {
 	GamesWon      int         `json:"games_won"`
 	MatchesPlayed int         `json:"matches_played"`
 	MatchesWon    int         `json:"matches_won"`
+	Color         null.String `json:"color,omitempty"`
 	ProfilePicURL null.String `json:"profile_pic_url,omitempty"`
 	CreatedAt     string      `json:"created_at"`
 	UpdatedAt     string      `json:"updated_at,omitempty"`

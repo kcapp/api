@@ -288,8 +288,10 @@ func GetMatch(id int) (*models.Match, error) {
 	}
 	// When checking out, it might be done in 1, 2 or 3 darts, so make
 	// sure we set the correct number of darts thrown for the final visit
-	v := visits[len(visits)-1]
-	v.DartsThrown = v.DartsThrown - 3 + v.GetDartsThrown()
+	if len(visits) > 0 {
+		v := visits[len(visits)-1]
+		v.DartsThrown = v.DartsThrown - 3 + v.GetDartsThrown()
+	}
 
 	m.Visits = visits
 	m.Hits, m.DartsThrown = models.GetHitsMap(visits)
