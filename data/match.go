@@ -311,11 +311,15 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 			p2m.match_id,
 			p2m.player_id,
 			p2m.order,
+			p2m.handicap,
 			p2m.player_id = m.current_player_id AS 'is_current_player',
-			m.starting_score - (IFNULL(SUM(first_dart * first_dart_multiplier), 0) +
+			(m.starting_score +
+				-- Add handicap for players if game_mode is handicap
+				IF(g.game_type_id = 3, IFNULL(p2m.handicap, 0), 0)) -
+				(IFNULL(SUM(first_dart * first_dart_multiplier), 0) +
 				IFNULL(SUM(second_dart * second_dart_multiplier), 0) +
 				IFNULL(SUM(third_dart * third_dart_multiplier), 0))
-				-- For X01, score counts down, Shootout counts up
+				-- For X01 score goes down, while Shootout it counts up
 				* IF(g.game_type_id = 2, -1, 1) AS 'current_score'
 		FROM player2match p2m
 			LEFT JOIN `+"`match`"+` m ON m.id = p2m.match_id
@@ -334,7 +338,7 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 	for rows.Next() {
 		p2m := new(models.Player2Match)
 		p2m.Modifiers = new(models.PlayerModifiers)
-		err := rows.Scan(&p2m.MatchID, &p2m.PlayerID, &p2m.Order, &p2m.IsCurrentPlayer, &p2m.CurrentScore)
+		err := rows.Scan(&p2m.MatchID, &p2m.PlayerID, &p2m.Order, &p2m.Handicap, &p2m.IsCurrentPlayer, &p2m.CurrentScore)
 		if err != nil {
 			return nil, err
 		}

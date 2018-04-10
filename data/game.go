@@ -37,7 +37,7 @@ func NewGame(game models.Game) (*models.Game, error) {
 	tx.Exec("UPDATE game SET current_match_id = ? WHERE id = ?", matchID, gameID)
 	for idx, playerID := range game.Players {
 		order := idx + 1
-		res, err = tx.Exec("INSERT INTO player2match (player_id, match_id, `order`, game_id) VALUES (?, ?, ?, ?)", playerID, matchID, order, gameID)
+		res, err = tx.Exec("INSERT INTO player2match (player_id, match_id, `order`, game_id, handicap) VALUES (?, ?, ?, ?, ?)", playerID, matchID, order, gameID, game.PlayerHandicaps[playerID])
 		if err != nil {
 			tx.Rollback()
 			return nil, err

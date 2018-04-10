@@ -29,6 +29,7 @@ type Player2Match struct {
 	CurrentScore    int              `json:"current_score"`
 	IsCurrentPlayer bool             `json:"is_current_player"`
 	Wins            int              `json:"wins,omitempty"`
+	Handicap        null.Int         `json:"handicap,omitempty"`
 	Modifiers       *PlayerModifiers `json:"modifiers,omitempty"`
 }
 
