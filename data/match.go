@@ -315,7 +315,7 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 			m.starting_score - (IFNULL(SUM(first_dart * first_dart_multiplier), 0) +
 				IFNULL(SUM(second_dart * second_dart_multiplier), 0) +
 				IFNULL(SUM(third_dart * third_dart_multiplier), 0))
-				-- For X01 score goes down, while Shootout it counts up
+				-- For X01, score counts down, Shootout counts up
 				* IF(g.game_type_id = 2, -1, 1) AS 'current_score'
 		FROM player2match p2m
 			LEFT JOIN `+"`match`"+` m ON m.id = p2m.match_id

@@ -125,9 +125,7 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 func GetX01StatisticsForGame(id int) ([]*models.StatisticsX01, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id,
 			p.id,
-			COUNT(DISTINCT g.id),
 			SUM(s.ppd) / COUNT(p.id),
 			SUM(s.first_nine_ppd) / COUNT(p.id),
 			SUM(60s_plus),
@@ -142,7 +140,7 @@ func GetX01StatisticsForGame(id int) ([]*models.StatisticsX01, error) {
 			JOIN player p ON p.id = s.player_id
 			JOIN `+"`match`"+` m ON m.id = s.match_id
 			JOIN game g ON g.id = m.game_id
-			JOIN player2match p2m ON p2m.game_id = g.id
+			JOIN player2match p2m ON p2m.match_id = m.id AND p2m.player_id = s.player_id
 		WHERE g.id = ?
 		AND g.game_type_id = 1
 		GROUP BY p.id
@@ -155,7 +153,7 @@ func GetX01StatisticsForGame(id int) ([]*models.StatisticsX01, error) {
 	stats := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.MatchID, &s.PlayerID, &s.GamesPlayed, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
+		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
 			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err

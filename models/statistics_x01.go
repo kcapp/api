@@ -26,7 +26,7 @@ type StatisticsX01 struct {
 	FirstNinePPD       float32             `json:"first_nine_ppd"`
 	CheckoutPercentage float32             `json:"checkout_percentage"`
 	CheckoutAttempts   int                 `json:"-"`
-	DartsThrown        int                 `json:"darts_thrown"`
+	DartsThrown        int                 `json:"darts_thrown,omitempty"`
 	TotalVisits        int                 `json:"total_visits,omitempty"`
 	Score60sPlus       int                 `json:"scores_60s_plus"`
 	Score100sPlus      int                 `json:"scores_100s_plus"`
