@@ -70,14 +70,28 @@ func GetPlayer(id int) (*models.Player, error) {
 // AddPlayer will add a new player to the database
 func AddPlayer(player models.Player) error {
 	// Prepare statement for inserting data
-	stmt, err := models.DB.Prepare("INSERT INTO player (name, nickname) VALUES (?, ?)")
+	stmt, err := models.DB.Prepare("INSERT INTO player (name, nickname, color, profile_pic_url) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(player.Name, player.Nickname)
+	_, err = stmt.Exec(player.Name, player.Nickname, player.Color, player.ProfilePicURL)
 	log.Printf("Created new player %s", player.Name)
+	return err
+}
+
+// UpdatePlayer will update the given player
+func UpdatePlayer(playerID int, player models.Player) error {
+	// Prepare statement for inserting data
+	stmt, err := models.DB.Prepare("UPDATE player SET name = ?, nickname = ?, color = ?, profile_pic_url = ? WHERE id = ?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(player.Name, player.Nickname, player.Color, player.ProfilePicURL, playerID)
+	log.Printf("Updated player %s (%v)", player.Name, player)
 	return err
 }
 
