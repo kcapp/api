@@ -101,40 +101,46 @@ func GetPlayerScore(playerID int, matchID int) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return scores[playerID], nil
+	return scores[playerID].CurrentScore, nil
 }
 
 // GetPlayersScore will get the score for all players in the given match
-func GetPlayersScore(matchID int) (map[int]int, error) {
+func GetPlayersScore(matchID int) (map[int]*models.Player2Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
+			p2m.match_id,
 			p2m.player_id,
-			m.starting_score - IFNULL(
-				SUM(first_dart * first_dart_multiplier) +
-				SUM(second_dart * second_dart_multiplier) +
-				SUM(third_dart * third_dart_multiplier), 0)
-				* IF(g.game_type_id = 2,  -1, 1)
-				AS 'current_score'
+			p2m.order,
+			p2m.handicap,
+			p2m.player_id = m.current_player_id AS 'is_current_player',
+			(m.starting_score +
+				-- Add handicap for players if game_mode is handicap
+				IF(g.game_type_id = 3, IFNULL(p2m.handicap, 0), 0)) -
+				(IFNULL(SUM(first_dart * first_dart_multiplier), 0) +
+				IFNULL(SUM(second_dart * second_dart_multiplier), 0) +
+				IFNULL(SUM(third_dart * third_dart_multiplier), 0))
+				-- For X01 score goes down, while Shootout it counts up
+				* IF(g.game_type_id = 2, -1, 1) AS 'current_score'
 		FROM player2match p2m
 			LEFT JOIN `+"`match`"+` m ON m.id = p2m.match_id
 			LEFT JOIN score s ON s.match_id = p2m.match_id AND s.player_id = p2m.player_id
 			LEFT JOIN game g on g.id = m.game_id
 		WHERE p2m.match_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
-		GROUP BY p2m.player_id`, matchID)
+		GROUP BY p2m.player_id
+		ORDER BY p2m.order ASC`, matchID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	scores := make(map[int]int)
+	scores := make(map[int]*models.Player2Match)
 	for rows.Next() {
-		var playerID int
-		var score int
-		err := rows.Scan(&playerID, &score)
+		p2m := new(models.Player2Match)
+		err := rows.Scan(&p2m.MatchID, &p2m.PlayerID, &p2m.Order, &p2m.Handicap, &p2m.IsCurrentPlayer, &p2m.CurrentScore)
 		if err != nil {
 			return nil, err
 		}
-		scores[playerID] = score
+		scores[p2m.PlayerID] = p2m
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err

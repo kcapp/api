@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 
+	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
 	"github.com/kcapp/api/util"
 )
@@ -29,15 +30,31 @@ func NewMatch(gameID int, startingScore int, players []int) (*models.Match, erro
 		tx.Rollback()
 		return nil, err
 	}
+	game, err := GetGame(gameID)
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = tx.Exec("UPDATE game SET current_match_id = ? WHERE id = ?", matchID, gameID)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
 
+	handicaps := make(map[int]null.Int)
+	if game.GameType.ID == models.X01HANDICAP {
+		scores, err := GetPlayersScore(int(game.CurrentMatchID.Int64))
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			handicaps[player.PlayerID] = player.Handicap
+		}
+	}
+
 	for idx, playerID := range players {
 		order := idx + 1
-		res, err = tx.Exec("INSERT INTO player2match (player_id, match_id, `order`, game_id) VALUES (?, ?, ?, ?)", playerID, matchID, order, gameID)
+		res, err = tx.Exec("INSERT INTO player2match (player_id, match_id, `order`, game_id, handicap) VALUES (?, ?, ?, ?, ?)", playerID, matchID, order, gameID, handicaps[playerID])
 		if err != nil {
 			tx.Rollback()
 			return nil, err
@@ -80,9 +97,9 @@ func FinishMatch(visit models.Visit) error {
 			return err
 		}
 		highScore := 0
-		for playerID, score := range scores {
-			if score > highScore {
-				highScore = score
+		for playerID, player := range scores {
+			if player.CurrentScore > highScore {
+				highScore = player.CurrentScore
 				winnerID = playerID
 			}
 		}
@@ -306,49 +323,18 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 		return nil, err
 	}
 
-	rows, err := models.DB.Query(`
-		SELECT
-			p2m.match_id,
-			p2m.player_id,
-			p2m.order,
-			p2m.handicap,
-			p2m.player_id = m.current_player_id AS 'is_current_player',
-			(m.starting_score +
-				-- Add handicap for players if game_mode is handicap
-				IF(g.game_type_id = 3, IFNULL(p2m.handicap, 0), 0)) -
-				(IFNULL(SUM(first_dart * first_dart_multiplier), 0) +
-				IFNULL(SUM(second_dart * second_dart_multiplier), 0) +
-				IFNULL(SUM(third_dart * third_dart_multiplier), 0))
-				-- For X01 score goes down, while Shootout it counts up
-				* IF(g.game_type_id = 2, -1, 1) AS 'current_score'
-		FROM player2match p2m
-			LEFT JOIN `+"`match`"+` m ON m.id = p2m.match_id
-			LEFT JOIN score s ON s.match_id = p2m.match_id AND s.player_id = p2m.player_id
-			LEFT JOIN game g on g.id = m.game_id
-		WHERE p2m.match_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
-		GROUP BY p2m.player_id
-		ORDER BY p2m.order ASC`, id)
+	scores, err := GetPlayersScore(id)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
 	lowestScore := match.StartingScore
 	players := make([]*models.Player2Match, 0)
-	for rows.Next() {
-		p2m := new(models.Player2Match)
-		p2m.Modifiers = new(models.PlayerModifiers)
-		err := rows.Scan(&p2m.MatchID, &p2m.PlayerID, &p2m.Order, &p2m.Handicap, &p2m.IsCurrentPlayer, &p2m.CurrentScore)
-		if err != nil {
-			return nil, err
+	for _, player := range scores {
+		player.Modifiers = new(models.PlayerModifiers)
+		if player.CurrentScore < lowestScore {
+			lowestScore = player.CurrentScore
 		}
-		players = append(players, p2m)
-		if p2m.CurrentScore < lowestScore {
-			lowestScore = p2m.CurrentScore
-		}
-	}
-	if err = rows.Err(); err != nil {
-		return nil, err
+		players = append(players, player)
 	}
 
 	winsMap, err := GetWinsPerPlayer(match.GameID)
