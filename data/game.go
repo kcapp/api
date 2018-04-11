@@ -293,8 +293,9 @@ func GetHeadToHeadGames(player1 int, player2 int) ([]*models.Game, error) {
 			JOIN game_type gt ON gt.id = g.game_type_id
 			JOIN game_mode gm ON gm.id = g.game_mode_id
 			JOIN player2match p2m ON p2m.game_id = g.id
-		WHERE g.id IN (SELECT  game_id  FROM player2match  GROUP BY game_id  HAVING COUNT(DISTINCT player_id) = 2)
+		WHERE g.id IN (SELECT game_id FROM player2match GROUP BY game_id HAVING COUNT(DISTINCT player_id) = 2)
 			AND g.is_finished = 1
+			AND g.game_type_id = 1
 			AND p2m.player_id IN (?, ?)
 		GROUP BY g.id
 			HAVING COUNT(DISTINCT p2m.player_id) = 2

@@ -116,9 +116,9 @@ func GetPlayersScore(matchID int) (map[int]int, error) {
 				* IF(g.game_type_id = 2,  -1, 1)
 				AS 'current_score'
 		FROM player2match p2m
-		LEFT JOIN `+"`match`"+` m ON m.id = p2m.match_id
-		LEFT JOIN score s ON s.match_id = p2m.match_id AND s.player_id = p2m.player_id
-		LEFT JOIN game g on g.id = m.game_id
+			LEFT JOIN `+"`match`"+` m ON m.id = p2m.match_id
+			LEFT JOIN score s ON s.match_id = p2m.match_id AND s.player_id = p2m.player_id
+			LEFT JOIN game g on g.id = m.game_id
 		WHERE p2m.match_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
 		GROUP BY p2m.player_id`, matchID)
 	if err != nil {
