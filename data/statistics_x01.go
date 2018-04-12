@@ -26,8 +26,8 @@ func GetX01Statistics(from string, to string) ([]*models.StatisticsX01, error) {
 			JOIN `+"`match`"+` m ON m.id = s.match_id
 			JOIN game g ON g.id = m.game_id
 		WHERE g.updated_at >= ? AND g.updated_at < ?
-		AND g.is_finished = 1
-		AND g.game_type_id = 1
+			AND g.is_finished = 1
+			AND g.game_type_id = 1
 		GROUP BY p.id`, from, to)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 			JOIN game g ON g.id = m.game_id
 			JOIN player2match p2m ON p2m.match_id = m.id AND p2m.player_id = s.player_id
 		WHERE m.id = ?
-		AND (g.game_type_id = 1 OR g.game_type_id = 3)
+			AND (g.game_type_id = 1 OR g.game_type_id = 3)
 		GROUP BY p.id
 		ORDER BY p2m.order`, id)
 	if err != nil {
@@ -142,7 +142,7 @@ func GetX01StatisticsForGame(id int) ([]*models.StatisticsX01, error) {
 			JOIN game g ON g.id = m.game_id
 			JOIN player2match p2m ON p2m.match_id = m.id AND p2m.player_id = s.player_id
 		WHERE g.id = ?
-		AND (g.game_type_id = 1 OR g.game_type_id = 3)
+			AND (g.game_type_id = 1 OR g.game_type_id = 3)
 		GROUP BY p.id
 		ORDER BY p2m.order`, id)
 	if err != nil {
@@ -207,9 +207,8 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 		JOIN `+"`match`"+` m ON m.id = s.match_id
 		JOIN game g ON g.id = m.game_id
 		WHERE s.player_id IN (?)
-		AND m.starting_score IN (?)
-		AND g.is_finished = 1
-		AND g.game_type_id = 1
+			AND m.starting_score IN (?)
+			AND g.is_finished = 1 AND g.game_type_id = 1
 		GROUP BY s.player_id`, ids, startingScores)
 	if err != nil {
 		return nil, err

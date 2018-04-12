@@ -445,6 +445,9 @@ func calculateX01Statistics(matchID int, winnerID int, startingScore int) (map[i
 
 		playersMap[player.PlayerID] = player
 		player.CurrentScore = startingScore
+		if player.Handicap.Valid {
+			player.CurrentScore += int(player.Handicap.Int64)
+		}
 	}
 
 	for _, visit := range visits {
