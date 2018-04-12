@@ -513,9 +513,9 @@ func calculateX01Statistics(matchID int, winnerID int, startingScore int) (map[i
 		stats.PPD = stats.PPD / float32(stats.DartsThrown)
 		stats.FirstNinePPD = stats.FirstNinePPD / 9
 		if playerID == winnerID {
-			stats.CheckoutPercentage = float32(100 / stats.CheckoutAttempts)
+			stats.CheckoutPercentage = null.FloatFrom(float64(100 / stats.CheckoutAttempts))
 		} else {
-			stats.CheckoutPercentage = 0
+			stats.CheckoutPercentage = null.FloatFromPtr(nil)
 		}
 
 		stats.AccuracyStatistics.SetAccuracy()

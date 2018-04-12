@@ -24,7 +24,7 @@ type StatisticsX01 struct {
 	WinnerID           int                 `json:"winner_id,omitempty"`
 	PPD                float32             `json:"ppd"`
 	FirstNinePPD       float32             `json:"first_nine_ppd"`
-	CheckoutPercentage float32             `json:"checkout_percentage"`
+	CheckoutPercentage null.Float          `json:"checkout_percentage"`
 	CheckoutAttempts   int                 `json:"-"`
 	DartsThrown        int                 `json:"darts_thrown,omitempty"`
 	TotalVisits        int                 `json:"total_visits,omitempty"`
