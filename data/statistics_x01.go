@@ -1,7 +1,6 @@
 package data
 
 import (
-	"github.com/guregu/null"
 	"github.com/jmoiron/sqlx"
 	"github.com/kcapp/api/models"
 )
@@ -20,7 +19,8 @@ func GetX01Statistics(from string, to string) ([]*models.StatisticsX01, error) {
 			SUM(180s) AS '180s',
 			SUM(accuracy_20) / COUNT(accuracy_20) AS 'accuracy_20s',
 			SUM(accuracy_19) / COUNT(accuracy_19) AS 'accuracy_19s',
-			SUM(overall_accuracy) / COUNT(overall_accuracy) AS 'accuracy_overall'
+			SUM(overall_accuracy) / COUNT(overall_accuracy) AS 'accuracy_overall',
+			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN `+"`match`"+` m ON m.id = s.match_id
@@ -38,26 +38,25 @@ func GetX01Statistics(from string, to string) ([]*models.StatisticsX01, error) {
 	for rows.Next() {
 		s := new(models.StatisticsX01)
 		err := rows.Scan(&s.PlayerID, &s.GamesPlayed, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
-			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall)
+			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
 		}
 		statsMap[s.PlayerID] = s
 	}
 
-	played, err := GetGamesPlayedPerPlayer()
+	played, err := GetGamesPlayedBetween(from, to)
 	if err != nil {
 		return nil, err
 	}
 
 	for playerID, player := range played {
 		stats := statsMap[playerID]
-		stats.GamesPlayed = player.GamesPlayed
-		stats.GamesWon = player.GamesWon
-		stats.MatchesPlayed = player.MatchesPlayed
-		stats.MatchesWon = player.MatchesWon
-		if stats.MatchesWon > 0 {
-			stats.CheckoutPercentage = null.FloatFrom(float64(player.MatchesWon / stats.CheckoutAttempts))
+		if stats != nil {
+			stats.GamesPlayed = player.GamesPlayed
+			stats.GamesWon = player.GamesWon
+			stats.MatchesPlayed = player.MatchesPlayed
+			stats.MatchesWon = player.MatchesWon
 		}
 	}
 
@@ -85,7 +84,8 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 			SUM(accuracy_20) / COUNT(accuracy_20) AS 'accuracy_20s',
 			SUM(accuracy_19) / COUNT(accuracy_19) AS 'accuracy_19s',
 			SUM(overall_accuracy) / COUNT(overall_accuracy) AS 'accuracy_overall',
-			SUM(checkout_percentage) / COUNT(checkout_percentage) AS 'checkout_percentage'
+			SUM(s.checkout_attempts) AS 'checkout_attempts',
+			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN `+"`match`"+` m ON m.id = s.match_id
@@ -104,7 +104,7 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 	for rows.Next() {
 		s := new(models.StatisticsX01)
 		err := rows.Scan(&s.MatchID, &s.PlayerID, &s.GamesPlayed, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
-			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
+			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutAttempts, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
 		}
@@ -127,7 +127,7 @@ func GetX01StatisticsForGame(id int) ([]*models.StatisticsX01, error) {
 			SUM(accuracy_20) / COUNT(accuracy_20) AS 'accuracy_20s',
 			SUM(accuracy_19) / COUNT(accuracy_19) AS 'accuracy_19s',
 			SUM(overall_accuracy) / COUNT(overall_accuracy) AS 'accuracy_overall',
-			SUM(checkout_percentage) / COUNT(checkout_percentage) AS 'checkout_percentage'
+			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN `+"`match`"+` m ON m.id = s.match_id
@@ -193,7 +193,7 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 			SUM(accuracy_20) / COUNT(accuracy_20) AS 'accuracy_20s',
 			SUM(accuracy_19) / COUNT(accuracy_19) AS 'accuracy_19s',
 			SUM(overall_accuracy) / COUNT(overall_accuracy) AS 'accuracy_overall',
-			SUM(checkout_percentage) / COUNT(checkout_percentage) AS 'checkout_percentage'
+			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN `+"`match`"+` m ON m.id = s.match_id
@@ -258,7 +258,7 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 			SUM(s.accuracy_20) / COUNT(s.accuracy_20) AS 'accuracy_20s',
 			SUM(s.accuracy_19) / COUNT(s.accuracy_19) AS 'accuracy_19s',
 			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
-			SUM(s.checkout_percentage) / COUNT(s.checkout_percentage) AS 'checkout_percentage',
+			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage',
 			DATE(g.updated_at) AS 'date'
 		FROM statistics_x01 s
 			JOIN `+"`match`"+` m ON m.id = s.match_id
