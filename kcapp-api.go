@@ -68,6 +68,19 @@ func main() {
 
 	router.HandleFunc("/owetype", controllers.GetOweTypes).Methods("GET")
 
+	/*stats, err := data.Recalculate()
+	for matchID, m := range stats {
+		for playerID, stats := range m {
+			if stats.CheckoutPercentage.Valid {
+				log.Printf("UPDATE statistics_x01 SET checkout_attempts = %d, checkout_percentage = %g WHERE player_id = %d AND match_id = %d;",
+					stats.CheckoutAttempts, stats.CheckoutPercentage.Float64, playerID, matchID)
+			} else {
+				log.Printf("UPDATE statistics_x01 SET checkout_attempts = %d, checkout_percentage = NULL WHERE player_id = %d AND match_id = %d;",
+					stats.CheckoutAttempts, playerID, matchID)
+			}
+		}
+	}*/
+
 	log.Printf("Listening on port %d", config.APIConfig.Port)
 	log.Println(http.ListenAndServe(fmt.Sprintf(":%d", config.APIConfig.Port), router))
 }

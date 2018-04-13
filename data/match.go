@@ -562,3 +562,50 @@ func calculateShootoutStatistics(matchID int) (map[int]*models.StatisticsShootou
 	}
 	return statisticsMap, nil
 }
+
+// Recalculate will recalculate
+func Recalculate() (map[int]map[int]*models.StatisticsX01, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			m.id, m.end_time, m.starting_score, m.is_finished,
+			m.current_player_id, m.winner_id, m.created_at, m.updated_at,
+			m.game_id, GROUP_CONCAT(p2m.player_id ORDER BY p2m.order ASC)
+		FROM ` + "`match`" + ` m
+			JOIN game g on g.id = m.game_id
+			 JOIN player2match p2m ON p2m.match_id = m.id
+		WHERE m.is_finished = 1
+			AND g.game_type_id = 1
+		GROUP BY m.id
+		ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	matches := make([]*models.Match, 0)
+	for rows.Next() {
+		m := new(models.Match)
+		var players string
+		err := rows.Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
+			&m.GameID, &players)
+		if err != nil {
+			return nil, err
+		}
+		m.Players = util.StringToIntArray(players)
+		matches = append(matches, m)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	m := make(map[int]map[int]*models.StatisticsX01)
+	for _, match := range matches {
+		stats, err := calculateX01Statistics(match.ID, int(match.WinnerPlayerID.Int64), match.StartingScore)
+		if err != nil {
+			return nil, err
+		}
+		m[match.ID] = stats
+	}
+
+	return m, err
+}

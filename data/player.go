@@ -165,8 +165,8 @@ func GetGamesPlayedPerPlayer() (map[int]*models.Player, error) {
 				COUNT(DISTINCT m.id) AS 'matches_played',
 				0 AS 'matches_won'
 			FROM player2match p2m
-			JOIN game g ON g.id = p2m.game_id
-			JOIN ` + "`match`" + ` m ON m.id = p2m.match_id
+				JOIN game g ON g.id = p2m.game_id
+				JOIN ` + "`match`" + ` m ON m.id = p2m.match_id
 			WHERE m.is_finished = 1
 			GROUP BY p2m.player_id
 			UNION ALL
@@ -177,8 +177,8 @@ func GetGamesPlayedPerPlayer() (map[int]*models.Player, error) {
 				0 AS 'matches_played',
 				COUNT(DISTINCT m.id) AS 'matches_won'
 			FROM game g
-			JOIN ` + "`match`" + ` m ON m.game_id = g.id
-			JOIN player2match p2m ON p2m.player_id = g.winner_id AND p2m.game_id = g.id
+				JOIN ` + "`match`" + ` m ON m.game_id = g.id
+				JOIN player2match p2m ON p2m.player_id = g.winner_id AND p2m.game_id = g.id
 			WHERE m.is_finished = 1
 			GROUP BY g.winner_id
 		) games

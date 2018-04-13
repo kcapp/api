@@ -69,7 +69,7 @@ func (dart Dart) IsCheckoutAttempt(currentScore int) bool {
 	if currentScore-dart.GetScore() == 0 && dart.IsDouble() {
 		// Actual checkout
 		return true
-	} else if currentScore == 50 || (currentScore <= 40 && currentScore%2 == 0) {
+	} else if currentScore == 50 || (currentScore <= 40 && currentScore%2 == 0 && currentScore > 1) {
 		// Checkout attempt
 		return true
 	}

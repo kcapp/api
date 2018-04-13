@@ -1,6 +1,7 @@
 package data
 
 import (
+	"github.com/guregu/null"
 	"github.com/jmoiron/sqlx"
 	"github.com/kcapp/api/models"
 )
@@ -19,8 +20,7 @@ func GetX01Statistics(from string, to string) ([]*models.StatisticsX01, error) {
 			SUM(180s) AS '180s',
 			SUM(accuracy_20) / COUNT(accuracy_20) AS 'accuracy_20s',
 			SUM(accuracy_19) / COUNT(accuracy_19) AS 'accuracy_19s',
-			SUM(overall_accuracy) / COUNT(overall_accuracy) AS 'accuracy_overall',
-			SUM(checkout_percentage) / COUNT(checkout_percentage) AS 'checkout_percentage'
+			SUM(overall_accuracy) / COUNT(overall_accuracy) AS 'accuracy_overall'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN `+"`match`"+` m ON m.id = s.match_id
@@ -38,35 +38,27 @@ func GetX01Statistics(from string, to string) ([]*models.StatisticsX01, error) {
 	for rows.Next() {
 		s := new(models.StatisticsX01)
 		err := rows.Scan(&s.PlayerID, &s.GamesPlayed, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
-			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
+			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall)
 		if err != nil {
 			return nil, err
 		}
 		statsMap[s.PlayerID] = s
 	}
 
-	rows, err = models.DB.Query(`
-		SELECT
-			p.id AS 'player_id',
-			COUNT(g.winner_id) AS 'games_won'
-		FROM game g
-			JOIN player p ON p.id = g.winner_id
-		WHERE g.updated_at >= ? AND g.updated_at < ?
-		AND g.game_type_id = 1
-		GROUP BY g.winner_id`, from, to)
+	played, err := GetGamesPlayedPerPlayer()
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var playerID int
-		var gamesWon int
-		err := rows.Scan(&playerID, &gamesWon)
-		if err != nil {
-			return nil, err
+	for playerID, player := range played {
+		stats := statsMap[playerID]
+		stats.GamesPlayed = player.GamesPlayed
+		stats.GamesWon = player.GamesWon
+		stats.MatchesPlayed = player.MatchesPlayed
+		stats.MatchesWon = player.MatchesWon
+		if stats.MatchesWon > 0 {
+			stats.CheckoutPercentage = null.FloatFrom(float64(player.MatchesWon / stats.CheckoutAttempts))
 		}
-		statsMap[playerID].GamesWon = gamesWon
 	}
 
 	stats := make([]*models.StatisticsX01, 0)

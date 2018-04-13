@@ -20,3 +20,7 @@ debug
 
 # Once pushed, ignore config directory
 config/congig.yaml
+
+# Ignore logs folder
+log/
+logs/
