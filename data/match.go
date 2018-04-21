@@ -130,10 +130,10 @@ func FinishMatch(visit models.Visit) error {
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_x01
-					(match_id, player_id, ppd, first_nine_ppd, checkout_percentage, darts_thrown, 60s_plus,
+					(match_id, player_id, ppd, first_nine_ppd, checkout_percentage, checkout_attempts, darts_thrown, 60s_plus,
 					 100s_plus, 140s_plus, 180s, accuracy_20, accuracy_19, overall_accuracy)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.MatchID, playerID, stats.PPD, stats.FirstNinePPD,
-				stats.CheckoutPercentage, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.MatchID, playerID, stats.PPD, stats.FirstNinePPD,
+				stats.CheckoutPercentage, stats.CheckoutAttempts, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
 				stats.Score180s, stats.AccuracyStatistics.Accuracy20, stats.AccuracyStatistics.Accuracy19, stats.AccuracyStatistics.AccuracyOverall)
 			if err != nil {
 				tx.Rollback()
@@ -513,7 +513,7 @@ func calculateX01Statistics(matchID int, winnerID int, startingScore int) (map[i
 		stats.PPD = stats.PPD / float32(stats.DartsThrown)
 		stats.FirstNinePPD = stats.FirstNinePPD / 9
 		if playerID == winnerID {
-			stats.CheckoutPercentage = null.FloatFrom(float64(100 / stats.CheckoutAttempts))
+			stats.CheckoutPercentage = null.FloatFrom(100 / float64(stats.CheckoutAttempts))
 		} else {
 			stats.CheckoutPercentage = null.FloatFromPtr(nil)
 		}
@@ -563,8 +563,8 @@ func calculateShootoutStatistics(matchID int) (map[int]*models.StatisticsShootou
 	return statisticsMap, nil
 }
 
-// Recalculate will recalculate
-func Recalculate() (map[int]map[int]*models.StatisticsX01, error) {
+// RecalculateX01Statistics will recalculate x01 statistics for all matches
+func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			m.id, m.end_time, m.starting_score, m.is_finished,
