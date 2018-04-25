@@ -13,13 +13,14 @@ import (
 func GetX01Statistics(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	SetHeaders(w)
-	stats, err := data.GetX01Statistics(params["from"], params["to"])
+
+	statistics, err := data.GetX01Statistics(params["from"], params["to"], 301, 501)
 	if err != nil {
 		log.Println("Unable to get X01 statistics", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(stats)
+	json.NewEncoder(w).Encode(statistics)
 }
 
 // GetShootoutStatistics will return Shootout statistics for a given period

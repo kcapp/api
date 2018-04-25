@@ -205,65 +205,6 @@ func GetGamesPlayedPerPlayer() (map[int]*models.Player, error) {
 	return played, nil
 }
 
-// GetGamesPlayedBetween will get the number of games and matches played and won for each player during the given period
-func GetGamesPlayedBetween(from string, to string) (map[int]*models.Player, error) {
-	rows, err := models.DB.Query(`
-		SELECT
-			player_id,
-			MAX(games_played) AS 'games_played',
-			MAX(games_won) AS 'games_won',
-			MAX(matches_played) AS 'matches_played',
-			MAX(matches_won) AS 'matches_won'
-		FROM (
-			SELECT
-				p2m.player_id,
-				COUNT(DISTINCT p2m.game_id) AS 'games_played',
-				0 AS 'games_won',
-				COUNT(m.id)  AS 'matches_played',
-				SUM(CASE WHEN p2m.player_id = m.winner_id THEN 1 ELSE 0 END) AS 'matches_won'
-			FROM player2match p2m
-				JOIN `+"`match`"+` m ON m.id = p2m.match_id
-				JOIN game g ON g.id = p2m.game_id
-			WHERE m.is_finished = 1
-				AND g.updated_at >= ? AND g.updated_at < ?
-				AND g.game_type_id = 1
-			GROUP BY p2m.player_id
-			UNION ALL
-			SELECT
-				p2m.player_id,
-				0 AS 'games_played',
-				COUNT(DISTINCT g.id) AS 'games_won',
-				0 AS 'matches_played',
-				0 AS 'matches_won'
-			FROM game g
-				JOIN `+"`match`"+` m ON m.game_id = g.id
-				JOIN player2match p2m ON p2m.player_id = g.winner_id AND p2m.game_id = g.id
-			WHERE m.is_finished = 1
-				AND g.game_type_id = 1
-				AND g.updated_at >= ? AND g.updated_at < ?
-			GROUP BY g.winner_id
-		) games
-		GROUP BY player_id`, from, to, from, to)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	played := make(map[int]*models.Player)
-	for rows.Next() {
-		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.GamesPlayed, &p.GamesWon, &p.MatchesPlayed, &p.MatchesWon)
-		if err != nil {
-			return nil, err
-		}
-		played[p.ID] = p
-	}
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-	return played, nil
-}
-
 // GetPlayerCheckouts will return a list containing all checkouts done by the given player
 func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 	rows, err := models.DB.Query(`

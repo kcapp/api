@@ -6,11 +6,14 @@ import (
 )
 
 // GetX01Statistics will return statistics for all players active duing the given period
-func GetX01Statistics(from string, to string) ([]*models.StatisticsX01, error) {
-	rows, err := models.DB.Query(`
+func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.StatisticsX01, error) {
+	q, args, err := sqlx.In(`
 		SELECT
 			p.id AS 'player_id',
 			COUNT(DISTINCT g.id) AS 'games_played',
+			COUNT(DISTINCT g2.id) AS 'games_won',
+			COUNT(DISTINCT m.id) AS 'matches_played',
+			COUNT(DISTINCT m2.id) AS 'matches_won',
 			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
 			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
 			SUM(60s_plus) AS '60s_plus',
@@ -25,46 +28,34 @@ func GetX01Statistics(from string, to string) ([]*models.StatisticsX01, error) {
 			JOIN player p ON p.id = s.player_id
 			JOIN `+"`match`"+` m ON m.id = s.match_id
 			JOIN game g ON g.id = m.game_id
+			LEFT JOIN `+"`match`"+` m2 ON m2.id = s.match_id AND m2.winner_id = p.id
+			LEFT JOIN game g2 ON g2.id = m.game_id AND g2.winner_id = p.id
 		WHERE g.updated_at >= ? AND g.updated_at < ?
+			AND m.starting_score IN (?)
 			AND m.is_finished = 1
 			AND g.game_type_id = 1
-		GROUP BY p.id`, from, to)
+		GROUP BY p.id
+		ORDER BY(COUNT(DISTINCT g2.id) / COUNT(DISTINCT g.id)) DESC, games_played DESC,
+			(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100) DESC`, from, to, startingScores)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := models.DB.Query(q, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	statsMap := make(map[int]*models.StatisticsX01, 0)
+	stats := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.GamesPlayed, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
+		err := rows.Scan(&s.PlayerID, &s.GamesPlayed, &s.GamesWon, &s.MatchesPlayed, &s.MatchesWon, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
 			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
 		}
-		statsMap[s.PlayerID] = s
-	}
-
-	played, err := GetGamesPlayedBetween(from, to)
-	if err != nil {
-		return nil, err
-	}
-
-	for playerID, player := range played {
-		stats := statsMap[playerID]
-		if stats != nil {
-			stats.GamesPlayed = player.GamesPlayed
-			stats.GamesWon = player.GamesWon
-			stats.MatchesPlayed = player.MatchesPlayed
-			stats.MatchesWon = player.MatchesWon
-		}
-	}
-
-	stats := make([]*models.StatisticsX01, 0)
-	for _, s := range statsMap {
 		stats = append(stats, s)
 	}
-
 	return stats, nil
 }
 
@@ -74,18 +65,17 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 		SELECT
 			m.id AS 'match_id',
 			p.id AS 'player_id',
-			COUNT(DISTINCT g.id) AS 'games_played',
-			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
-			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
-			SUM(60s_plus) AS '60s_plus',
-			SUM(100s_plus) AS '100s_plus',
-			SUM(140s_plus) AS '140s_plus',
-			SUM(180s) AS '180s',
-			SUM(accuracy_20) / COUNT(accuracy_20) AS 'accuracy_20s',
-			SUM(accuracy_19) / COUNT(accuracy_19) AS 'accuracy_19s',
-			SUM(overall_accuracy) / COUNT(overall_accuracy) AS 'accuracy_overall',
-			SUM(s.checkout_attempts) AS 'checkout_attempts',
-			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
+			s.ppd,
+			s.first_nine_ppd,
+			s.60s_plus,
+			s.100s_plus,
+			s.140s_plus,
+			s.180s,
+			s.accuracy_20,
+			s.accuracy_19,
+			s.overall_accuracy,
+			s.checkout_attempts,
+			s.checkout_percentage
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN `+"`match`"+` m ON m.id = s.match_id
@@ -93,7 +83,6 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 			JOIN player2match p2m ON p2m.match_id = m.id AND p2m.player_id = s.player_id
 		WHERE m.id = ?
 			AND (g.game_type_id = 1 OR g.game_type_id = 3)
-		GROUP BY p.id
 		ORDER BY p2m.order`, id)
 	if err != nil {
 		return nil, err
@@ -103,7 +92,7 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 	stats := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.MatchID, &s.PlayerID, &s.GamesPlayed, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
+		err := rows.Scan(&s.MatchID, &s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
 			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutAttempts, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
@@ -183,7 +172,10 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 	q, args, err := sqlx.In(`
 		SELECT
 			p.id AS 'player_id',
+			COUNT(DISTINCT g.id) AS 'games_played',
+			COUNT(DISTINCT g2.id) AS 'games_won',
 			COUNT(DISTINCT m.id) AS 'matches_played',
+			COUNT(DISTINCT m2.id) AS 'matches_won',
 			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
 			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
 			SUM(60s_plus) AS '60s_plus',
@@ -198,6 +190,8 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 			JOIN player p ON p.id = s.player_id
 			JOIN `+"`match`"+` m ON m.id = s.match_id
 			JOIN game g ON g.id = m.game_id
+			LEFT JOIN `+"`match`"+` m2 ON m2.id = s.match_id AND m2.winner_id = p.id
+			LEFT JOIN game g2 ON g2.id = m.game_id AND g2.winner_id = p.id
 		WHERE s.player_id IN (?)
 			AND m.starting_score IN (?)
 			AND m.is_finished = 1
@@ -216,8 +210,8 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 	statisticsMap := make(map[int]*models.StatisticsX01)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus,
-			&s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
+		err := rows.Scan(&s.PlayerID, &s.GamesPlayed, &s.GamesWon, &s.MatchesPlayed, &s.MatchesWon, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus,
+			&s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
 		}
