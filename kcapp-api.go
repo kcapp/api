@@ -68,6 +68,8 @@ func main() {
 
 	router.HandleFunc("/owetype", controllers.GetOweTypes).Methods("GET")
 
+	router.HandleFunc("/venue", controllers.GetVenues).Methods("GET")
+
 	log.Printf("Listening on port %d", config.APIConfig.Port)
 	log.Println(http.ListenAndServe(fmt.Sprintf(":%d", config.APIConfig.Port), router))
 }

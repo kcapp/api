@@ -52,16 +52,17 @@ func NewGame(game models.Game) (*models.Game, error) {
 func GetGames() ([]*models.Game, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
-			gt.id, gt.name, gt.description,
-			gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required,
-			ot.id, ot.item,
-			GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
+			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id, g.venue_id,
+			gt.id, gt.name, gt.description, gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required,
+			ot.id, ot.item, v.id, v.name, v.description,
+			m.updated_at as 'last_throw', GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
 		FROM game g
-		JOIN game_type gt ON gt.id = g.game_type_id
-		JOIN game_mode gm ON gm.id = g.game_mode_id
-		LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
-		LEFT JOIN player2match p2m ON p2m.game_id = g.id
+			JOIN game_type gt ON gt.id = g.game_type_id
+			JOIN game_mode gm ON gm.id = g.game_mode_id
+			LEFT JOIN ` + "`match`" + ` m ON m.id = g.current_match_id
+			LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
+			LEFT JOIN venue v on v.id = g.venue_id
+			LEFT JOIN player2match p2m ON p2m.game_id = g.id
 		GROUP BY g.id
 		ORDER BY g.id DESC`)
 	if err != nil {
@@ -75,16 +76,20 @@ func GetGames() ([]*models.Game, error) {
 		g.GameType = new(models.GameType)
 		g.GameMode = new(models.GameMode)
 		ot := new(models.OweType)
+		venue := new(models.Venue)
 		var players string
-		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID,
+		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID, &g.VenueID,
 			&g.GameType.ID, &g.GameType.Name, &g.GameType.Description,
 			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.MatchesRequired,
-			&ot.ID, &ot.Item, &players)
+			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &g.LastThrow, &players)
 		if err != nil {
 			return nil, err
 		}
 		if g.OweTypeID.Valid {
 			g.OweType = ot
+		}
+		if g.VenueID.Valid {
+			g.Venue = venue
 		}
 
 		g.Players = util.StringToIntArray(players)
@@ -101,15 +106,16 @@ func GetGames() ([]*models.Game, error) {
 func GetGamesLimit(start int, limit int) ([]*models.Game, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
-			gt.id, gt.name, gt.description,
-			gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required,
-			ot.id, ot.item,
-			GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
+			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id, g.venue_id,
+			gt.id, gt.name, gt.description, gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required,
+			ot.id, ot.item, v.id, v.name, v.description,
+			m.updated_at as 'last_throw', GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
 		FROM game g
 			JOIN game_type gt ON gt.id = g.game_type_id
 			JOIN game_mode gm ON gm.id = g.game_mode_id
+			LEFT JOIN `+"`match`"+` m ON m.id = g.current_match_id
 			LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
+			LEFT JOIN venue v on v.id = g.venue_id
 			LEFT JOIN player2match p2m ON p2m.game_id = g.id
 		GROUP BY g.id
 		ORDER BY g.id DESC
@@ -125,16 +131,20 @@ func GetGamesLimit(start int, limit int) ([]*models.Game, error) {
 		g.GameType = new(models.GameType)
 		g.GameMode = new(models.GameMode)
 		ot := new(models.OweType)
+		venue := new(models.Venue)
 		var players string
-		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID,
+		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID, &g.VenueID,
 			&g.GameType.ID, &g.GameType.Name, &g.GameType.Description,
 			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.MatchesRequired,
-			&ot.ID, &ot.Item, &players)
+			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &g.LastThrow, &players)
 		if err != nil {
 			return nil, err
 		}
 		if g.OweTypeID.Valid {
 			g.OweType = ot
+		}
+		if g.VenueID.Valid {
+			g.Venue = venue
 		}
 
 		g.Players = util.StringToIntArray(players)
@@ -153,27 +163,33 @@ func GetGame(id int) (*models.Game, error) {
 	g.GameType = new(models.GameType)
 	g.GameMode = new(models.GameMode)
 	ot := new(models.OweType)
+	venue := new(models.Venue)
 	var players string
 	err := models.DB.QueryRow(`
         SELECT
-			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
-			gt.id, gt.name, gt.description,
-			gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required,
-			ot.id, ot.item,
-			GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
+			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id, g.venue_id,
+			gt.id, gt.name, gt.description, gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required,
+			ot.id, ot.item, v.id, v.name, v.description,
+			m.updated_at as 'last_throw', GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
 		FROM game g
-		JOIN game_type gt ON gt.id = g.game_type_id
-		JOIN game_mode gm ON gm.id = g.game_mode_id
-		LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
-		LEFT JOIN player2match p2m ON p2m.game_id = g.id
-		WHERE g.id = ?`, id).Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID,
-		&g.GameType.ID, &g.GameType.Name, &g.GameType.Description, &g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName,
-		&g.GameMode.WinsRequired, &g.GameMode.MatchesRequired, &ot.ID, &ot.Item, &players)
+			JOIN game_type gt ON gt.id = g.game_type_id
+			JOIN game_mode gm ON gm.id = g.game_mode_id
+			LEFT JOIN `+"`match`"+` m ON m.id = g.current_match_id
+			LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
+			LEFT JOIN venue v on v.id = g.venue_id
+			LEFT JOIN player2match p2m ON p2m.game_id = g.id
+		WHERE g.id = ?`, id).Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID, &g.VenueID,
+		&g.GameType.ID, &g.GameType.Name, &g.GameType.Description,
+		&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.MatchesRequired,
+		&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &g.LastThrow, &players)
 	if err != nil {
 		return nil, err
 	}
 	if g.OweTypeID.Valid {
 		g.OweType = ot
+	}
+	if g.VenueID.Valid {
+		g.Venue = venue
 	}
 	g.Players = util.StringToIntArray(players)
 	g.Matches, err = GetMatchesForGame(id)

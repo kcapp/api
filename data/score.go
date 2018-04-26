@@ -67,7 +67,7 @@ func AddVisit(visit models.Visit) error {
 		tx.Rollback()
 		return err
 	}
-	_, err = tx.Exec(`UPDATE `+"`match`"+` SET current_player_id = ? WHERE id = ?`, nextPlayerID, visit.MatchID)
+	_, err = tx.Exec(`UPDATE `+"`match`"+` SET current_player_id = ?, updated_at = NOW() WHERE id = ?`, nextPlayerID, visit.MatchID)
 	if err != nil {
 		tx.Rollback()
 		return err
