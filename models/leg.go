@@ -17,7 +17,7 @@ type Leg struct {
 	MatchID         int             `json:"match_id"`
 	Players         []int           `json:"players,omitempty"`
 	DartsThrown     int             `json:"darts_thrown,omitempty"`
-	Visits          []*Visit        `json:"visits,omitempty"`
+	Visits          []*Visit        `json:"visits"`
 	Hits            map[int64]*Hits `json:"hits,omitempty"`
 }
 
