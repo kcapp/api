@@ -4,22 +4,22 @@ import (
 	"github.com/guregu/null"
 )
 
-// BestStatistic struct used for storing a value and match where the statistic was achieved
+// BestStatistic struct used for storing a value and leg where the statistic was achieved
 type BestStatistic struct {
-	Value   int `json:"value"`
-	MatchID int `json:"match_id"`
+	Value int `json:"value"`
+	LegID int `json:"leg_id"`
 }
 
-// BestStatisticFloat struct used for storing a value and match where the statistic was achieved
+// BestStatisticFloat struct used for storing a value and leg where the statistic was achieved
 type BestStatisticFloat struct {
-	Value   float32 `json:"value"`
-	MatchID int     `json:"match_id"`
+	Value float32 `json:"value"`
+	LegID int     `json:"leg_id"`
 }
 
 // StatisticsX01 struct used for storing statistics
 type StatisticsX01 struct {
 	ID                 int                 `json:"id,omitempty"`
-	MatchID            int                 `json:"match_id,omitempty"`
+	LegID              int                 `json:"leg_id,omitempty"`
 	PlayerID           int                 `json:"player_id,omitempty"`
 	WinnerID           int                 `json:"winner_id,omitempty"`
 	PPD                float32             `json:"ppd"`
@@ -40,8 +40,8 @@ type StatisticsX01 struct {
 	Hits               map[int64]*Hits     `json:"hits,omitempty"`
 	GamesPlayed        int                 `json:"games_played,omitempty"`
 	GamesWon           int                 `json:"games_won,omitempty"`
-	MatchesPlayed      int                 `json:"matches_played,omitempty"`
-	MatchesWon         int                 `json:"matches_won,omitempty"`
+	LegsPlayed         int                 `json:"legs_played,omitempty"`
+	LegsWon            int                 `json:"legs_won,omitempty"`
 	BestPPD            *BestStatisticFloat `json:"best_ppd,omitempty"`
 	BestFirstNinePPD   *BestStatisticFloat `json:"best_first_nine_ppd,omitempty"`
 	Best301            *BestStatistic      `json:"best_301,omitempty"`
@@ -59,7 +59,7 @@ type CheckoutStatistics struct {
 	Visits    []*Visit `json:"visits,omitempty"`
 }
 
-// Hits sturct used to store summary of hits for players/matches
+// Hits sturct used to store summary of hits for players/legs
 type Hits struct {
 	Singles int `json:"1,omitempty"`
 	Doubles int `json:"2,omitempty"`

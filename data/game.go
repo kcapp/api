@@ -24,20 +24,20 @@ func NewGame(game models.Game) (*models.Game, error) {
 		tx.Rollback()
 		return nil, err
 	}
-	res, err = tx.Exec("INSERT INTO `match` (starting_score, current_player_id, game_id, created_at) VALUES (?, ?, ?, NOW()) ", game.Matches[0].StartingScore, game.Players[0], gameID)
+	res, err = tx.Exec("INSERT INTO `leg` (starting_score, current_player_id, game_id, created_at) VALUES (?, ?, ?, NOW()) ", game.Legs[0].StartingScore, game.Players[0], gameID)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
-	matchID, err := res.LastInsertId()
+	legID, err := res.LastInsertId()
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
-	tx.Exec("UPDATE game SET current_match_id = ? WHERE id = ?", matchID, gameID)
+	tx.Exec("UPDATE game SET current_leg_id = ? WHERE id = ?", legID, gameID)
 	for idx, playerID := range game.Players {
 		order := idx + 1
-		res, err = tx.Exec("INSERT INTO player2match (player_id, match_id, `order`, game_id, handicap) VALUES (?, ?, ?, ?, ?)", playerID, matchID, order, gameID, game.PlayerHandicaps[playerID])
+		res, err = tx.Exec("INSERT INTO player2leg (player_id, leg_id, `order`, game_id, handicap) VALUES (?, ?, ?, ?, ?)", playerID, legID, order, gameID, game.PlayerHandicaps[playerID])
 		if err != nil {
 			tx.Rollback()
 			return nil, err
@@ -52,17 +52,17 @@ func NewGame(game models.Game) (*models.Game, error) {
 func GetGames() ([]*models.Game, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id, g.venue_id,
-			gt.id, gt.name, gt.description, gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required,
+			g.id, g.is_finished, g.current_leg_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id, g.venue_id,
+			gt.id, gt.name, gt.description, gm.id, gm.name, gm.short_name, gm.wins_required, gm.legs_required,
 			ot.id, ot.item, v.id, v.name, v.description,
 			m.updated_at as 'last_throw', GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
 		FROM game g
 			JOIN game_type gt ON gt.id = g.game_type_id
 			JOIN game_mode gm ON gm.id = g.game_mode_id
-			LEFT JOIN ` + "`match`" + ` m ON m.id = g.current_match_id
+			LEFT JOIN ` + "`leg`" + ` m ON m.id = g.current_leg_id
 			LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
 			LEFT JOIN venue v on v.id = g.venue_id
-			LEFT JOIN player2match p2m ON p2m.game_id = g.id
+			LEFT JOIN player2leg p2m ON p2m.game_id = g.id
 		GROUP BY g.id
 		ORDER BY g.id DESC`)
 	if err != nil {
@@ -78,9 +78,9 @@ func GetGames() ([]*models.Game, error) {
 		ot := new(models.OweType)
 		venue := new(models.Venue)
 		var players string
-		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID, &g.VenueID,
+		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentLegID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID, &g.VenueID,
 			&g.GameType.ID, &g.GameType.Name, &g.GameType.Description,
-			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.MatchesRequired,
+			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.LegsRequired,
 			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &g.LastThrow, &players)
 		if err != nil {
 			return nil, err
@@ -106,17 +106,17 @@ func GetGames() ([]*models.Game, error) {
 func GetGamesLimit(start int, limit int) ([]*models.Game, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id, g.venue_id,
-			gt.id, gt.name, gt.description, gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required,
+			g.id, g.is_finished, g.current_leg_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id, g.venue_id,
+			gt.id, gt.name, gt.description, gm.id, gm.name, gm.short_name, gm.wins_required, gm.legs_required,
 			ot.id, ot.item, v.id, v.name, v.description,
 			m.updated_at as 'last_throw', GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
 		FROM game g
 			JOIN game_type gt ON gt.id = g.game_type_id
 			JOIN game_mode gm ON gm.id = g.game_mode_id
-			LEFT JOIN `+"`match`"+` m ON m.id = g.current_match_id
+			LEFT JOIN leg m ON m.id = g.current_leg_id
 			LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
 			LEFT JOIN venue v on v.id = g.venue_id
-			LEFT JOIN player2match p2m ON p2m.game_id = g.id
+			LEFT JOIN player2leg p2m ON p2m.game_id = g.id
 		GROUP BY g.id
 		ORDER BY g.id DESC
 		LIMIT ?, ?`, start, limit)
@@ -133,9 +133,9 @@ func GetGamesLimit(start int, limit int) ([]*models.Game, error) {
 		ot := new(models.OweType)
 		venue := new(models.Venue)
 		var players string
-		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID, &g.VenueID,
+		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentLegID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID, &g.VenueID,
 			&g.GameType.ID, &g.GameType.Name, &g.GameType.Description,
-			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.MatchesRequired,
+			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.LegsRequired,
 			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &g.LastThrow, &players)
 		if err != nil {
 			return nil, err
@@ -167,20 +167,20 @@ func GetGame(id int) (*models.Game, error) {
 	var players string
 	err := models.DB.QueryRow(`
         SELECT
-			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id, g.venue_id,
-			gt.id, gt.name, gt.description, gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required,
+			g.id, g.is_finished, g.current_leg_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id, g.venue_id,
+			gt.id, gt.name, gt.description, gm.id, gm.name, gm.short_name, gm.wins_required, gm.legs_required,
 			ot.id, ot.item, v.id, v.name, v.description,
 			m.updated_at as 'last_throw', GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order) AS 'players'
 		FROM game g
 			JOIN game_type gt ON gt.id = g.game_type_id
 			JOIN game_mode gm ON gm.id = g.game_mode_id
-			LEFT JOIN `+"`match`"+` m ON m.id = g.current_match_id
+			LEFT JOIN leg m ON m.id = g.current_leg_id
 			LEFT JOIN owe_type ot ON ot.id = g.owe_type_id
 			LEFT JOIN venue v on v.id = g.venue_id
-			LEFT JOIN player2match p2m ON p2m.game_id = g.id
-		WHERE g.id = ?`, id).Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID, &g.VenueID,
+			LEFT JOIN player2leg p2m ON p2m.game_id = g.id
+		WHERE g.id = ?`, id).Scan(&g.ID, &g.IsFinished, &g.CurrentLegID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID, &g.VenueID,
 		&g.GameType.ID, &g.GameType.Name, &g.GameType.Description,
-		&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.MatchesRequired,
+		&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.LegsRequired,
 		&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &g.LastThrow, &players)
 	if err != nil {
 		return nil, err
@@ -192,18 +192,18 @@ func GetGame(id int) (*models.Game, error) {
 		g.Venue = venue
 	}
 	g.Players = util.StringToIntArray(players)
-	g.Matches, err = GetMatchesForGame(id)
+	g.Legs, err = GetLegsForGame(id)
 	if err != nil {
 		return nil, err
 	}
 	if g.IsFinished {
-		g.EndTime = g.Matches[len(g.Matches)-1].Endtime.String
+		g.EndTime = g.Legs[len(g.Legs)-1].Endtime.String
 	}
 	return g, nil
 }
 
-// ContinueGame will either return the current match or create a new match
-func ContinueGame(id int) (*models.Match, error) {
+// ContinueGame will either return the current leg or create a new leg
+func ContinueGame(id int) (*models.Leg, error) {
 	game, err := GetGame(id)
 	if err != nil {
 		return nil, err
@@ -212,15 +212,15 @@ func ContinueGame(id int) (*models.Match, error) {
 		return nil, errors.New("Cannot continue finished game")
 	}
 
-	matches, err := GetMatchesForGame(id)
+	legs, err := GetLegsForGame(id)
 	if err != nil {
 		return nil, err
 	}
-	match := matches[len(matches)-1]
-	if match.IsFinished {
-		return NewMatch(id, match.StartingScore, match.Players)
+	leg := legs[len(legs)-1]
+	if leg.IsFinished {
+		return NewLeg(id, leg.StartingScore, leg.Players)
 	}
-	return match, nil
+	return leg, nil
 }
 
 // DeleteGame will delete the game with the given ID from the database
@@ -231,7 +231,7 @@ func DeleteGame(id int) (*models.Game, error) {
 
 // GetGameModes will return all game modes
 func GetGameModes() ([]*models.GameMode, error) {
-	rows, err := models.DB.Query("SELECT id, wins_required, matches_required, `name`, short_name FROM game_mode ORDER BY wins_required")
+	rows, err := models.DB.Query("SELECT id, wins_required, legs_required, `name`, short_name FROM game_mode ORDER BY wins_required")
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func GetGameModes() ([]*models.GameMode, error) {
 	modes := make([]*models.GameMode, 0)
 	for rows.Next() {
 		gm := new(models.GameMode)
-		err := rows.Scan(&gm.ID, &gm.WinsRequired, &gm.MatchesRequired, &gm.Name, &gm.ShortName)
+		err := rows.Scan(&gm.ID, &gm.WinsRequired, &gm.LegsRequired, &gm.Name, &gm.ShortName)
 		if err != nil {
 			return nil, err
 		}
@@ -274,7 +274,7 @@ func GetGameTypes() ([]*models.GameType, error) {
 // GetWinsPerPlayer gets the number of wins per player for the given game
 func GetWinsPerPlayer(id int) (map[int]int, error) {
 	rows, err := models.DB.Query(`
-		SELECT IFNULL(m.winner_id, 0), COUNT(m.winner_id) AS 'wins' FROM `+"`match`"+` m
+		SELECT IFNULL(m.winner_id, 0), COUNT(m.winner_id) AS 'wins' FROM leg m
 		LEFT JOIN game g ON g.id = m.game_id
 		WHERE m.game_id = ? GROUP BY m.winner_id`, id)
 	if err != nil {
@@ -302,14 +302,14 @@ func GetWinsPerPlayer(id int) (map[int]int, error) {
 func GetHeadToHeadGames(player1 int, player2 int) ([]*models.Game, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
+			g.id, g.is_finished, g.current_leg_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
 			gt.id, gt.name, gt.description,
-			gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required
+			gm.id, gm.name, gm.short_name, gm.wins_required, gm.legs_required
 		FROM game g
 			JOIN game_type gt ON gt.id = g.game_type_id
 			JOIN game_mode gm ON gm.id = g.game_mode_id
-			JOIN player2match p2m ON p2m.game_id = g.id
-		WHERE g.id IN (SELECT game_id FROM player2match GROUP BY game_id HAVING COUNT(DISTINCT player_id) = 2)
+			JOIN player2leg p2m ON p2m.game_id = g.id
+		WHERE g.id IN (SELECT game_id FROM player2leg GROUP BY game_id HAVING COUNT(DISTINCT player_id) = 2)
 			AND g.is_finished = 1
 			AND g.game_type_id = 1
 			AND p2m.player_id IN (?, ?)
@@ -326,9 +326,9 @@ func GetHeadToHeadGames(player1 int, player2 int) ([]*models.Game, error) {
 		g := new(models.Game)
 		g.GameType = new(models.GameType)
 		g.GameMode = new(models.GameMode)
-		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID,
+		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentLegID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID,
 			&g.GameType.ID, &g.GameType.Name, &g.GameType.Description,
-			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.MatchesRequired)
+			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.LegsRequired)
 		if err != nil {
 			return nil, err
 		}
@@ -344,14 +344,14 @@ func GetHeadToHeadGames(player1 int, player2 int) ([]*models.Game, error) {
 func GetPlayerLastGames(playerID int, limit int) ([]*models.Game, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			g.id, g.is_finished, g.current_match_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
+			g.id, g.is_finished, g.current_leg_id, g.winner_id, g.created_at, g.updated_at, g.owe_type_id,
 			gt.id, gt.name, gt.description,
-			gm.id, gm.name, gm.short_name, gm.wins_required, gm.matches_required
+			gm.id, gm.name, gm.short_name, gm.wins_required, gm.legs_required
 		FROM game g
 			JOIN game_type gt ON gt.id = g.game_type_id
 			JOIN game_mode gm ON gm.id = g.game_mode_id
-			JOIN player2match p2m ON p2m.game_id = g.id
-		WHERE g.id IN (SELECT  game_id  FROM player2match  GROUP BY game_id  HAVING COUNT(DISTINCT player_id) = 2)
+			JOIN player2leg p2m ON p2m.game_id = g.id
+		WHERE g.id IN (SELECT  game_id  FROM player2leg  GROUP BY game_id  HAVING COUNT(DISTINCT player_id) = 2)
 			AND g.is_finished = 1
 			AND p2m.player_id IN (?)
 		GROUP BY g.id
@@ -366,9 +366,9 @@ func GetPlayerLastGames(playerID int, limit int) ([]*models.Game, error) {
 		g := new(models.Game)
 		g.GameType = new(models.GameType)
 		g.GameMode = new(models.GameMode)
-		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentMatchID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID,
+		err := rows.Scan(&g.ID, &g.IsFinished, &g.CurrentLegID, &g.WinnerID, &g.CreatedAt, &g.UpdatedAt, &g.OweTypeID,
 			&g.GameType.ID, &g.GameType.Name, &g.GameType.Description,
-			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.MatchesRequired)
+			&g.GameMode.ID, &g.GameMode.Name, &g.GameMode.ShortName, &g.GameMode.WinsRequired, &g.GameMode.LegsRequired)
 		if err != nil {
 			return nil, err
 		}

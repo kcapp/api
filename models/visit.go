@@ -8,10 +8,10 @@ import (
 	"github.com/guregu/null"
 )
 
-// Visit struct used for storing matches
+// Visit struct used for storing legs
 type Visit struct {
 	ID          int    `json:"id"`
-	MatchID     int    `json:"match_id"`
+	LegID       int    `json:"leg_id"`
 	PlayerID    int    `json:"player_id"`
 	FirstDart   *Dart  `json:"first_dart"`
 	SecondDart  *Dart  `json:"second_dart"`

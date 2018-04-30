@@ -17,7 +17,7 @@ const (
 type Game struct {
 	ID              int         `json:"id"`
 	IsFinished      bool        `json:"is_finished"`
-	CurrentMatchID  null.Int    `json:"current_match_id"`
+	CurrentLegID    null.Int    `json:"current_leg_id"`
 	WinnerID        null.Int    `json:"winner_id"`
 	CreatedAt       string      `json:"created_at"`
 	UpdatedAt       string      `json:"updated_at"`
@@ -29,7 +29,7 @@ type Game struct {
 	Venue           *Venue      `json:"venue"`
 	OweType         *OweType    `json:"owe_type,omitempty"`
 	Players         []int       `json:"players"`
-	Matches         []*Match    `json:"matches,omitempty"`
+	Legs            []*Leg      `json:"legs,omitempty"`
 	PlayerHandicaps map[int]int `json:"player_handicaps,omitempty"`
 	LastThrow       null.String `json:"last_throw_time,omitempty"`
 }
@@ -43,11 +43,11 @@ type GameType struct {
 
 // GameMode struct used for storing game modes
 type GameMode struct {
-	ID              int      `json:"id"`
-	Name            string   `json:"name"`
-	ShortName       string   `json:"short_name"`
-	WinsRequired    int      `json:"wins_required"`
-	MatchesRequired null.Int `json:"matches_required"`
+	ID           int      `json:"id"`
+	Name         string   `json:"name"`
+	ShortName    string   `json:"short_name"`
+	WinsRequired int      `json:"wins_required"`
+	LegsRequired null.Int `json:"legs_required"`
 }
 
 // Venue struct used for storing venues

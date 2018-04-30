@@ -4,8 +4,8 @@ import (
 	"github.com/guregu/null"
 )
 
-// Match struct used for storing matches
-type Match struct {
+// Leg struct used for storing legs
+type Leg struct {
 	ID              int             `json:"id"`
 	Endtime         null.String     `json:"end_time"`
 	StartingScore   int             `json:"starting_score"`
@@ -21,9 +21,9 @@ type Match struct {
 	Hits            map[int64]*Hits `json:"hits,omitempty"`
 }
 
-// Player2Match struct used for stroring players in a match
-type Player2Match struct {
-	MatchID         int              `json:"match_id"`
+// Player2Leg struct used for stroring players in a leg
+type Player2Leg struct {
+	LegID           int              `json:"leg_id"`
 	PlayerID        int              `json:"player_id"`
 	Order           int              `json:"order"`
 	CurrentScore    int              `json:"current_score"`

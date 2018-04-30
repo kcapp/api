@@ -32,7 +32,7 @@ func NewGame(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(game)
 }
 
-// ContinueGame will either return the current match id or create a new match
+// ContinueGame will either return the current leg id or create a new leg
 func ContinueGame(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
@@ -107,7 +107,7 @@ func GetGame(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(game)
 }
 
-// GetX01StatisticsForGame will return X01 statistics for all players in the given match
+// GetX01StatisticsForGame will return X01 statistics for all players in the given leg
 func GetX01StatisticsForGame(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)

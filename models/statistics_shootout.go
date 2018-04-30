@@ -1,9 +1,9 @@
 package models
 
-// StatisticsShootout struct used for storing statistics for shootout matches
+// StatisticsShootout struct used for storing statistics for shootout legs
 type StatisticsShootout struct {
 	ID            int             `json:"id,omitempty"`
-	MatchID       int             `json:"match_id,omitempty"`
+	LegID         int             `json:"leg_id,omitempty"`
 	PlayerID      int             `json:"player_id,omitempty"`
 	PPD           float32         `json:"ppd"`
 	Score60sPlus  int             `json:"scores_60s_plus"`

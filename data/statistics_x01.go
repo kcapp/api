@@ -12,8 +12,8 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 			p.id AS 'player_id',
 			COUNT(DISTINCT g.id) AS 'games_played',
 			COUNT(DISTINCT g2.id) AS 'games_won',
-			COUNT(DISTINCT m.id) AS 'matches_played',
-			COUNT(DISTINCT m2.id) AS 'matches_won',
+			COUNT(DISTINCT m.id) AS 'legs_played',
+			COUNT(DISTINCT m2.id) AS 'legs_won',
 			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
 			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
 			SUM(60s_plus) AS '60s_plus',
@@ -26,9 +26,9 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
-			JOIN `+"`match`"+` m ON m.id = s.match_id
+			JOIN leg m ON m.id = s.leg_id
 			JOIN game g ON g.id = m.game_id
-			LEFT JOIN `+"`match`"+` m2 ON m2.id = s.match_id AND m2.winner_id = p.id
+			LEFT JOIN leg m2 ON m2.id = s.leg_id AND m2.winner_id = p.id
 			LEFT JOIN game g2 ON g2.id = m.game_id AND g2.winner_id = p.id
 		WHERE g.updated_at >= ? AND g.updated_at < ?
 			AND m.starting_score IN (?)
@@ -49,7 +49,7 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 	stats := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.GamesPlayed, &s.GamesWon, &s.MatchesPlayed, &s.MatchesWon, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
+		err := rows.Scan(&s.PlayerID, &s.GamesPlayed, &s.GamesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
 			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
@@ -59,11 +59,11 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 	return stats, nil
 }
 
-// GetX01StatisticsForMatch will return statistics for all players in the given match
-func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
+// GetX01StatisticsForLeg will return statistics for all players in the given leg
+func GetX01StatisticsForLeg(id int) ([]*models.StatisticsX01, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id AS 'match_id',
+			m.id AS 'leg_id',
 			p.id AS 'player_id',
 			s.ppd,
 			s.first_nine_ppd,
@@ -78,9 +78,9 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 			s.checkout_percentage
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
-			JOIN `+"`match`"+` m ON m.id = s.match_id
+			JOIN leg m ON m.id = s.leg_id
 			JOIN game g ON g.id = m.game_id
-			JOIN player2match p2m ON p2m.match_id = m.id AND p2m.player_id = s.player_id
+			JOIN player2leg p2m ON p2m.leg_id = m.id AND p2m.player_id = s.player_id
 		WHERE m.id = ?
 			AND (g.game_type_id = 1 OR g.game_type_id = 3)
 		ORDER BY p2m.order`, id)
@@ -92,7 +92,7 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 	stats := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.MatchID, &s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
 			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutAttempts, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
@@ -119,9 +119,9 @@ func GetX01StatisticsForGame(id int) ([]*models.StatisticsX01, error) {
 			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
-			JOIN `+"`match`"+` m ON m.id = s.match_id
+			JOIN leg m ON m.id = s.leg_id
 			JOIN game g ON g.id = m.game_id
-			JOIN player2match p2m ON p2m.match_id = m.id AND p2m.player_id = s.player_id
+			JOIN player2leg p2m ON p2m.leg_id = m.id AND p2m.player_id = s.player_id
 		WHERE g.id = ?
 			AND (g.game_type_id = 1 OR g.game_type_id = 3)
 		GROUP BY p.id
@@ -174,8 +174,8 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 			p.id AS 'player_id',
 			COUNT(DISTINCT g.id) AS 'games_played',
 			COUNT(DISTINCT g2.id) AS 'games_won',
-			COUNT(DISTINCT m.id) AS 'matches_played',
-			COUNT(DISTINCT m2.id) AS 'matches_won',
+			COUNT(DISTINCT m.id) AS 'legs_played',
+			COUNT(DISTINCT m2.id) AS 'legs_won',
 			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
 			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
 			SUM(60s_plus) AS '60s_plus',
@@ -188,9 +188,9 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
-			JOIN `+"`match`"+` m ON m.id = s.match_id
+			JOIN leg m ON m.id = s.leg_id
 			JOIN game g ON g.id = m.game_id
-			LEFT JOIN `+"`match`"+` m2 ON m2.id = s.match_id AND m2.winner_id = p.id
+			LEFT JOIN leg m2 ON m2.id = s.leg_id AND m2.winner_id = p.id
 			LEFT JOIN game g2 ON g2.id = m.game_id AND g2.winner_id = p.id
 		WHERE s.player_id IN (?)
 			AND m.starting_score IN (?)
@@ -210,7 +210,7 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 	statisticsMap := make(map[int]*models.StatisticsX01)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.GamesPlayed, &s.GamesWon, &s.MatchesPlayed, &s.MatchesWon, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus,
+		err := rows.Scan(&s.PlayerID, &s.GamesPlayed, &s.GamesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus,
 			&s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
@@ -256,7 +256,7 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage',
 			DATE(g.updated_at) AS 'date'
 		FROM statistics_x01 s
-			JOIN `+"`match`"+` m ON m.id = s.match_id
+			JOIN leg m ON m.id = s.leg_id
 			JOIN game g ON g.id = m.game_id
 		WHERE s.player_id = ?
 			AND g.game_type_id = 1 AND g.is_finished = 1
@@ -299,7 +299,7 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 			m.starting_score
 		FROM statistics_x01 s
 		JOIN player p ON p.id = s.player_id
-		JOIN `+"`match`"+` m ON m.id = s.match_id
+		JOIN leg m ON m.id = s.leg_id
 		WHERE s.player_id IN (?)
 		AND m.starting_score IN (?)`, ids, startingScores)
 	if err != nil {
@@ -314,7 +314,7 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 	rawStatistics := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.WinnerID, &s.MatchID, &s.PPD, &s.FirstNinePPD, &s.CheckoutPercentage, &s.DartsThrown, &s.StartingScore)
+		err := rows.Scan(&s.PlayerID, &s.WinnerID, &s.LegID, &s.PPD, &s.FirstNinePPD, &s.CheckoutPercentage, &s.DartsThrown, &s.StartingScore)
 		if err != nil {
 			return err
 		}
@@ -334,7 +334,7 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 				}
 				if stat.DartsThrown < real.Best301.Value || real.Best301.Value == 0 {
 					real.Best301.Value = stat.DartsThrown
-					real.Best301.MatchID = stat.MatchID
+					real.Best301.LegID = stat.LegID
 				}
 			}
 			if stat.StartingScore.Int64 == 501 {
@@ -343,7 +343,7 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 				}
 				if stat.DartsThrown < real.Best501.Value || real.Best501.Value == 0 {
 					real.Best501.Value = stat.DartsThrown
-					real.Best501.MatchID = stat.MatchID
+					real.Best501.LegID = stat.LegID
 				}
 			}
 			if stat.StartingScore.Int64 == 701 {
@@ -352,7 +352,7 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 				}
 				if stat.DartsThrown < real.Best701.Value || real.Best701.Value == 0 {
 					real.Best701.Value = stat.DartsThrown
-					real.Best701.MatchID = stat.MatchID
+					real.Best701.LegID = stat.LegID
 				}
 			}
 		}
@@ -361,14 +361,14 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 		}
 		if stat.PPD > real.BestPPD.Value {
 			real.BestPPD.Value = stat.PPD
-			real.BestPPD.MatchID = stat.MatchID
+			real.BestPPD.LegID = stat.LegID
 		}
 		if real.BestFirstNinePPD == nil {
 			real.BestFirstNinePPD = new(models.BestStatisticFloat)
 		}
 		if stat.FirstNinePPD > real.BestFirstNinePPD.Value {
 			real.BestFirstNinePPD.Value = stat.FirstNinePPD
-			real.BestFirstNinePPD.MatchID = stat.MatchID
+			real.BestFirstNinePPD.LegID = stat.LegID
 		}
 	}
 	return nil
@@ -379,19 +379,19 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, 
 	q, args, err := sqlx.In(`
 		SELECT
 			player_id,
-			match_id,
+			leg_id,
 			MAX(checkout)
 		FROM (SELECT
 				s.player_id,
-				s.match_id,
+				s.leg_id,
 				IFNULL(s.first_dart * s.first_dart_multiplier, 0) +
 					IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
 					IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
 			FROM score s
-			JOIN `+"`match`"+` m ON m.id = s.match_id
+			JOIN leg m ON m.id = s.leg_id
 			WHERE m.winner_id = s.player_id
 				AND s.player_id IN (?)
-				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN `+"`match`"+` m ON m.id = s.match_id WHERE m.winner_id = s.player_id GROUP BY match_id)
+				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg m ON m.id = s.leg_id WHERE m.winner_id = s.player_id GROUP BY leg_id)
 				AND m.starting_score IN (?)
 			GROUP BY s.player_id, s.id
 			ORDER BY checkout DESC) checkouts
@@ -407,15 +407,15 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, 
 
 	for rows.Next() {
 		var playerID int
-		var matchID int
+		var legID int
 		var checkout int
-		err := rows.Scan(&playerID, &matchID, &checkout)
+		err := rows.Scan(&playerID, &legID, &checkout)
 		if err != nil {
 			return err
 		}
 		highest := new(models.BestStatistic)
 		highest.Value = checkout
-		highest.MatchID = matchID
+		highest.LegID = legID
 		statisticsMap[playerID].HighestCheckout = highest
 	}
 	err = rows.Err()

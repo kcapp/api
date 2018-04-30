@@ -9,8 +9,8 @@ import (
 	"github.com/kcapp/api/util"
 )
 
-// NewMatch will create a new match for the given game
-func NewMatch(gameID int, startingScore int, players []int) (*models.Match, error) {
+// NewLeg will create a new leg for the given game
+func NewLeg(gameID int, startingScore int, players []int) (*models.Leg, error) {
 	tx, err := models.DB.Begin()
 	if err != nil {
 		return nil, err
@@ -19,13 +19,13 @@ func NewMatch(gameID int, startingScore int, players []int) (*models.Match, erro
 	// Shift players to get correct order
 	id, players := players[0], players[1:]
 	players = append(players, id)
-	res, err := tx.Exec("INSERT INTO `match` (starting_score, current_player_id, game_id, created_at) VALUES (?, ?, ?, NOW()) ",
+	res, err := tx.Exec("INSERT INTO `leg` (starting_score, current_player_id, game_id, created_at) VALUES (?, ?, ?, NOW()) ",
 		startingScore, players[0], gameID)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
-	matchID, err := res.LastInsertId()
+	legID, err := res.LastInsertId()
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -35,7 +35,7 @@ func NewMatch(gameID int, startingScore int, players []int) (*models.Match, erro
 		return nil, err
 	}
 
-	_, err = tx.Exec("UPDATE game SET current_match_id = ? WHERE id = ?", matchID, gameID)
+	_, err = tx.Exec("UPDATE game SET current_leg_id = ? WHERE id = ?", legID, gameID)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -43,7 +43,7 @@ func NewMatch(gameID int, startingScore int, players []int) (*models.Match, erro
 
 	handicaps := make(map[int]null.Int)
 	if game.GameType.ID == models.X01HANDICAP {
-		scores, err := GetPlayersScore(int(game.CurrentMatchID.Int64))
+		scores, err := GetPlayersScore(int(game.CurrentLegID.Int64))
 		if err != nil {
 			return nil, err
 		}
@@ -54,30 +54,30 @@ func NewMatch(gameID int, startingScore int, players []int) (*models.Match, erro
 
 	for idx, playerID := range players {
 		order := idx + 1
-		res, err = tx.Exec("INSERT INTO player2match (player_id, match_id, `order`, game_id, handicap) VALUES (?, ?, ?, ?, ?)", playerID, matchID, order, gameID, handicaps[playerID])
+		res, err = tx.Exec("INSERT INTO player2leg (player_id, leg_id, `order`, game_id, handicap) VALUES (?, ?, ?, ?, ?)", playerID, legID, order, gameID, handicaps[playerID])
 		if err != nil {
 			tx.Rollback()
 			return nil, err
 		}
 	}
 	tx.Commit()
-	log.Printf("[%d] Started new match", matchID)
+	log.Printf("[%d] Started new leg", legID)
 
-	return GetMatch(int(matchID))
+	return GetLeg(int(legID))
 }
 
-// FinishMatch will finalize a match by updating the winner and writing statistics for each player
-func FinishMatch(visit models.Visit) error {
+// FinishLeg will finalize a leg by updating the winner and writing statistics for each player
+func FinishLeg(visit models.Visit) error {
 	tx, err := models.DB.Begin()
 	if err != nil {
 		return err
 	}
-	match, err := GetMatch(visit.MatchID)
+	leg, err := GetLeg(visit.LegID)
 	if err != nil {
 		return err
 	}
 	// Write statistics for each player
-	game, err := GetGame(match.GameID)
+	game, err := GetGame(leg.GameID)
 	if err != nil {
 		return err
 	}
@@ -87,12 +87,12 @@ func FinishMatch(visit models.Visit) error {
 		return err
 	}
 
-	// Update match with winner
+	// Update leg with winner
 	winnerID := visit.PlayerID
 	if game.GameType.ID == models.SHOOTOUT {
 		// For 9 Dart Shootout we need to check the scores of each player
-		// to determine which player won the match with the highest score
-		scores, err := GetPlayersScore(visit.MatchID)
+		// to determine which player won the leg with the highest score
+		scores, err := GetPlayersScore(visit.LegID)
 		if err != nil {
 			return err
 		}
@@ -104,42 +104,42 @@ func FinishMatch(visit models.Visit) error {
 			}
 		}
 	}
-	_, err = tx.Exec(`UPDATE `+"`match`"+` SET current_player_id = ?, winner_id = ?, is_finished = 1, end_time = NOW() WHERE id = ?`,
-		winnerID, winnerID, visit.MatchID)
+	_, err = tx.Exec(`UPDATE leg SET current_player_id = ?, winner_id = ?, is_finished = 1, end_time = NOW() WHERE id = ?`,
+		winnerID, winnerID, visit.LegID)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-	log.Printf("[%d] Finished with player %d winning", visit.MatchID, winnerID)
+	log.Printf("[%d] Finished with player %d winning", visit.LegID, winnerID)
 
 	if game.GameType.ID == models.SHOOTOUT {
-		statisticsMap, err := calculateShootoutStatistics(visit.MatchID)
+		statisticsMap, err := calculateShootoutStatistics(visit.LegID)
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
-				INSERT INTO statistics_shootout(match_id, player_id, ppd, 60s_plus, 100s_plus, 140s_plus, 180s)
-				VALUES (?, ?, ?, ?, ?, ?, ?)`, visit.MatchID, playerID, stats.PPD, stats.Score60sPlus,
+				INSERT INTO statistics_shootout(leg_id, player_id, ppd, 60s_plus, 100s_plus, 140s_plus, 180s)
+				VALUES (?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.PPD, stats.Score60sPlus,
 				stats.Score100sPlus, stats.Score140sPlus, stats.Score180s)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting shootout statistics for player %d", visit.MatchID, playerID)
+			log.Printf("[%d] Inserting shootout statistics for player %d", visit.LegID, playerID)
 		}
 	} else {
-		statisticsMap, err := calculateX01Statistics(visit.MatchID, visit.PlayerID, match.StartingScore)
+		statisticsMap, err := calculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_x01
-					(match_id, player_id, ppd, first_nine_ppd, checkout_percentage, checkout_attempts, darts_thrown, 60s_plus,
+					(leg_id, player_id, ppd, first_nine_ppd, checkout_percentage, checkout_attempts, darts_thrown, 60s_plus,
 					 100s_plus, 140s_plus, 180s, accuracy_20, accuracy_19, overall_accuracy)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.MatchID, playerID, stats.PPD, stats.FirstNinePPD,
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.PPD, stats.FirstNinePPD,
 				stats.CheckoutPercentage, stats.CheckoutAttempts, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
 				stats.Score180s, stats.AccuracyStatistics.Accuracy20, stats.AccuracyStatistics.Accuracy19, stats.AccuracyStatistics.AccuracyOverall)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting x01 statistics for player %d", visit.MatchID, playerID)
+			log.Printf("[%d] Inserting x01 statistics for player %d", visit.LegID, playerID)
 		}
 	}
 
@@ -150,11 +150,11 @@ func FinishMatch(visit models.Visit) error {
 		return err
 	}
 
-	// Determine how many matches has been played, and how many current player has won
-	playedMatches := 1
+	// Determine how many legs has been played, and how many current player has won
+	playedLegs := 1
 	currentPlayerWins := 1
 	for playerID, wins := range winsMap {
-		playedMatches += wins
+		playedLegs += wins
 		if playerID == winnerID {
 			currentPlayerWins += wins
 		}
@@ -186,7 +186,7 @@ func FinishMatch(visit models.Visit) error {
 				log.Printf("Added owes of %s from player %d to player %d", game.OweType.Item.String, playerID, visit.PlayerID)
 			}
 		}
-	} else if game.GameMode.MatchesRequired.Valid && playedMatches == int(game.GameMode.MatchesRequired.Int64) {
+	} else if game.GameMode.LegsRequired.Valid && playedLegs == int(game.GameMode.LegsRequired.Int64) {
 		// Game finished, draw
 		_, err = tx.Exec("UPDATE game SET is_finished = 1 WHERE id = ?", game.ID)
 		if err != nil {
@@ -202,15 +202,15 @@ func FinishMatch(visit models.Visit) error {
 	return nil
 }
 
-// GetMatchesForGame returns all matches for the given game ID
-func GetMatchesForGame(gameID int) ([]*models.Match, error) {
+// GetLegsForGame returns all legs for the given game ID
+func GetLegsForGame(gameID int) ([]*models.Leg, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			m.id, end_time, starting_score, is_finished,
 			current_player_id, winner_id, m.created_at, m.updated_at,
 			m.game_id, GROUP_CONCAT(p2m.player_id ORDER BY p2m.order ASC)
-		FROM `+"`match`"+` m
-		LEFT JOIN player2match p2m ON p2m.match_id = m.id
+		FROM leg m
+		LEFT JOIN player2leg p2m ON p2m.leg_id = m.id
 		WHERE m.game_id = ?
 		GROUP BY m.id
 		ORDER BY id ASC`, gameID)
@@ -219,9 +219,9 @@ func GetMatchesForGame(gameID int) ([]*models.Match, error) {
 	}
 	defer rows.Close()
 
-	matches := make([]*models.Match, 0)
+	legs := make([]*models.Leg, 0)
 	for rows.Next() {
-		m := new(models.Match)
+		m := new(models.Leg)
 		var players string
 		err := rows.Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
 			&m.GameID, &players)
@@ -229,24 +229,24 @@ func GetMatchesForGame(gameID int) ([]*models.Match, error) {
 			return nil, err
 		}
 		m.Players = util.StringToIntArray(players)
-		matches = append(matches, m)
+		legs = append(legs, m)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return matches, nil
+	return legs, nil
 }
 
-// GetActiveMatches returns all matches which are currently live
-func GetActiveMatches() ([]*models.Match, error) {
+// GetActiveLegs returns all legs which are currently live
+func GetActiveLegs() ([]*models.Leg, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			m.id, end_time, starting_score, is_finished,
 			current_player_id, winner_id, m.created_at, m.updated_at,
 			m.game_id, GROUP_CONCAT(p2m.player_id ORDER BY p2m.order ASC)
-		FROM ` + "`match`" + ` m
-		LEFT JOIN player2match p2m ON p2m.match_id = m.id
+		FROM ` + "`leg`" + ` m
+		LEFT JOIN player2leg p2m ON p2m.leg_id = m.id
 		WHERE m.is_finished <> 1
 		GROUP BY m.id
 		ORDER BY id ASC`)
@@ -255,9 +255,9 @@ func GetActiveMatches() ([]*models.Match, error) {
 	}
 	defer rows.Close()
 
-	matches := make([]*models.Match, 0)
+	legs := make([]*models.Leg, 0)
 	for rows.Next() {
-		m := new(models.Match)
+		m := new(models.Leg)
 		var players string
 		err := rows.Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
 			&m.GameID, &players)
@@ -265,32 +265,32 @@ func GetActiveMatches() ([]*models.Match, error) {
 			return nil, err
 		}
 		m.Players = util.StringToIntArray(players)
-		matches = append(matches, m)
+		legs = append(legs, m)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return matches, nil
+	return legs, nil
 }
 
-// GetMatch returns a match with the given ID
-func GetMatch(id int) (*models.Match, error) {
-	m := new(models.Match)
+// GetLeg returns a leg with the given ID
+func GetLeg(id int) (*models.Leg, error) {
+	m := new(models.Leg)
 	var players string
 	err := models.DB.QueryRow(`
 		SELECT
 			m.id, end_time, starting_score, is_finished, current_player_id, winner_id, m.created_at, m.updated_at, m.game_id,
 			GROUP_CONCAT(DISTINCT p2m.player_id ORDER BY p2m.order ASC) AS 'players'
-		FROM `+"`match` m"+`
-		LEFT JOIN player2match p2m ON p2m.match_id = m.id
+		FROM `+"`leg` m"+`
+		LEFT JOIN player2leg p2m ON p2m.leg_id = m.id
 		WHERE m.id = ?`, id).Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt, &m.GameID, &players)
 	if err != nil {
 		return nil, err
 	}
 
 	m.Players = util.StringToIntArray(players)
-	visits, err := GetMatchVisits(id)
+	visits, err := GetLegVisits(id)
 	if err != nil {
 		return nil, err
 	}
@@ -316,9 +316,9 @@ func GetMatch(id int) (*models.Match, error) {
 	return m, nil
 }
 
-// GetMatchPlayers returns a information about current score for players in a match
-func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
-	match, err := GetMatch(id)
+// GetLegPlayers returns a information about current score for players in a leg
+func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
+	leg, err := GetLeg(id)
 	if err != nil {
 		return nil, err
 	}
@@ -327,8 +327,8 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 	if err != nil {
 		return nil, err
 	}
-	lowestScore := match.StartingScore
-	players := make([]*models.Player2Match, 0)
+	lowestScore := leg.StartingScore
+	players := make([]*models.Player2Leg, 0)
 	for _, player := range scores {
 		player.Modifiers = new(models.PlayerModifiers)
 		if player.CurrentScore < lowestScore {
@@ -337,12 +337,12 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 		players = append(players, player)
 	}
 
-	winsMap, err := GetWinsPerPlayer(match.GameID)
+	winsMap, err := GetWinsPerPlayer(leg.GameID)
 	if err != nil {
 		return nil, err
 	}
 
-	lastVisits, err := GetLastVisits(match.ID, len(match.Players))
+	lastVisits, err := GetLastVisits(leg.ID, len(leg.Players))
 	if err != nil {
 		return nil, err
 	}
@@ -360,20 +360,20 @@ func GetMatchPlayers(id int) ([]*models.Player2Match, error) {
 	return players, nil
 }
 
-// ChangePlayerOrder update the player order and current player for a given match
-func ChangePlayerOrder(matchID int, orderMap map[string]int) error {
+// ChangePlayerOrder update the player order and current player for a given leg
+func ChangePlayerOrder(legID int, orderMap map[string]int) error {
 	tx, err := models.DB.Begin()
 	if err != nil {
 		return err
 	}
 	for playerID, order := range orderMap {
-		_, err = tx.Exec("UPDATE player2match SET `order` = ? WHERE player_id = ? AND match_id = ?", order, playerID, matchID)
+		_, err = tx.Exec("UPDATE player2leg SET `order` = ? WHERE player_id = ? AND leg_id = ?", order, playerID, legID)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 		if order == 1 {
-			_, err = tx.Exec("UPDATE `match` SET current_player_id = ? WHERE id = ?", playerID, matchID)
+			_, err = tx.Exec("UPDATE `leg` SET current_player_id = ? WHERE id = ?", playerID, legID)
 			if err != nil {
 				tx.Rollback()
 				return err
@@ -382,62 +382,62 @@ func ChangePlayerOrder(matchID int, orderMap map[string]int) error {
 	}
 	tx.Commit()
 
-	log.Printf("[%d] Changed player order to %v", matchID, orderMap)
+	log.Printf("[%d] Changed player order to %v", legID, orderMap)
 
 	return nil
 }
 
-// DeleteMatch will delete the current match and update game with previous match
-func DeleteMatch(matchID int) error {
-	match, err := GetMatch(matchID)
+// DeleteLeg will delete the current leg and update game with previous leg
+func DeleteLeg(legID int) error {
+	leg, err := GetLeg(legID)
 	if err != nil {
 		return err
 	}
 
-	game, err := GetGame(match.GameID)
+	game, err := GetGame(leg.GameID)
 	if err != nil {
 		return err
 	}
 
 	return models.Transaction(models.DB, func(tx *sql.Tx) error {
-		if _, err = tx.Exec("DELETE FROM `match` WHERE id = ?", matchID); err != nil {
+		if _, err = tx.Exec("DELETE FROM `leg` WHERE id = ?", legID); err != nil {
 			return err
 		}
-		log.Printf("[%d] Deleted match", matchID)
+		log.Printf("[%d] Deleted leg", legID)
 
-		var previousMatch *int
-		err := models.DB.QueryRow("SELECT MAX(id) FROM `match` WHERE game_id = ? AND is_finished = 1", game.ID).Scan(&previousMatch)
+		var previousLeg *int
+		err := models.DB.QueryRow("SELECT MAX(id) FROM `leg` WHERE game_id = ? AND is_finished = 1", game.ID).Scan(&previousLeg)
 		if err != nil {
 			return err
 		}
-		if previousMatch == nil {
+		if previousLeg == nil {
 			if _, err = tx.Exec("DELETE FROM game WHERE id = ?", game.ID); err != nil {
 				return err
 			}
-			log.Printf("Delete game without any match %d", game.ID)
+			log.Printf("Delete game without any leg %d", game.ID)
 		} else {
-			_, err = tx.Exec("UPDATE game SET current_match_id = ? WHERE id = ?", previousMatch, game.ID)
+			_, err = tx.Exec("UPDATE game SET current_leg_id = ? WHERE id = ?", previousLeg, game.ID)
 			if err != nil {
 				return err
 			}
-			log.Printf("[%d] Updated current match of game %d", previousMatch, game.ID)
+			log.Printf("[%d] Updated current leg of game %d", previousLeg, game.ID)
 		}
 		return nil
 	})
 }
 
-func calculateX01Statistics(matchID int, winnerID int, startingScore int) (map[int]*models.StatisticsX01, error) {
-	visits, err := GetMatchVisits(matchID)
+func calculateX01Statistics(legID int, winnerID int, startingScore int) (map[int]*models.StatisticsX01, error) {
+	visits, err := GetLegVisits(legID)
 	if err != nil {
 		return nil, err
 	}
 
-	players, err := GetMatchPlayers(matchID)
+	players, err := GetLegPlayers(legID)
 	if err != nil {
 		return nil, err
 	}
 	statisticsMap := make(map[int]*models.StatisticsX01)
-	playersMap := make(map[int]*models.Player2Match)
+	playersMap := make(map[int]*models.Player2Leg)
 	for _, player := range players {
 		stats := new(models.StatisticsX01)
 		stats.AccuracyStatistics = new(models.AccuracyStatistics)
@@ -524,13 +524,13 @@ func calculateX01Statistics(matchID int, winnerID int, startingScore int) (map[i
 	return statisticsMap, nil
 }
 
-func calculateShootoutStatistics(matchID int) (map[int]*models.StatisticsShootout, error) {
-	visits, err := GetMatchVisits(matchID)
+func calculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout, error) {
+	visits, err := GetLegVisits(legID)
 	if err != nil {
 		return nil, err
 	}
 
-	players, err := GetMatchPlayers(matchID)
+	players, err := GetLegPlayers(legID)
 	if err != nil {
 		return nil, err
 	}
@@ -563,16 +563,16 @@ func calculateShootoutStatistics(matchID int) (map[int]*models.StatisticsShootou
 	return statisticsMap, nil
 }
 
-// RecalculateX01Statistics will recalculate x01 statistics for all matches
+// RecalculateX01Statistics will recalculate x01 statistics for all legs
 func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			m.id, m.end_time, m.starting_score, m.is_finished,
 			m.current_player_id, m.winner_id, m.created_at, m.updated_at,
 			m.game_id, GROUP_CONCAT(p2m.player_id ORDER BY p2m.order ASC)
-		FROM ` + "`match`" + ` m
+		FROM ` + "`leg`" + ` m
 			JOIN game g on g.id = m.game_id
-			 JOIN player2match p2m ON p2m.match_id = m.id
+			 JOIN player2leg p2m ON p2m.leg_id = m.id
 		WHERE m.is_finished = 1
 			AND g.game_type_id = 1
 		GROUP BY m.id
@@ -582,9 +582,9 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 	}
 	defer rows.Close()
 
-	matches := make([]*models.Match, 0)
+	legs := make([]*models.Leg, 0)
 	for rows.Next() {
-		m := new(models.Match)
+		m := new(models.Leg)
 		var players string
 		err := rows.Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
 			&m.GameID, &players)
@@ -592,19 +592,19 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 			return nil, err
 		}
 		m.Players = util.StringToIntArray(players)
-		matches = append(matches, m)
+		legs = append(legs, m)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
 	m := make(map[int]map[int]*models.StatisticsX01)
-	for _, match := range matches {
-		stats, err := calculateX01Statistics(match.ID, int(match.WinnerPlayerID.Int64), match.StartingScore)
+	for _, leg := range legs {
+		stats, err := calculateX01Statistics(leg.ID, int(leg.WinnerPlayerID.Int64), leg.StartingScore)
 		if err != nil {
 			return nil, err
 		}
-		m[match.ID] = stats
+		m[leg.ID] = stats
 	}
 
 	return m, err

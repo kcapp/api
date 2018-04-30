@@ -12,8 +12,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// GetMatchesForGame will return a list of all matches for the given game ID
-func GetMatchesForGame(w http.ResponseWriter, r *http.Request) {
+// GetLegsForGame will return a list of all legs for the given game ID
+func GetLegsForGame(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
 	gameID, err := strconv.Atoi(params["id"])
@@ -23,85 +23,85 @@ func GetMatchesForGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	matches, err := data.GetMatchesForGame(gameID)
+	legs, err := data.GetLegsForGame(gameID)
 	if err != nil {
-		log.Println("Unable to get matches", err)
+		log.Println("Unable to get legs", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(matches)
+	json.NewEncoder(w).Encode(legs)
 }
 
-// GetMatch will return a match specified by the given id
-func GetMatch(w http.ResponseWriter, r *http.Request) {
+// GetLeg will return a leg specified by the given id
+func GetLeg(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
-	matchID, err := strconv.Atoi(params["id"])
+	legID, err := strconv.Atoi(params["id"])
 	if err != nil {
 		log.Println("Invalid id parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	match, err := data.GetMatch(matchID)
+	leg, err := data.GetLeg(legID)
 	if err != nil {
-		log.Println("Unable to get match", err)
+		log.Println("Unable to get leg", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(match)
+	json.NewEncoder(w).Encode(leg)
 }
 
-// GetActiveMatches will return a list of all matches which are currently active
-func GetActiveMatches(w http.ResponseWriter, r *http.Request) {
+// GetActiveLegs will return a list of all legs which are currently active
+func GetActiveLegs(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-	matches, err := data.GetActiveMatches()
+	legs, err := data.GetActiveLegs()
 	if err != nil {
-		log.Println("Unable to get matches", err)
+		log.Println("Unable to get legs", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(matches)
+	json.NewEncoder(w).Encode(legs)
 }
 
-// GetMatchPlayers will return a match specified by the given id
-func GetMatchPlayers(w http.ResponseWriter, r *http.Request) {
+// GetLegPlayers will return a leg specified by the given id
+func GetLegPlayers(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
-	matchID, err := strconv.Atoi(params["id"])
+	legID, err := strconv.Atoi(params["id"])
 	if err != nil {
 		log.Println("Invalid id parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	players, err := data.GetMatchPlayers(matchID)
+	players, err := data.GetLegPlayers(legID)
 	if err != nil {
-		log.Println("Unable to get players for match", err)
+		log.Println("Unable to get players for leg", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	json.NewEncoder(w).Encode(players)
 }
 
-// GetX01StatisticsForMatch will return X01 statistics for all players in the given match
-func GetX01StatisticsForMatch(w http.ResponseWriter, r *http.Request) {
+// GetX01StatisticsForLeg will return X01 statistics for all players in the given leg
+func GetX01StatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
-	matchID, err := strconv.Atoi(params["id"])
+	legID, err := strconv.Atoi(params["id"])
 	if err != nil {
 		log.Println("Invalid id parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	match, err := data.GetMatch(matchID)
+	leg, err := data.GetLeg(legID)
 	if err != nil {
-		log.Println("Unable to get match")
+		log.Println("Unable to get leg")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	game, err := data.GetGame(match.GameID)
+	game, err := data.GetGame(leg.GameID)
 	if err != nil {
 		log.Println("Unable to get Game")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -109,7 +109,7 @@ func GetX01StatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if game.GameType.ID == models.SHOOTOUT {
-		stats, err := data.GetShootoutStatisticsForMatch(matchID)
+		stats, err := data.GetShootoutStatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get statistics", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -117,7 +117,7 @@ func GetX01StatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewEncoder(w).Encode(stats)
 	} else {
-		stats, err := data.GetX01StatisticsForMatch(matchID)
+		stats, err := data.GetX01StatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get statistics", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -127,11 +127,11 @@ func GetX01StatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ChangePlayerOrder will modify the order of players for the given match
+// ChangePlayerOrder will modify the order of players for the given leg
 func ChangePlayerOrder(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
-	matchID, err := strconv.Atoi(params["id"])
+	legID, err := strconv.Atoi(params["id"])
 	if err != nil {
 		log.Println("Invalid id parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -145,7 +145,7 @@ func ChangePlayerOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.ChangePlayerOrder(matchID, orderMap)
+	err = data.ChangePlayerOrder(legID, orderMap)
 	if err != nil {
 		log.Println("Unable to change player order", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -153,8 +153,8 @@ func ChangePlayerOrder(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// FinishMatch will finalize a match
-func FinishMatch(w http.ResponseWriter, r *http.Request) {
+// FinishLeg will finalize a leg
+func FinishLeg(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	var visit models.Visit
 	err := json.NewDecoder(r.Body).Decode(&visit)
@@ -170,28 +170,28 @@ func FinishMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.FinishMatch(visit)
+	err = data.FinishLeg(visit)
 	if err != nil {
-		log.Println("Unable to finalize match", err)
+		log.Println("Unable to finalize leg", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-// DeleteMatch will delete a match
-func DeleteMatch(w http.ResponseWriter, r *http.Request) {
+// DeleteLeg will delete a leg
+func DeleteLeg(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
-	matchID, err := strconv.Atoi(params["id"])
+	legID, err := strconv.Atoi(params["id"])
 	if err != nil {
 		log.Println("Invalid id parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = data.DeleteMatch(matchID)
+	err = data.DeleteLeg(legID)
 	if err != nil {
-		log.Println("Unable to delete match", err)
+		log.Println("Unable to delete leg", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
