@@ -32,8 +32,8 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND l.starting_score IN (?)
-			AND m.is_finished = 1
-			AND m.match_type_id = 1 AND m2.match_type_id = 1
+			AND l.is_finished = 1
+			AND m.match_type_id = 1
 		GROUP BY p.id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC,
 			(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100) DESC`, from, to, startingScores)
@@ -174,7 +174,7 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 			p.id AS 'player_id',
 			COUNT(DISTINCT m.id) AS 'matches_played',
 			COUNT(DISTINCT m2.id) AS 'matches_won',
-			COUNT(DISTINCT m.id) AS 'legs_played',
+			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
 			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
 			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
@@ -191,11 +191,11 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
-			LEFT JOIN matches m2 ON m2.id = l.match_id AND l2.winner_id = p.id
+			LEFT JOIN matches m2 ON m2.id = l2.match_id AND l2.winner_id = p.id
 		WHERE s.player_id IN (?)
 			AND l.starting_score IN (?)
-			AND m.is_finished = 1
-			AND m.match_type_id = 1 AND m2.match_type_id = 1
+			AND l.is_finished = 1
+			AND m.match_type_id = 1
 		GROUP BY s.player_id
 		ORDER BY p.id`, ids, startingScores)
 	if err != nil {
@@ -257,9 +257,10 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 			DATE(m.updated_at) AS 'date'
 		FROM statistics_x01 s
 			JOIN leg l ON l.id = s.leg_id
-			JOIN matches m ON m.id = m.match_id
+			JOIN matches m ON m.id = l.match_id
 		WHERE s.player_id = ?
-			AND m.match_type_id = 1 AND m.is_finished = 1
+			AND m.match_type_id = 1
+			AND m.is_finished = 1
 		GROUP BY YEAR(m.updateD_at), WEEK(m.updated_at)
 		ORDER BY date DESC`, id)
 	if err != nil {

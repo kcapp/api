@@ -167,7 +167,7 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 			FROM player2leg p2l
 				JOIN leg l ON l.id = p2l.leg_id
 				JOIN matches m ON m.id = p2l.match_id
-			WHERE m.is_finished = 1
+			WHERE l.is_finished = 1
 				AND m.match_type_id = 1
 			GROUP BY p2l.player_id
 			UNION ALL
@@ -180,7 +180,7 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 			FROM matches m
 				JOIN leg l ON l.match_id = m.id
 				JOIN player2leg p2l ON p2l.player_id = m.winner_id AND p2l.match_id = m.id
-			WHERE m.is_finished = 1
+			WHERE l.is_finished = 1
 				AND m.match_type_id = 1
 			GROUP BY m.winner_id
 		) matches
@@ -220,7 +220,7 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 		FROM score s
 		WHERE s.id IN (SELECT MAX(id) FROM score WHERE leg_id IN (
 				SELECT m.id FROM leg l
-				JOIN matches m ON m.id = m.match_id
+				JOIN matches m ON m.id = l.match_id
 				WHERE m.match_type_id = 1 AND m.winner_id = ?) GROUP BY leg_id)
 		GROUP BY s.first_dart, s.first_dart_multiplier,
 			s.second_dart, s.second_dart_multiplier,
