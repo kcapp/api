@@ -8,20 +8,20 @@ import (
 func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			p.id,
+			p.id AS 'player_id',
 			COUNT(DISTINCT m.id),
-			SUM(s.ppd) / COUNT(p.id),
-			SUM(60s_plus),
-			SUM(100s_plus),
-			SUM(140s_plus),
-			SUM(180s) AS '180s'
+			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
+			SUM(s.60s_plus),
+			SUM(s.100s_plus),
+			SUM(s.140s_plus),
+			SUM(s.180s) AS '180s'
 		FROM statistics_shootout s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
-			JOIN matches m ON m.id = m.match_id
+			JOIN matches m ON m.id = l.match_id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
-		AND m.is_finished = 1
-		AND m.match_type_id = 2
+			AND m.is_finished = 1
+			AND m.match_type_id = 2
 		GROUP BY p.id`, from, to)
 	if err != nil {
 		return nil, err

@@ -242,14 +242,14 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 func GetActiveLegs() ([]*models.Leg, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id, end_time, starting_score, is_finished,
-			current_player_id, winner_id, m.created_at, m.updated_at,
-			m.match_id, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
+			l.id, l.end_time, l.starting_score, l.is_finished,
+			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
+			l.match_id, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
 		FROM leg l
-		LEFT JOIN player2leg p2l ON p2l.leg_id = m.id
-		WHERE m.is_finished <> 1
-		GROUP BY m.id
-		ORDER BY id ASC`)
+			LEFT JOIN player2leg p2l ON p2l.leg_id = l.id
+		WHERE l.is_finished <> 1
+		GROUP BY l.id
+		ORDER BY l.id ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -572,7 +572,7 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 			m.match_id, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
 		FROM leg l
 			JOIN match m on m.id = l.match_id
-			JOIN player2leg p2l ON p2l.leg_id = m.id
+			JOIN player2leg p2l ON p2l.leg_id = l.id
 		WHERE m.is_finished = 1
 			AND m.match_type_id = 1
 		GROUP BY m.id

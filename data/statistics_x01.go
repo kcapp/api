@@ -27,9 +27,9 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
-			JOIN matches m ON m.id = m.match_id
+			JOIN matches m ON m.id = l.match_id
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
-			LEFT JOIN matches m2 ON m2.id = m.match_id AND m2.winner_id = p.id
+			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND l.starting_score IN (?)
 			AND m.is_finished = 1
@@ -80,7 +80,7 @@ func GetX01StatisticsForLeg(id int) ([]*models.StatisticsX01, error) {
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
-			JOIN player2leg p2l ON p2l.leg_id = m.id AND p2l.player_id = s.player_id
+			JOIN player2leg p2l ON p2l.leg_id = l.id AND p2l.player_id = s.player_id
 		WHERE l.id = ?
 			AND m.match_type_id IN (1,3)
 		ORDER BY p2l.order`, id)
@@ -121,7 +121,7 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
-			JOIN player2leg p2l ON p2l.leg_id = m.id AND p2l.player_id = s.player_id
+			JOIN player2leg p2l ON p2l.leg_id = l.id AND p2l.player_id = s.player_id
 		WHERE m.id = ?
 			AND m.match_type_id IN (1, 3)
 		GROUP BY p.id
