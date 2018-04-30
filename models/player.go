@@ -9,8 +9,8 @@ type Player struct {
 	ID            int         `json:"id"`
 	Name          string      `json:"name"`
 	Nickname      null.String `json:"nickname,omitempty"`
-	GamesPlayed   int         `json:"games_played"`
-	GamesWon      int         `json:"games_won"`
+	MatchesPlayed int         `json:"matches_played"`
+	MatchesWon    int         `json:"matches_won"`
 	LegsPlayed    int         `json:"legs_played"`
 	LegsWon       int         `json:"legs_won"`
 	Color         null.String `json:"color,omitempty"`

@@ -12,28 +12,28 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// NewGame will start a new game
-func NewGame(w http.ResponseWriter, r *http.Request) {
+// NewMatch will start a new match
+func NewMatch(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-	var gameInput models.Game
-	err := json.NewDecoder(r.Body).Decode(&gameInput)
+	var matchInput models.Match
+	err := json.NewDecoder(r.Body).Decode(&matchInput)
 	if err != nil {
 		log.Println("Unable to deserialize body", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	game, err := data.NewGame(gameInput)
+	match, err := data.NewMatch(matchInput)
 	if err != nil {
-		log.Println("Unable to start new game", err)
+		log.Println("Unable to start new match", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(game)
+	json.NewEncoder(w).Encode(match)
 }
 
-// ContinueGame will either return the current leg id or create a new leg
-func ContinueGame(w http.ResponseWriter, r *http.Request) {
+// ContinueMatch will either return the current leg id or create a new leg
+func ContinueMatch(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
 	id, err := strconv.Atoi(params["id"])
@@ -42,29 +42,29 @@ func ContinueGame(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	game, err := data.ContinueGame(id)
+	match, err := data.ContinueMatch(id)
 	if err != nil {
-		log.Println("Unable to get game: ", err)
+		log.Println("Unable to get match: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(game)
+	json.NewEncoder(w).Encode(match)
 }
 
-// GetGames will return a list of all games
-func GetGames(w http.ResponseWriter, r *http.Request) {
+// GetMatches will return a list of all matches
+func GetMatches(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-	games, err := data.GetGames()
+	matches, err := data.GetMatches()
 	if err != nil {
-		log.Println("Unable to get games", err)
+		log.Println("Unable to get matches", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(games)
+	json.NewEncoder(w).Encode(matches)
 }
 
-// GetGamesLimit will return N games from the given starting point
-func GetGamesLimit(w http.ResponseWriter, r *http.Request) {
+// GetMatchesLimit will return N matches from the given starting point
+func GetMatchesLimit(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
 	start, err := strconv.Atoi(params["start"])
@@ -79,17 +79,17 @@ func GetGamesLimit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	games, err := data.GetGamesLimit(start, limit)
+	matches, err := data.GetMatchesLimit(start, limit)
 	if err != nil {
-		log.Println("Unable to get games", err)
+		log.Println("Unable to get matches", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(games)
+	json.NewEncoder(w).Encode(matches)
 }
 
-// GetGame will reurn a the game with the given ID
-func GetGame(w http.ResponseWriter, r *http.Request) {
+// GetMatch will reurn a the match with the given ID
+func GetMatch(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
 	id, err := strconv.Atoi(params["id"])
@@ -98,27 +98,27 @@ func GetGame(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	game, err := data.GetGame(id)
+	match, err := data.GetMatch(id)
 	if err != nil {
-		log.Println("Unable to get game: ", err)
-		http.Error(w, "Unable to get game", http.StatusBadRequest)
+		log.Println("Unable to get match: ", err)
+		http.Error(w, "Unable to get match", http.StatusBadRequest)
 		return
 	}
-	json.NewEncoder(w).Encode(game)
+	json.NewEncoder(w).Encode(match)
 }
 
-// GetX01StatisticsForGame will return X01 statistics for all players in the given leg
-func GetX01StatisticsForGame(w http.ResponseWriter, r *http.Request) {
+// GetX01StatisticsForMatch will return X01 statistics for all players in the given leg
+func GetX01StatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
-	gameID, err := strconv.Atoi(params["id"])
+	matchID, err := strconv.Atoi(params["id"])
 	if err != nil {
 		log.Println("Invalid id parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	stats, err := data.GetX01StatisticsForGame(gameID)
+	stats, err := data.GetX01StatisticsForMatch(matchID)
 	if err != nil {
 		log.Println("Unable to get statistics", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -127,24 +127,24 @@ func GetX01StatisticsForGame(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
-// GetGamesModes will return all game modes
-func GetGamesModes(w http.ResponseWriter, r *http.Request) {
+// GetMatchesModes will return all match modes
+func GetMatchesModes(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-	modes, err := data.GetGameModes()
+	modes, err := data.GetMatchModes()
 	if err != nil {
-		log.Println("Unable to get game modes", err)
+		log.Println("Unable to get match modes", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	json.NewEncoder(w).Encode(modes)
 }
 
-// GetGamesTypes will return all game types
-func GetGamesTypes(w http.ResponseWriter, r *http.Request) {
+// GetMatchesTypes will return all match types
+func GetMatchesTypes(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-	types, err := data.GetGameTypes()
+	types, err := data.GetMatchTypes()
 	if err != nil {
-		log.Println("Unable to get game types", err)
+		log.Println("Unable to get match types", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

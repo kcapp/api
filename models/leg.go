@@ -14,10 +14,10 @@ type Leg struct {
 	WinnerPlayerID  null.Int        `json:"winner_player_id"`
 	CreatedAt       string          `json:"created_at"`
 	UpdatedAt       string          `json:"updated_at"`
-	GameID          int             `json:"game_id"`
+	MatchID         int             `json:"match_id"`
 	Players         []int           `json:"players,omitempty"`
 	DartsThrown     int             `json:"darts_thrown,omitempty"`
-	Visits          []*Visit        `json:"visits"`
+	Visits          []*Visit        `json:"visits,omitempty"`
 	Hits            map[int64]*Hits `json:"hits,omitempty"`
 }
 
@@ -36,5 +36,5 @@ type Player2Leg struct {
 // PlayerModifiers struct used for storing visit modifiers for a player
 type PlayerModifiers struct {
 	IsViliusVisit bool `json:"is_vilius_visit"`
-	IsBeerGame    bool `json:"is_beer_game"`
+	IsBeerMatch   bool `json:"is_beer_match"`
 }

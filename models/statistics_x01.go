@@ -38,8 +38,8 @@ type StatisticsX01 struct {
 	AccuracyStatistics *AccuracyStatistics `json:"accuracy,omitempty"`
 	Visits             []*Visit            `json:"visits,omitempty"`
 	Hits               map[int64]*Hits     `json:"hits,omitempty"`
-	GamesPlayed        int                 `json:"games_played,omitempty"`
-	GamesWon           int                 `json:"games_won,omitempty"`
+	MatchesPlayed      int                 `json:"matches_played,omitempty"`
+	MatchesWon         int                 `json:"matches_won,omitempty"`
 	LegsPlayed         int                 `json:"legs_played,omitempty"`
 	LegsWon            int                 `json:"legs_won,omitempty"`
 	BestPPD            *BestStatisticFloat `json:"best_ppd,omitempty"`

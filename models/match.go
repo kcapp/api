@@ -5,16 +5,16 @@ import (
 )
 
 const (
-	// X01 constant representing GameType 1
+	// X01 constant representing MatchType 1
 	X01 = 1
-	// SHOOTOUT constant representing GameType 2
+	// SHOOTOUT constant representing MatchType 2
 	SHOOTOUT = 2
-	// X01HANDICAP constant representing GameType 3
+	// X01HANDICAP constant representing MatchType 3
 	X01HANDICAP = 3
 )
 
-// Game struct used for storing games
-type Game struct {
+// Match struct used for storing matches
+type Match struct {
 	ID              int         `json:"id"`
 	IsFinished      bool        `json:"is_finished"`
 	CurrentLegID    null.Int    `json:"current_leg_id"`
@@ -22,8 +22,8 @@ type Game struct {
 	CreatedAt       string      `json:"created_at"`
 	UpdatedAt       string      `json:"updated_at"`
 	EndTime         string      `json:"end_time,omitempty"`
-	GameType        *GameType   `json:"game_type"`
-	GameMode        *GameMode   `json:"game_mode"`
+	MatchType       *MatchType  `json:"match_type"`
+	MatchMode       *MatchMode  `json:"match_mode"`
 	OweTypeID       null.Int    `json:"owe_type_id"`
 	VenueID         null.Int    `json:"venue_id"`
 	Venue           *Venue      `json:"venue"`
@@ -34,15 +34,15 @@ type Game struct {
 	LastThrow       null.String `json:"last_throw_time,omitempty"`
 }
 
-// GameType struct used for storing game types
-type GameType struct {
+// MatchType struct used for storing match types
+type MatchType struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
-// GameMode struct used for storing game modes
-type GameMode struct {
+// MatchMode struct used for storing match modes
+type MatchMode struct {
 	ID           int      `json:"id"`
 	Name         string   `json:"name"`
 	ShortName    string   `json:"short_name"`

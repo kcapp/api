@@ -12,18 +12,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// GetLegsForGame will return a list of all legs for the given game ID
-func GetLegsForGame(w http.ResponseWriter, r *http.Request) {
+// GetLegsForMatch will return a list of all legs for the given match ID
+func GetLegsForMatch(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
-	gameID, err := strconv.Atoi(params["id"])
+	matchID, err := strconv.Atoi(params["id"])
 	if err != nil {
 		log.Println("Invalid id parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	legs, err := data.GetLegsForGame(gameID)
+	legs, err := data.GetLegsForMatch(matchID)
 	if err != nil {
 		log.Println("Unable to get legs", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -101,14 +101,14 @@ func GetX01StatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	game, err := data.GetGame(leg.GameID)
+	match, err := data.GetMatch(leg.MatchID)
 	if err != nil {
-		log.Println("Unable to get Game")
+		log.Println("Unable to get Match")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if game.GameType.ID == models.SHOOTOUT {
+	if match.MatchType.ID == models.SHOOTOUT {
 		stats, err := data.GetShootoutStatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get statistics", err)

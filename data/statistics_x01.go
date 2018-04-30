@@ -10,10 +10,10 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 	q, args, err := sqlx.In(`
 		SELECT
 			p.id AS 'player_id',
-			COUNT(DISTINCT g.id) AS 'games_played',
-			COUNT(DISTINCT g2.id) AS 'games_won',
+			COUNT(DISTINCT m.id) AS 'matches_played',
+			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT m.id) AS 'legs_played',
-			COUNT(DISTINCT m2.id) AS 'legs_won',
+			COUNT(DISTINCT l2.id) AS 'legs_won',
 			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
 			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
 			SUM(60s_plus) AS '60s_plus',
@@ -26,16 +26,16 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
-			JOIN leg m ON m.id = s.leg_id
-			JOIN game g ON g.id = m.game_id
-			LEFT JOIN leg m2 ON m2.id = s.leg_id AND m2.winner_id = p.id
-			LEFT JOIN game g2 ON g2.id = m.game_id AND g2.winner_id = p.id
-		WHERE g.updated_at >= ? AND g.updated_at < ?
-			AND m.starting_score IN (?)
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = m.match_id
+			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
+			LEFT JOIN matches m2 ON m2.id = m.match_id AND m2.winner_id = p.id
+		WHERE m.updated_at >= ? AND m.updated_at < ?
+			AND l.starting_score IN (?)
 			AND m.is_finished = 1
-			AND g.game_type_id = 1
+			AND m.match_type_id = 1 AND m2.match_type_id = 1
 		GROUP BY p.id
-		ORDER BY(COUNT(DISTINCT g2.id) / COUNT(DISTINCT g.id)) DESC, games_played DESC,
+		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC,
 			(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100) DESC`, from, to, startingScores)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 	stats := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.GamesPlayed, &s.GamesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
 			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
@@ -63,7 +63,7 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 func GetX01StatisticsForLeg(id int) ([]*models.StatisticsX01, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id AS 'leg_id',
+			l.id AS 'leg_id',
 			p.id AS 'player_id',
 			s.ppd,
 			s.first_nine_ppd,
@@ -78,12 +78,12 @@ func GetX01StatisticsForLeg(id int) ([]*models.StatisticsX01, error) {
 			s.checkout_percentage
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
-			JOIN leg m ON m.id = s.leg_id
-			JOIN game g ON g.id = m.game_id
-			JOIN player2leg p2m ON p2m.leg_id = m.id AND p2m.player_id = s.player_id
-		WHERE m.id = ?
-			AND (g.game_type_id = 1 OR g.game_type_id = 3)
-		ORDER BY p2m.order`, id)
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+			JOIN player2leg p2l ON p2l.leg_id = m.id AND p2l.player_id = s.player_id
+		WHERE l.id = ?
+			AND m.match_type_id IN (1,3)
+		ORDER BY p2l.order`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -102,30 +102,30 @@ func GetX01StatisticsForLeg(id int) ([]*models.StatisticsX01, error) {
 	return stats, nil
 }
 
-// GetX01StatisticsForGame will return statistics for all players in the given game
-func GetX01StatisticsForGame(id int) ([]*models.StatisticsX01, error) {
+// GetX01StatisticsForMatch will return statistics for all players in the given match
+func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id AS 'player_id',
 			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
 			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
-			SUM(60s_plus) AS '60s_plus',
-			SUM(100s_plus) AS '100s_plus',
-			SUM(140s_plus) AS '140s_plus',
-			SUM(180s) AS '180s',
-			SUM(accuracy_20) / COUNT(accuracy_20) AS 'accuracy_20s',
-			SUM(accuracy_19) / COUNT(accuracy_19) AS 'accuracy_19s',
-			SUM(overall_accuracy) / COUNT(overall_accuracy) AS 'accuracy_overall',
+			SUM(s.60s_plus) AS '60s_plus',
+			SUM(s.100s_plus) AS '100s_plus',
+			SUM(s.140s_plus) AS '140s_plus',
+			SUM(s.180s) AS '180s',
+			SUM(s.accuracy_20) / COUNT(s.accuracy_20) AS 'accuracy_20s',
+			SUM(s.accuracy_19) / COUNT(s.accuracy_19) AS 'accuracy_19s',
+			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
 			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
-			JOIN leg m ON m.id = s.leg_id
-			JOIN game g ON g.id = m.game_id
-			JOIN player2leg p2m ON p2m.leg_id = m.id AND p2m.player_id = s.player_id
-		WHERE g.id = ?
-			AND (g.game_type_id = 1 OR g.game_type_id = 3)
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+			JOIN player2leg p2l ON p2l.leg_id = m.id AND p2l.player_id = s.player_id
+		WHERE m.id = ?
+			AND m.match_type_id IN (1, 3)
 		GROUP BY p.id
-		ORDER BY p2m.order`, id)
+		ORDER BY p2l.order`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -172,30 +172,30 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 	q, args, err := sqlx.In(`
 		SELECT
 			p.id AS 'player_id',
-			COUNT(DISTINCT g.id) AS 'games_played',
-			COUNT(DISTINCT g2.id) AS 'games_won',
+			COUNT(DISTINCT m.id) AS 'matches_played',
+			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT m.id) AS 'legs_played',
-			COUNT(DISTINCT m2.id) AS 'legs_won',
+			COUNT(DISTINCT l2.id) AS 'legs_won',
 			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
 			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
-			SUM(60s_plus) AS '60s_plus',
-			SUM(100s_plus) AS '100s_plus',
-			SUM(140s_plus) AS '140s_plus',
-			SUM(180s) AS '180s',
-			SUM(accuracy_20) / COUNT(accuracy_20) AS 'accuracy_20s',
-			SUM(accuracy_19) / COUNT(accuracy_19) AS 'accuracy_19s',
-			SUM(overall_accuracy) / COUNT(overall_accuracy) AS 'accuracy_overall',
+			SUM(s.60s_plus) AS '60s_plus',
+			SUM(s.100s_plus) AS '100s_plus',
+			SUM(s.140s_plus) AS '140s_plus',
+			SUM(s.180s) AS '180s',
+			SUM(s.accuracy_20) / COUNT(s.accuracy_20) AS 'accuracy_20s',
+			SUM(s.accuracy_19) / COUNT(s.accuracy_19) AS 'accuracy_19s',
+			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
 			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
-			JOIN leg m ON m.id = s.leg_id
-			JOIN game g ON g.id = m.game_id
-			LEFT JOIN leg m2 ON m2.id = s.leg_id AND m2.winner_id = p.id
-			LEFT JOIN game g2 ON g2.id = m.game_id AND g2.winner_id = p.id
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
+			LEFT JOIN matches m2 ON m2.id = l.match_id AND l2.winner_id = p.id
 		WHERE s.player_id IN (?)
-			AND m.starting_score IN (?)
+			AND l.starting_score IN (?)
 			AND m.is_finished = 1
-			AND g.game_type_id = 1
+			AND m.match_type_id = 1 AND m2.match_type_id = 1
 		GROUP BY s.player_id
 		ORDER BY p.id`, ids, startingScores)
 	if err != nil {
@@ -210,7 +210,7 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 	statisticsMap := make(map[int]*models.StatisticsX01)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.GamesPlayed, &s.GamesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus,
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus,
 			&s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
@@ -254,13 +254,13 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 			SUM(s.accuracy_19) / COUNT(s.accuracy_19) AS 'accuracy_19s',
 			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
 			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage',
-			DATE(g.updated_at) AS 'date'
+			DATE(m.updated_at) AS 'date'
 		FROM statistics_x01 s
-			JOIN leg m ON m.id = s.leg_id
-			JOIN game g ON g.id = m.game_id
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = m.match_id
 		WHERE s.player_id = ?
-			AND g.game_type_id = 1 AND g.is_finished = 1
-		GROUP BY YEAR(g.updateD_at), WEEK(g.updated_at)
+			AND m.match_type_id = 1 AND m.is_finished = 1
+		GROUP BY YEAR(m.updateD_at), WEEK(m.updated_at)
 		ORDER BY date DESC`, id)
 	if err != nil {
 		return nil, err
@@ -290,18 +290,18 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 	q, args, err := sqlx.In(`
 		SELECT
 			p.id,
-			m.winner_id,
-			m.id,
+			l.winner_id,
+			l.id,
 			s.ppd,
 			s.first_nine_ppd,
 			s.checkout_percentage,
 			s.darts_thrown,
-			m.starting_score
+			l.starting_score
 		FROM statistics_x01 s
-		JOIN player p ON p.id = s.player_id
-		JOIN leg m ON m.id = s.leg_id
+			JOIN player p ON p.id = s.player_id
+			JOIN leg l ON l.id = s.leg_id
 		WHERE s.player_id IN (?)
-		AND m.starting_score IN (?)`, ids, startingScores)
+			AND l.starting_score IN (?)`, ids, startingScores)
 	if err != nil {
 		return err
 	}
@@ -388,11 +388,11 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, 
 					IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
 					IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
 			FROM score s
-			JOIN leg m ON m.id = s.leg_id
-			WHERE m.winner_id = s.player_id
+			JOIN leg l ON l.id = s.leg_id
+			WHERE l.winner_id = s.player_id
 				AND s.player_id IN (?)
-				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg m ON m.id = s.leg_id WHERE m.winner_id = s.player_id GROUP BY leg_id)
-				AND m.starting_score IN (?)
+				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id WHERE l.winner_id = s.player_id GROUP BY leg_id)
+				AND l.starting_score IN (?)
 			GROUP BY s.player_id, s.id
 			ORDER BY checkout DESC) checkouts
 		GROUP BY player_id`, ids, startingScores)

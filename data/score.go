@@ -20,13 +20,13 @@ func AddVisit(visit models.Visit) error {
 	if err != nil {
 		return err
 	}
-	game, err := GetGame(leg.GameID)
+	match, err := GetMatch(leg.MatchID)
 	if err != nil {
 		return err
 	}
 
-	if game.GameType.ID == models.X01 || game.GameType.ID == models.X01HANDICAP {
-		// Only set busts for x01 game modes
+	if match.MatchType.ID == models.X01 || match.MatchType.ID == models.X01HANDICAP {
+		// Only set busts for x01 match modes
 		visit.SetIsBust(currentScore)
 	}
 
@@ -127,7 +127,7 @@ func DeleteVisit(id int) error {
 		return err
 	}
 	// Set current player to the player of the last visit
-	_, err = tx.Exec("UPDATE `leg` SET current_player_id = ? WHERE id = ?", visit.PlayerID, visit.LegID)
+	_, err = tx.Exec("UPDATE leg SET current_player_id = ? WHERE id = ?", visit.PlayerID, visit.LegID)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -295,7 +295,7 @@ func GetPlayerVisitCount(playerID int) ([]*models.Visit, error) {
 			third_dart, third_dart_multiplier,
 			COUNT(*) AS 'visits'
 		FROM score s
-		WHERE player_id = ?
+			WHERE player_id = ?
 		GROUP BY
 			player_id, first_dart, first_dart_multiplier,
 			second_dart, second_dart_multiplier,

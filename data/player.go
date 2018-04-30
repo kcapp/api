@@ -9,7 +9,7 @@ import (
 
 // GetPlayers returns a map of all players
 func GetPlayers() (map[int]*models.Player, error) {
-	played, err := GetGamesPlayedPerPlayer()
+	played, err := GetMatchesPlayedPerPlayer()
 	if err != nil {
 		return nil, err
 	}
@@ -30,8 +30,8 @@ func GetPlayers() (map[int]*models.Player, error) {
 		players[p.ID] = p
 
 		if val, ok := played[p.ID]; ok {
-			p.GamesPlayed = val.GamesPlayed
-			p.GamesWon = val.GamesWon
+			p.MatchesPlayed = val.MatchesPlayed
+			p.MatchesWon = val.MatchesWon
 			p.LegsPlayed = val.LegsPlayed
 			p.LegsWon = val.LegsWon
 		}
@@ -52,14 +52,14 @@ func GetPlayer(id int) (*models.Player, error) {
 		return nil, err
 	}
 
-	pld, err := GetGamesPlayedPerPlayer()
+	pld, err := GetMatchesPlayedPerPlayer()
 	if err != nil {
 		return nil, err
 	}
 	played := pld[p.ID]
 	if played != nil {
-		p.GamesPlayed = played.GamesPlayed
-		p.GamesWon = played.GamesWon
+		p.MatchesPlayed = played.MatchesPlayed
+		p.MatchesWon = played.MatchesWon
 		p.LegsPlayed = played.LegsPlayed
 		p.LegsWon = played.LegsWon
 	}
@@ -108,26 +108,26 @@ func GetPlayerScore(playerID int, legID int) (int, error) {
 func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			p2m.leg_id,
-			p2m.player_id,
-			p2m.order,
-			p2m.handicap,
-			p2m.player_id = m.current_player_id AS 'is_current_player',
-			(m.starting_score +
-				-- Add handicap for players if game_mode is handicap
-				IF(g.game_type_id = 3, IFNULL(p2m.handicap, 0), 0)) -
+			p2l.leg_id,
+			p2l.player_id,
+			p2l.order,
+			p2l.handicap,
+			p2l.player_id = l.current_player_id AS 'is_current_player',
+			(l.starting_score +
+				-- Add handicap for players if match_mode is handicap
+				IF(m.match_type_id = 3, IFNULL(p2l.handicap, 0), 0)) -
 				(IFNULL(SUM(first_dart * first_dart_multiplier), 0) +
 				IFNULL(SUM(second_dart * second_dart_multiplier), 0) +
 				IFNULL(SUM(third_dart * third_dart_multiplier), 0))
 				-- For X01 score goes down, while Shootout it counts up
-				* IF(g.game_type_id = 2, -1, 1) AS 'current_score'
-		FROM player2leg p2m
-			LEFT JOIN leg m ON m.id = p2m.leg_id
-			LEFT JOIN score s ON s.leg_id = p2m.leg_id AND s.player_id = p2m.player_id
-			LEFT JOIN game g on g.id = m.game_id
-		WHERE p2m.leg_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
-		GROUP BY p2m.player_id
-		ORDER BY p2m.order ASC`, legID)
+				* IF(m.match_type_id = 2, -1, 1) AS 'current_score'
+		FROM player2leg p2l
+			LEFT JOIN leg l ON l.id = p2l.leg_id
+			LEFT JOIN score s ON s.leg_id = p2l.leg_id AND s.player_id = p2l.player_id
+			LEFT JOIN matches m on m.id = l.match_id
+		WHERE p2l.leg_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
+		GROUP BY p2l.player_id
+		ORDER BY p2l.order ASC`, legID)
 	if err != nil {
 		return nil, err
 	}
@@ -135,12 +135,12 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 
 	scores := make(map[int]*models.Player2Leg)
 	for rows.Next() {
-		p2m := new(models.Player2Leg)
-		err := rows.Scan(&p2m.LegID, &p2m.PlayerID, &p2m.Order, &p2m.Handicap, &p2m.IsCurrentPlayer, &p2m.CurrentScore)
+		p2l := new(models.Player2Leg)
+		err := rows.Scan(&p2l.LegID, &p2l.PlayerID, &p2l.Order, &p2l.Handicap, &p2l.IsCurrentPlayer, &p2l.CurrentScore)
 		if err != nil {
 			return nil, err
 		}
-		scores[p2m.PlayerID] = p2m
+		scores[p2l.PlayerID] = p2l
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
@@ -148,42 +148,42 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 	return scores, nil
 }
 
-// GetGamesPlayedPerPlayer will get the number of games and legs played and won for each player
-func GetGamesPlayedPerPlayer() (map[int]*models.Player, error) {
+// GetMatchesPlayedPerPlayer will get the number of matches and legs played and won for each player
+func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			player_id,
-			MAX(games_played) AS 'games_played',
-			MAX(games_won) AS 'games_won',
+			MAX(matches_played) AS 'matches_played',
+			MAX(matches_won) AS 'matches_won',
 			MAX(legs_played) AS 'legs_played',
 			MAX(legs_won) AS 'legs_won'
 		FROM (
 			SELECT
-				p2m.player_id,
-				COUNT(DISTINCT p2m.game_id) AS 'games_played',
-				0 AS 'games_won',
+				p2l.player_id,
+				COUNT(DISTINCT p2l.match_id) AS 'matches_played',
+				0 AS 'matches_won',
 				COUNT(m.id)  AS 'legs_played',
-				SUM(CASE WHEN p2m.player_id = m.winner_id THEN 1 ELSE 0 END) AS 'legs_won'
-			FROM player2leg p2m
-				JOIN ` + "`leg`" + ` m ON m.id = p2m.leg_id
-				JOIN game g ON g.id = p2m.game_id
+				SUM(CASE WHEN p2l.player_id = m.winner_id THEN 1 ELSE 0 END) AS 'legs_won'
+			FROM player2leg p2l
+				JOIN leg l ON l.id = p2l.leg_id
+				JOIN matches m ON m.id = p2l.match_id
 			WHERE m.is_finished = 1
-				AND g.game_type_id = 1
-			GROUP BY p2m.player_id
+				AND m.match_type_id = 1
+			GROUP BY p2l.player_id
 			UNION ALL
 			SELECT
-				p2m.player_id,
-				0 AS 'games_played',
-				COUNT(DISTINCT g.id) AS 'games_won',
+				p2l.player_id,
+				0 AS 'matches_played',
+				COUNT(DISTINCT m.id) AS 'matches_won',
 				0 AS 'legs_played',
 				0 AS 'legs_won'
-			FROM game g
-				JOIN ` + "`leg`" + ` m ON m.game_id = g.id
-				JOIN player2leg p2m ON p2m.player_id = g.winner_id AND p2m.game_id = g.id
+			FROM matches m
+				JOIN leg l ON l.match_id = m.id
+				JOIN player2leg p2l ON p2l.player_id = m.winner_id AND p2l.match_id = m.id
 			WHERE m.is_finished = 1
-				AND g.game_type_id = 1
-			GROUP BY g.winner_id
-		) games
+				AND m.match_type_id = 1
+			GROUP BY m.winner_id
+		) matches
 		GROUP BY player_id`)
 	if err != nil {
 		return nil, err
@@ -193,7 +193,7 @@ func GetGamesPlayedPerPlayer() (map[int]*models.Player, error) {
 	played := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.GamesPlayed, &p.GamesWon, &p.LegsPlayed, &p.LegsWon)
+		err := rows.Scan(&p.ID, &p.MatchesPlayed, &p.MatchesWon, &p.LegsPlayed, &p.LegsWon)
 		if err != nil {
 			return nil, err
 		}
@@ -219,9 +219,9 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 			COUNT(*)
 		FROM score s
 		WHERE s.id IN (SELECT MAX(id) FROM score WHERE leg_id IN (
-				SELECT m.id FROM leg m
-				JOIN game g ON g.id = m.game_id
-				WHERE g.game_type_id = 1 AND m.winner_id = ?) GROUP BY leg_id)
+				SELECT m.id FROM leg l
+				JOIN matches m ON m.id = m.match_id
+				WHERE m.match_type_id = 1 AND m.winner_id = ?) GROUP BY leg_id)
 		GROUP BY s.first_dart, s.first_dart_multiplier,
 			s.second_dart, s.second_dart_multiplier,
 			s.third_dart, s.third_dart_multiplier
@@ -315,29 +315,29 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 func GetPlayerHeadToHead(player1 int, player2 int) (*models.StatisticsHead2Head, error) {
 	head2head := new(models.StatisticsHead2Head)
 
-	head2headGames, err := GetHeadToHeadGames(player1, player2)
+	head2headMatches, err := GetHeadToHeadMatches(player1, player2)
 	if err != nil {
 		return nil, err
 	}
-	head2head.Head2HeadGames = head2headGames
+	head2head.Head2HeadMatches = head2headMatches
 	head2headWins := make(map[int64]int)
-	for _, game := range head2headGames {
-		head2headWins[game.WinnerID.Int64]++
+	for _, match := range head2headMatches {
+		head2headWins[match.WinnerID.Int64]++
 	}
 	head2head.Head2HeadWins = head2headWins
 
-	games1, err := GetPlayerLastGames(player1, 5)
+	matches1, err := GetPlayerLastMatches(player1, 5)
 	if err != nil {
 		return nil, err
 	}
-	games2, err := GetPlayerLastGames(player2, 5)
+	matches2, err := GetPlayerLastMatches(player2, 5)
 	if err != nil {
 		return nil, err
 	}
-	games := make(map[int][]*models.Game)
-	games[player1] = games1
-	games[player2] = games2
-	head2head.LastGames = games
+	matches := make(map[int][]*models.Match)
+	matches[player1] = matches1
+	matches[player2] = matches2
+	head2head.LastMatches = matches
 
 	visits1, err := GetPlayerVisitCount(player1)
 	if err != nil {
