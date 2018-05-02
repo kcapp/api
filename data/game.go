@@ -14,7 +14,8 @@ func NewGame(game models.Game) (*models.Game, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := tx.Exec("INSERT INTO game (game_type_id, game_mode_id, owe_type_id, created_at) VALUES (?, ?, ?, NOW())", game.GameType.ID, game.GameMode.ID, game.OweTypeID)
+	res, err := tx.Exec("INSERT INTO game (game_type_id, game_mode_id, owe_type_id, venue_id, created_at) VALUES (?, ?, ?, ?, NOW())",
+		game.GameType.ID, game.GameMode.ID, game.OweTypeID, game.VenueID)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
