@@ -70,6 +70,11 @@ func main() {
 
 	router.HandleFunc("/venue", controllers.GetVenues).Methods("GET")
 
+	router.HandleFunc("/tournament", controllers.GetTournaments).Methods("GET")
+	router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")
+	router.HandleFunc("/tournament/{id}/statistics", controllers.GetTournamentStatistics).Methods("GET")
+	router.HandleFunc("/tournemtn/groups", controllers.GetTournamentGroups).Methods("GET")
+
 	log.Printf("Listening on port %d", config.APIConfig.Port)
 	log.Println(http.ListenAndServe(fmt.Sprintf(":%d", config.APIConfig.Port), router))
 }
