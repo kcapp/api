@@ -9,7 +9,7 @@ import (
 	"github.com/kcapp/api/models"
 )
 
-// GetOwes will return a list of all games
+// GetOwes will return a list of all matches
 func GetOwes(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	owes, err := data.GetOwes()

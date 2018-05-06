@@ -4,37 +4,55 @@ import (
 	"github.com/guregu/null"
 )
 
+const (
+	// X01 constant representing MatchType 1
+	X01 = 1
+	// SHOOTOUT constant representing MatchType 2
+	SHOOTOUT = 2
+	// X01HANDICAP constant representing MatchType 3
+	X01HANDICAP = 3
+)
+
 // Match struct used for storing matches
 type Match struct {
-	ID              int             `json:"id"`
-	Endtime         null.String     `json:"end_time"`
-	StartingScore   int             `json:"starting_score"`
-	IsFinished      bool            `json:"is_finished"`
-	CurrentPlayerID int             `json:"current_player_id"`
-	WinnerPlayerID  null.Int        `json:"winner_player_id"`
-	CreatedAt       string          `json:"created_at"`
-	UpdatedAt       string          `json:"updated_at"`
-	GameID          int             `json:"game_id"`
-	Players         []int           `json:"players,omitempty"`
-	DartsThrown     int             `json:"darts_thrown,omitempty"`
-	Visits          []*Visit        `json:"visits"`
-	Hits            map[int64]*Hits `json:"hits,omitempty"`
+	ID              int         `json:"id"`
+	IsFinished      bool        `json:"is_finished"`
+	CurrentLegID    null.Int    `json:"current_leg_id"`
+	WinnerID        null.Int    `json:"winner_id"`
+	CreatedAt       string      `json:"created_at"`
+	UpdatedAt       string      `json:"updated_at"`
+	EndTime         string      `json:"end_time,omitempty"`
+	MatchType       *MatchType  `json:"match_type"`
+	MatchMode       *MatchMode  `json:"match_mode"`
+	OweTypeID       null.Int    `json:"owe_type_id"`
+	VenueID         null.Int    `json:"venue_id"`
+	Venue           *Venue      `json:"venue"`
+	OweType         *OweType    `json:"owe_type,omitempty"`
+	Players         []int       `json:"players"`
+	Legs            []*Leg      `json:"legs,omitempty"`
+	PlayerHandicaps map[int]int `json:"player_handicaps,omitempty"`
+	LastThrow       null.String `json:"last_throw_time,omitempty"`
 }
 
-// Player2Match struct used for stroring players in a match
-type Player2Match struct {
-	MatchID         int              `json:"match_id"`
-	PlayerID        int              `json:"player_id"`
-	Order           int              `json:"order"`
-	CurrentScore    int              `json:"current_score"`
-	IsCurrentPlayer bool             `json:"is_current_player"`
-	Wins            int              `json:"wins,omitempty"`
-	Handicap        null.Int         `json:"handicap,omitempty"`
-	Modifiers       *PlayerModifiers `json:"modifiers,omitempty"`
+// MatchType struct used for storing match types
+type MatchType struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
-// PlayerModifiers struct used for storing visit modifiers for a player
-type PlayerModifiers struct {
-	IsViliusVisit bool `json:"is_vilius_visit"`
-	IsBeerGame    bool `json:"is_beer_game"`
+// MatchMode struct used for storing match modes
+type MatchMode struct {
+	ID           int      `json:"id"`
+	Name         string   `json:"name"`
+	ShortName    string   `json:"short_name"`
+	WinsRequired int      `json:"wins_required"`
+	LegsRequired null.Int `json:"legs_required"`
+}
+
+// Venue struct used for storing venues
+type Venue struct {
+	ID          null.Int    `json:"id"`
+	Name        null.String `json:"name"`
+	Description null.String `json:"description"`
 }

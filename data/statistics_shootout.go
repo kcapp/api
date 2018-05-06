@@ -8,20 +8,20 @@ import (
 func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			p.id,
-			COUNT(DISTINCT g.id),
-			SUM(s.ppd) / COUNT(p.id),
-			SUM(60s_plus),
-			SUM(100s_plus),
-			SUM(140s_plus),
-			SUM(180s) AS '180s'
+			p.id AS 'player_id',
+			COUNT(DISTINCT m.id),
+			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
+			SUM(s.60s_plus),
+			SUM(s.100s_plus),
+			SUM(s.140s_plus),
+			SUM(s.180s) AS '180s'
 		FROM statistics_shootout s
 			JOIN player p ON p.id = s.player_id
-			JOIN `+"`match`"+` m ON m.id = s.match_id
-			JOIN game g ON g.id = m.game_id
-		WHERE g.updated_at >= ? AND g.updated_at < ?
-		AND g.is_finished = 1
-		AND g.game_type_id = 2
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+		WHERE m.updated_at >= ? AND m.updated_at < ?
+			AND m.is_finished = 1
+			AND m.match_type_id = 2
 		GROUP BY p.id`, from, to)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 	statsMap := make(map[int]*models.StatisticsShootout, 0)
 	for rows.Next() {
 		s := new(models.StatisticsShootout)
-		err := rows.Scan(&s.PlayerID, &s.GamesPlayed, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
 		if err != nil {
 			return nil, err
 		}
@@ -41,12 +41,12 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 	rows, err = models.DB.Query(`
 		SELECT
 			p.id AS 'player_id',
-			COUNT(g.winner_id) AS 'games_won'
-		FROM game g
-			JOIN player p ON p.id = g.winner_id
-		WHERE g.updated_at >= ? AND g.updated_at < ?
-		AND g.game_type_id = 2
-		GROUP BY g.winner_id`, from, to)
+			COUNT(m.winner_id) AS 'matches_won'
+		FROM matches m
+			JOIN player p ON p.id = m.winner_id
+		WHERE m.updated_at >= ? AND m.updated_at < ?
+		AND m.match_type_id = 2
+		GROUP BY m.winner_id`, from, to)
 	if err != nil {
 		return nil, err
 	}
@@ -54,12 +54,12 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 
 	for rows.Next() {
 		var playerID int
-		var gamesWon int
-		err := rows.Scan(&playerID, &gamesWon)
+		var matchesWon int
+		err := rows.Scan(&playerID, &matchesWon)
 		if err != nil {
 			return nil, err
 		}
-		statsMap[playerID].GamesWon = gamesWon
+		statsMap[playerID].MatchesWon = matchesWon
 	}
 
 	stats := make([]*models.StatisticsShootout, 0)
@@ -70,8 +70,8 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 	return stats, nil
 }
 
-// GetShootoutStatisticsForMatch will return statistics for all players in the given match
-func GetShootoutStatisticsForMatch(id int) ([]*models.StatisticsShootout, error) {
+// GetShootoutStatisticsForLeg will return statistics for all players in the given leg
+func GetShootoutStatisticsForLeg(id int) ([]*models.StatisticsShootout, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			m.id,
@@ -83,8 +83,8 @@ func GetShootoutStatisticsForMatch(id int) ([]*models.StatisticsShootout, error)
 			SUM(180s) AS '180s'
 		FROM statistics_shootout s
 			JOIN player p ON p.id = s.player_id
-			JOIN `+"`match`"+` m ON m.id = s.match_id
-			JOIN game g ON g.id = m.game_id
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = m.match_id
 		WHERE m.id = ? GROUP BY p.id`, id)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func GetShootoutStatisticsForMatch(id int) ([]*models.StatisticsShootout, error)
 	stats := make([]*models.StatisticsShootout, 0)
 	for rows.Next() {
 		s := new(models.StatisticsShootout)
-		err := rows.Scan(&s.MatchID, &s.PlayerID, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
 		if err != nil {
 			return nil, err
 		}
