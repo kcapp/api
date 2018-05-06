@@ -14,7 +14,8 @@ func NewMatch(match models.Match) (*models.Match, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := tx.Exec("INSERT INTO matches (match_type_id, match_mode_id, owe_type_id, created_at) VALUES (?, ?, ?, NOW())", match.MatchType.ID, match.MatchMode.ID, match.OweTypeID)
+	res, err := tx.Exec("INSERT INTO matches (match_type_id, match_mode_id, owe_type_id, venue_id, created_at) VALUES (?, ?, ?, ?, NOW())",
+		match.MatchType.ID, match.MatchMode.ID, match.OweTypeID, match.VenueID)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
