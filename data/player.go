@@ -14,7 +14,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 		return nil, err
 	}
 
-	rows, err := models.DB.Query(`SELECT p.id, p.name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p`)
+	rows, err := models.DB.Query(`SELECT p.id, p.name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p WHERE active = 1`)
 	if err != nil {
 		return nil, err
 	}

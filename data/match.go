@@ -119,7 +119,7 @@ func GetMatchesLimit(start int, limit int) ([]*models.Match, error) {
 			LEFT JOIN venue v on v.id = m.venue_id
 			LEFT JOIN player2leg p2l ON p2l.match_id = m.id
 		GROUP BY m.id
-		ORDER BY m.id DESC
+		ORDER BY m.created_at DESC
 		LIMIT ?, ?`, start, limit)
 	if err != nil {
 		return nil, err
