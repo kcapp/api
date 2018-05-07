@@ -6,7 +6,7 @@ import (
 
 // GetTournaments will return all tournaments
 func GetTournaments() ([]*models.Tournament, error) {
-	rows, err := models.DB.Query("SELECT id, name, short_name, start_time, end_time FROM tournament")
+	rows, err := models.DB.Query("SELECT id, name, short_name, start_time, end_time FROM tournament ORDER BY id DESC")
 	if err != nil {
 		return nil, err
 	}
