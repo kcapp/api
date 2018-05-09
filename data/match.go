@@ -171,7 +171,7 @@ func GetMatch(id int) (*models.Match, error) {
 			m.id, m.is_finished, m.current_leg_id, m.winner_id, m.created_at, m.updated_at, m.owe_type_id, m.venue_id,
 			mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required,
 			ot.id, ot.item, v.id, v.name, v.description,
-			m.updated_at as 'last_throw',
+			l.updated_at as 'last_throw',
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
 		FROM matches m
 			JOIN match_type mt ON mt.id = m.match_type_id

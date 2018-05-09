@@ -219,9 +219,9 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 			COUNT(*)
 		FROM score s
 		WHERE s.id IN (SELECT MAX(id) FROM score WHERE leg_id IN (
-				SELECT m.id FROM leg l
+				SELECT l.id FROM leg l
 				JOIN matches m ON m.id = l.match_id
-				WHERE m.match_type_id = 1 AND m.winner_id = ?) GROUP BY leg_id)
+				WHERE m.match_type_id = 1 AND l.winner_id = ?) GROUP BY leg_id)
 		GROUP BY s.first_dart, s.first_dart_multiplier,
 			s.second_dart, s.second_dart_multiplier,
 			s.third_dart, s.third_dart_multiplier
