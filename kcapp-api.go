@@ -51,6 +51,7 @@ func main() {
 	router.HandleFunc("/visit/{id}", controllers.DeleteVisit).Methods("DELETE")
 
 	router.HandleFunc("/player", controllers.GetPlayers).Methods("GET")
+	router.HandleFunc("/player/active", controllers.GetActivePlayers).Methods("GET")
 	router.HandleFunc("/player/compare", controllers.GetPlayersX01Statistics).Methods("GET")
 	router.HandleFunc("/player/{id}", controllers.GetPlayer).Methods("GET")
 	router.HandleFunc("/player/{id}", controllers.UpdatePlayer).Methods("PUT")
@@ -72,6 +73,7 @@ func main() {
 
 	router.HandleFunc("/tournament", controllers.GetTournaments).Methods("GET")
 	router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")
+	router.HandleFunc("/tournament/{id}/matches", controllers.GetTournamentMatches).Methods("GET")
 	router.HandleFunc("/tournament/{id}/statistics", controllers.GetTournamentStatistics).Methods("GET")
 	router.HandleFunc("/tournemtn/groups", controllers.GetTournamentGroups).Methods("GET")
 

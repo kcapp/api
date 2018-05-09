@@ -14,6 +14,42 @@ func GetPlayers() (map[int]*models.Player, error) {
 		return nil, err
 	}
 
+	rows, err := models.DB.Query(`SELECT p.id, p.name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	players := make(map[int]*models.Player)
+	for rows.Next() {
+		p := new(models.Player)
+		err := rows.Scan(&p.ID, &p.Name, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		players[p.ID] = p
+
+		if val, ok := played[p.ID]; ok {
+			p.MatchesPlayed = val.MatchesPlayed
+			p.MatchesWon = val.MatchesWon
+			p.LegsPlayed = val.LegsPlayed
+			p.LegsWon = val.LegsWon
+		}
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return players, nil
+}
+
+// GetActivePlayers returns a map of all active players
+func GetActivePlayers() (map[int]*models.Player, error) {
+	played, err := GetMatchesPlayedPerPlayer()
+	if err != nil {
+		return nil, err
+	}
+
 	rows, err := models.DB.Query(`SELECT p.id, p.name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p WHERE active = 1`)
 	if err != nil {
 		return nil, err
@@ -219,8 +255,7 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 			COUNT(*)
 		FROM score s
 		WHERE s.id IN (SELECT MAX(id) FROM score WHERE leg_id IN (
-				SELECT l.id FROM leg l
-				JOIN matches m ON m.id = l.match_id
+				SELECT l.id FROM leg l JOIN matches m ON m.id = l.match_id
 				WHERE m.match_type_id = 1 AND l.winner_id = ?) GROUP BY leg_id)
 		GROUP BY s.first_dart, s.first_dart_multiplier,
 			s.second_dart, s.second_dart_multiplier,

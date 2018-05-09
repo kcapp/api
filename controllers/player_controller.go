@@ -24,6 +24,18 @@ func GetPlayers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(players)
 }
 
+// GetActivePlayers will return a map containing all active players
+func GetActivePlayers(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	players, err := data.GetActivePlayers()
+	if err != nil {
+		log.Println("Unable to get active players", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(players)
+}
+
 // GetPlayer will return a player with the given ID
 func GetPlayer(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

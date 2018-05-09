@@ -28,6 +28,7 @@ type Match struct {
 	VenueID         null.Int    `json:"venue_id"`
 	Venue           *Venue      `json:"venue"`
 	OweType         *OweType    `json:"owe_type,omitempty"`
+	TournamentID    null.Int    `json:"tournament_id,omitempty"`
 	Players         []int       `json:"players"`
 	Legs            []*Leg      `json:"legs,omitempty"`
 	PlayerHandicaps map[int]int `json:"player_handicaps,omitempty"`

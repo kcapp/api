@@ -84,7 +84,7 @@ func GetShootoutStatisticsForLeg(id int) ([]*models.StatisticsShootout, error) {
 		FROM statistics_shootout s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
-			JOIN matches m ON m.id = m.match_id
+			JOIN matches m ON m.id = l.match_id
 		WHERE m.id = ? GROUP BY p.id`, id)
 	if err != nil {
 		return nil, err
