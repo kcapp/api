@@ -208,7 +208,7 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 		SELECT
 			l.id, l.end_time, l.starting_score, l.is_finished,
 			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
-			l.match_id, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
+			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
 		FROM leg l
 			LEFT JOIN player2leg p2l ON p2l.leg_id = l.id
 		WHERE l.match_id = ?
@@ -224,7 +224,7 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 		m := new(models.Leg)
 		var players string
 		err := rows.Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
-			&m.MatchID, &players)
+			&m.MatchID, &m.HasScores, &players)
 		if err != nil {
 			return nil, err
 		}
@@ -244,7 +244,7 @@ func GetActiveLegs() ([]*models.Leg, error) {
 		SELECT
 			l.id, l.end_time, l.starting_score, l.is_finished,
 			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
-			l.match_id, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
+			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
 		FROM leg l
 			LEFT JOIN player2leg p2l ON p2l.leg_id = l.id
 		WHERE l.is_finished <> 1
@@ -260,7 +260,7 @@ func GetActiveLegs() ([]*models.Leg, error) {
 		m := new(models.Leg)
 		var players string
 		err := rows.Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
-			&m.MatchID, &players)
+			&m.MatchID, &m.HasScores, &players)
 		if err != nil {
 			return nil, err
 		}
@@ -280,11 +280,12 @@ func GetLeg(id int) (*models.Leg, error) {
 	var players string
 	err := models.DB.QueryRow(`
 		SELECT
-			l.id, l.end_time, l.starting_score, l.is_finished, l.current_player_id, l.winner_id, l.created_at, l.updated_at, l.match_id,
-			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order ASC) AS 'players'
+			l.id, l.end_time, l.starting_score, l.is_finished, l.current_player_id, l.winner_id, l.created_at, l.updated_at,
+			l.match_id, l.has_scores, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order ASC) AS 'players'
 		FROM leg l
 			LEFT JOIN player2leg p2l ON p2l.leg_id = l.id
-		WHERE l.id = ?`, id).Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt, &m.MatchID, &players)
+		WHERE l.id = ?`, id).Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
+		&m.MatchID, &m.HasScores, &players)
 	if err != nil {
 		return nil, err
 	}

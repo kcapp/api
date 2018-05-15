@@ -128,6 +128,7 @@ func GetTournamentStatistics(id int) (map[int][]*models.TournamentStatistics, er
 			t.id, t.name, t.short_name, t.start_time, t.end_time,
 			tg.id, tg.name, tg.division,
 			p.id as 'player_id',
+			p2t.is_promoted, p2t.is_relegated, p2t.is_winner,
 			COUNT(DISTINCT m.id) AS 'p',
 			COUNT(DISTINCT won.id) AS 'w',
 			COUNT(DISTINCT draw.id) AS 'd',
@@ -160,7 +161,7 @@ func GetTournamentStatistics(id int) (map[int][]*models.TournamentStatistics, er
 			JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
 		WHERE m.tournament_id = ?
 		GROUP BY p2l.player_id, tg.id
-		ORDER BY tg.division, pts DESC, diff DESC`, id)
+		ORDER BY tg.division, pts DESC, diff DESC, is_relegated`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -171,10 +172,10 @@ func GetTournamentStatistics(id int) (map[int][]*models.TournamentStatistics, er
 		group := new(models.TournamentGroup)
 		stats := new(models.TournamentStatistics)
 		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.StartTime, &tournament.EndTime, &group.ID,
-			&group.Name, &group.Division, &stats.PlayerID, &stats.Played, &stats.MatchesWon, &stats.MatchesDraw, &stats.MatchesLost,
-			&stats.LegsFor, &stats.LegsAgainst, &stats.LegsDifference, &stats.Points, &stats.PPD, &stats.FirstNinePPD, &stats.Score60sPlus,
-			&stats.Score100sPlus, &stats.Score140sPlus, &stats.Score180s, &stats.Accuracy20, &stats.Accuracy19, &stats.AccuracyOverall,
-			&stats.CheckoutPercentage)
+			&group.Name, &group.Division, &stats.PlayerID, &stats.IsPromoted, &stats.IsRelegated, &stats.IsWinner, &stats.Played, &stats.MatchesWon,
+			&stats.MatchesDraw, &stats.MatchesLost, &stats.LegsFor, &stats.LegsAgainst, &stats.LegsDifference, &stats.Points, &stats.PPD,
+			&stats.FirstNinePPD, &stats.Score60sPlus, &stats.Score100sPlus, &stats.Score140sPlus, &stats.Score180s, &stats.Accuracy20,
+			&stats.Accuracy19, &stats.AccuracyOverall, &stats.CheckoutPercentage)
 		if err != nil {
 			return nil, err
 		}

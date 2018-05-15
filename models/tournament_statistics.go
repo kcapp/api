@@ -15,6 +15,7 @@ type TournamentStatistics struct {
 	Points             int              `json:"points"`
 	PPD                float32          `json:"ppd"`
 	FirstNinePPD       float32          `json:"first_nine_ppd"`
+	CheckoutAttempts   int              `json:"checkout_attempts"`
 	CheckoutPercentage float32          `json:"checkout_percentage"`
 	Score60sPlus       int              `json:"scores_60s_plus"`
 	Score100sPlus      int              `json:"scores_100s_plus"`
@@ -23,4 +24,7 @@ type TournamentStatistics struct {
 	Accuracy20         float32          `json:"accuracy_20"`
 	Accuracy19         float32          `json:"accuracy_19"`
 	AccuracyOverall    float32          `json:"accuracy_overall"`
+	IsPromoted         bool             `json:"is_promoted"`
+	IsRelegated        bool             `json:"is_relegated"`
+	IsWinner           bool             `json:"is_winner"`
 }

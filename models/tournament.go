@@ -24,4 +24,7 @@ type Player2Tournament struct {
 	PlayerID          int
 	TournamentID      int
 	TournamentGroupID int
+	IsPromoted        bool
+	IsRelegated       bool
+	IsWinner          bool
 }

@@ -15,6 +15,7 @@ type Leg struct {
 	CreatedAt       string          `json:"created_at"`
 	UpdatedAt       string          `json:"updated_at"`
 	MatchID         int             `json:"match_id"`
+	HasScores       bool            `json:"has_scores"`
 	Players         []int           `json:"players,omitempty"`
 	DartsThrown     int             `json:"darts_thrown,omitempty"`
 	Visits          []*Visit        `json:"visits"`
