@@ -7,7 +7,12 @@ import (
 
 // GetTournaments will return all tournaments
 func GetTournaments() ([]*models.Tournament, error) {
-	rows, err := models.DB.Query("SELECT id, name, short_name, start_time, end_time FROM tournament ORDER BY id DESC")
+	rows, err := models.DB.Query(`
+		SELECT
+			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, start_time, end_time
+		FROM tournament
+		WHERE is_playoffs = 0
+		ORDER BY id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -16,7 +21,8 @@ func GetTournaments() ([]*models.Tournament, error) {
 	tournaments := make([]*models.Tournament, 0)
 	for rows.Next() {
 		tournament := new(models.Tournament)
-		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.StartTime, &tournament.EndTime)
+		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
+			&tournament.PlayoffsTournamentID, &tournament.StartTime, &tournament.EndTime)
 		if err != nil {
 			return nil, err
 		}
@@ -57,11 +63,48 @@ func GetTournamentGroups() (map[int]*models.TournamentGroup, error) {
 func GetTournament(id int) (*models.Tournament, error) {
 	tournament := new(models.Tournament)
 	err := models.DB.QueryRow(`
-		SELECT t.id, t.name, t.short_name, t.start_time, t.end_time
-		FROM tournament t WHERE t.id = ?`, id).Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.StartTime, &tournament.EndTime)
+		SELECT
+			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, start_time, end_time
+		FROM tournament t WHERE t.id = ?`, id).Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
+		&tournament.PlayoffsTournamentID, &tournament.StartTime, &tournament.EndTime)
 	if err != nil {
 		return nil, err
 	}
+	if tournament.PlayoffsTournamentID.Valid {
+		playoffs, err := GetTournament(int(tournament.PlayoffsTournamentID.Int64))
+		if err != nil {
+			return nil, err
+		}
+		tournament.PlayoffsTournament = playoffs
+	}
+	if tournament.IsFinished {
+		rows, err := models.DB.Query(`
+			SELECT
+				t.id, t.name, p.id, p.name, ts.rank
+			FROM tournament_standings ts
+				JOIN player p ON p.id = ts.player_id
+				JOIN tournament t ON t.id = ts.tournament_id
+			WHERE ts.tournament_id = ?
+			ORDER BY rank`, id)
+		if err != nil {
+			return nil, err
+		}
+
+		standings := make([]*models.TournamentStanding, 0)
+		for rows.Next() {
+			ts := new(models.TournamentStanding)
+			err := rows.Scan(&ts.TournamentID, &ts.TournamentName, &ts.PlayerID, &ts.PlayerName, &ts.Rank)
+			if err != nil {
+				return nil, err
+			}
+			standings = append(standings, ts)
+		}
+		if err = rows.Err(); err != nil {
+			return nil, err
+		}
+		tournament.Standings = standings
+	}
+
 	return tournament, nil
 }
 
@@ -146,6 +189,7 @@ func GetTournamentStatistics(id int) (map[int][]*models.TournamentStatistics, er
 			IFNULL(SUM(accuracy_20) / COUNT(accuracy_20), 0) AS 'accuracy_20s',
 			IFNULL(SUM(accuracy_19) / COUNT(accuracy_19), 0) AS 'accuracy_19s',
 			IFNULL(SUM(overall_accuracy) / COUNT(overall_accuracy), 0) AS 'accuracy_overall',
+			IFNULL(SUM(s.checkout_attempts), 0) as 'checkout_attempts',
 			IFNULL(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100, 0) AS 'checkout_percentage'
 		FROM player2leg p2l
 			JOIN matches m ON m.id = p2l.match_id
@@ -161,7 +205,7 @@ func GetTournamentStatistics(id int) (map[int][]*models.TournamentStatistics, er
 			JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
 		WHERE m.tournament_id = ?
 		GROUP BY p2l.player_id, tg.id
-		ORDER BY tg.division, pts DESC, diff DESC, is_relegated`, id)
+		ORDER BY tg.division, pts DESC, diff DESC, is_relegated, manual_order`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +219,7 @@ func GetTournamentStatistics(id int) (map[int][]*models.TournamentStatistics, er
 			&group.Name, &group.Division, &stats.PlayerID, &stats.IsPromoted, &stats.IsRelegated, &stats.IsWinner, &stats.Played, &stats.MatchesWon,
 			&stats.MatchesDraw, &stats.MatchesLost, &stats.LegsFor, &stats.LegsAgainst, &stats.LegsDifference, &stats.Points, &stats.PPD,
 			&stats.FirstNinePPD, &stats.Score60sPlus, &stats.Score100sPlus, &stats.Score140sPlus, &stats.Score180s, &stats.Accuracy20,
-			&stats.Accuracy19, &stats.AccuracyOverall, &stats.CheckoutPercentage)
+			&stats.Accuracy19, &stats.AccuracyOverall, &stats.CheckoutAttempts, &stats.CheckoutPercentage)
 		if err != nil {
 			return nil, err
 		}
