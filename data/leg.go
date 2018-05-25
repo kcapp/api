@@ -257,15 +257,15 @@ func GetActiveLegs() ([]*models.Leg, error) {
 
 	legs := make([]*models.Leg, 0)
 	for rows.Next() {
-		m := new(models.Leg)
+		leg := new(models.Leg)
 		var players string
-		err := rows.Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
-			&m.MatchID, &m.HasScores, &players)
+		err := rows.Scan(&leg.ID, &leg.Endtime, &leg.StartingScore, &leg.IsFinished, &leg.CurrentPlayerID, &leg.WinnerPlayerID, &leg.CreatedAt,
+			&leg.UpdatedAt, &leg.MatchID, &leg.HasScores, &players)
 		if err != nil {
 			return nil, err
 		}
-		m.Players = util.StringToIntArray(players)
-		legs = append(legs, m)
+		leg.Players = util.StringToIntArray(players)
+		legs = append(legs, leg)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
@@ -276,21 +276,21 @@ func GetActiveLegs() ([]*models.Leg, error) {
 
 // GetLeg returns a leg with the given ID
 func GetLeg(id int) (*models.Leg, error) {
-	m := new(models.Leg)
+	leg := new(models.Leg)
 	var players string
 	err := models.DB.QueryRow(`
 		SELECT
 			l.id, l.end_time, l.starting_score, l.is_finished, l.current_player_id, l.winner_id, l.created_at, l.updated_at,
-			l.match_id, l.has_scores, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order ASC) AS 'players'
+			l.board_stream_url, l.match_id, l.has_scores, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order ASC) AS 'players'
 		FROM leg l
 			LEFT JOIN player2leg p2l ON p2l.leg_id = l.id
-		WHERE l.id = ?`, id).Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
-		&m.MatchID, &m.HasScores, &players)
+		WHERE l.id = ?`, id).Scan(&leg.ID, &leg.Endtime, &leg.StartingScore, &leg.IsFinished, &leg.CurrentPlayerID, &leg.WinnerPlayerID, &leg.CreatedAt,
+		&leg.UpdatedAt, &leg.BoardStreamURL, &leg.MatchID, &leg.HasScores, &players)
 	if err != nil {
 		return nil, err
 	}
 
-	m.Players = util.StringToIntArray(players)
+	leg.Players = util.StringToIntArray(players)
 	visits, err := GetLegVisits(id)
 	if err != nil {
 		return nil, err
@@ -298,7 +298,7 @@ func GetLeg(id int) (*models.Leg, error) {
 	dartsThrown := 0
 	visitCount := 0
 	for _, visit := range visits {
-		if visitCount%len(m.Players) == 0 {
+		if visitCount%len(leg.Players) == 0 {
 			dartsThrown += 3
 		}
 		visit.DartsThrown = dartsThrown
@@ -311,10 +311,10 @@ func GetLeg(id int) (*models.Leg, error) {
 		v.DartsThrown = v.DartsThrown - 3 + v.GetDartsThrown()
 	}
 
-	m.Visits = visits
-	m.Hits, m.DartsThrown = models.GetHitsMap(visits)
+	leg.Visits = visits
+	leg.Hits, leg.DartsThrown = models.GetHitsMap(visits)
 
-	return m, nil
+	return leg, nil
 }
 
 // GetLegPlayers returns a information about current score for players in a leg

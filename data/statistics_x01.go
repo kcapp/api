@@ -75,7 +75,7 @@ func GetX01StatisticsForLeg(id int) ([]*models.StatisticsX01, error) {
 			s.accuracy_19,
 			s.overall_accuracy,
 			s.checkout_attempts,
-			s.checkout_percentage
+			IFNULL(s.checkout_percentage, 0) AS 'checkout_percentage'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -116,6 +116,7 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 			SUM(s.accuracy_20) / COUNT(s.accuracy_20) AS 'accuracy_20s',
 			SUM(s.accuracy_19) / COUNT(s.accuracy_19) AS 'accuracy_19s',
 			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
+			SUM(s.checkout_attempts) AS 'checkout_attempts',
 			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
@@ -134,8 +135,9 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 	stats := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
-			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
+		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s,
+			&s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutAttempts,
+			&s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
 		}

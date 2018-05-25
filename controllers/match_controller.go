@@ -63,6 +63,18 @@ func GetMatches(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(matches)
 }
 
+// GetActiveMatches will return a list of active matches
+func GetActiveMatches(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	matches, err := data.GetActiveMatches()
+	if err != nil {
+		log.Println("Unable to get active matches", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(matches)
+}
+
 // GetMatchesLimit will return N matches from the given starting point
 func GetMatchesLimit(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

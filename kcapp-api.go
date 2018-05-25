@@ -29,6 +29,7 @@ func main() {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/match", controllers.NewMatch).Methods("POST")
+	router.HandleFunc("/match/active", controllers.GetActiveMatches).Methods("GET")
 	router.HandleFunc("/match/types", controllers.GetMatchesTypes).Methods("GET")
 	router.HandleFunc("/match/modes", controllers.GetMatchesModes).Methods("GET")
 	router.HandleFunc("/match/{id}/continue", controllers.ContinueMatch).Methods("PUT")
@@ -75,7 +76,7 @@ func main() {
 	router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")
 	router.HandleFunc("/tournament/{id}/matches", controllers.GetTournamentMatches).Methods("GET")
 	router.HandleFunc("/tournament/{id}/statistics", controllers.GetTournamentStatistics).Methods("GET")
-	router.HandleFunc("/tournemtn/groups", controllers.GetTournamentGroups).Methods("GET")
+	router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
 
 	log.Printf("Listening on port %d", config.APIConfig.Port)
 	log.Println(http.ListenAndServe(fmt.Sprintf(":%d", config.APIConfig.Port), router))

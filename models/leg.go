@@ -14,6 +14,7 @@ type Leg struct {
 	WinnerPlayerID  null.Int        `json:"winner_player_id"`
 	CreatedAt       string          `json:"created_at"`
 	UpdatedAt       string          `json:"updated_at"`
+	BoardStreamURL  null.String     `json:"board_stream_url,omitempty"`
 	MatchID         int             `json:"match_id"`
 	HasScores       bool            `json:"has_scores"`
 	Players         []int           `json:"players,omitempty"`
