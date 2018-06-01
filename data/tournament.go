@@ -1,6 +1,7 @@
 package data
 
 import (
+	"github.com/jmoiron/sqlx"
 	"github.com/kcapp/api/models"
 	"github.com/kcapp/api/util"
 )
@@ -164,8 +165,8 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 	return matches, nil
 }
 
-// GetTournamentStatistics will return statistics for a given tournament
-func GetTournamentStatistics(id int) (map[int][]*models.TournamentStatistics, error) {
+// GetTournamentOverview will return an overview for a given tournament
+func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			t.id, t.name, t.short_name, t.start_time, t.end_time,
@@ -210,11 +211,11 @@ func GetTournamentStatistics(id int) (map[int][]*models.TournamentStatistics, er
 		return nil, err
 	}
 	defer rows.Close()
-	statistics := make(map[int][]*models.TournamentStatistics, 0)
+	statistics := make(map[int][]*models.TournamentOverview, 0)
 	for rows.Next() {
 		tournament := new(models.Tournament)
 		group := new(models.TournamentGroup)
-		stats := new(models.TournamentStatistics)
+		stats := new(models.TournamentOverview)
 		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.StartTime, &tournament.EndTime, &group.ID,
 			&group.Name, &group.Division, &stats.PlayerID, &stats.IsPromoted, &stats.IsRelegated, &stats.IsWinner, &stats.Played, &stats.MatchesWon,
 			&stats.MatchesDraw, &stats.MatchesLost, &stats.LegsFor, &stats.LegsAgainst, &stats.LegsDifference, &stats.Points, &stats.PPD,
@@ -227,7 +228,7 @@ func GetTournamentStatistics(id int) (map[int][]*models.TournamentStatistics, er
 		stats.Group = group
 
 		if _, ok := statistics[group.ID]; !ok {
-			statistics[group.ID] = make([]*models.TournamentStatistics, 0)
+			statistics[group.ID] = make([]*models.TournamentOverview, 0)
 		}
 		statistics[group.ID] = append(statistics[group.ID], stats)
 	}
@@ -235,4 +236,62 @@ func GetTournamentStatistics(id int) (map[int][]*models.TournamentStatistics, er
 		return nil, err
 	}
 	return statistics, nil
+}
+
+// GetTournamentStatistics will return statistics for the given tournament
+func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, error) {
+	statistics := new(models.TournamentStatistics)
+	checkouts, err := getHighestCheckoutsForTournament(tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	statistics.HighestCheckout = checkouts
+
+	return statistics, nil
+}
+
+// getHighestCheckout will calculate the highest checkout for the given players
+func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic, error) {
+	q, args, err := sqlx.In(`
+		SELECT
+			player_id,
+			leg_id,
+			MAX(checkout) AS 'checkout'
+		FROM (SELECT
+				s.player_id,
+				s.leg_id,
+				IFNULL(s.first_dart * s.first_dart_multiplier, 0) +
+					IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
+					IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
+			FROM score s
+			JOIN leg l ON l.id = s.leg_id
+			WHERE l.winner_id = s.player_id
+				AND s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))
+				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id WHERE l.winner_id = s.player_id GROUP BY leg_id)
+			GROUP BY s.player_id, s.id
+			ORDER BY checkout DESC) checkouts
+		GROUP BY player_id
+		ORDER BY checkout DESC`, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := models.DB.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	best := make([]*models.BestStatistic, 0)
+	for rows.Next() {
+		highest := new(models.BestStatistic)
+		err := rows.Scan(&highest.PlayerID, &highest.LegID, &highest.Value)
+		if err != nil {
+			return nil, err
+		}
+		best = append(best, highest)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return best, err
 }

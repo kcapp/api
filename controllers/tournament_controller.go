@@ -72,7 +72,26 @@ func GetTournamentMatches(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(matches)
 }
 
-// GetTournamentStatistics will return statistics for the given tournament
+// GetTournamentOverview will return statistics for the given tournament
+func GetTournamentOverview(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	stats, err := data.GetTournamentOverview(id)
+	if err != nil {
+		log.Println("Unable to get tournament overview", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(stats)
+}
+
+// GetTournamentOverview will return statistics for the given tournament
 func GetTournamentStatistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)

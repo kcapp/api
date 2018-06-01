@@ -1,7 +1,12 @@
 package models
 
-// TournamentStatistics stuct for storing tournament  statistics
+// TournamentStatistics struct for stroring tournament statistics
 type TournamentStatistics struct {
+	HighestCheckout []*BestStatistic `json:"checkout_highest"`
+}
+
+// TournamentOverview stuct for storing tournament overview
+type TournamentOverview struct {
 	Tournament         *Tournament      `json:"tournament"`
 	Group              *TournamentGroup `json:"tournament_group"`
 	PlayerID           int              `json:"player_id"`

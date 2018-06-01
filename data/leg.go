@@ -313,6 +313,10 @@ func GetLeg(id int) (*models.Leg, error) {
 
 	leg.Visits = visits
 	leg.Hits, leg.DartsThrown = models.GetHitsMap(visits)
+	leg.CheckoutStatistics, err = getCheckoutStatistics(leg.ID, leg.StartingScore)
+	if err != nil {
+		return nil, err
+	}
 
 	return leg, nil
 }
@@ -433,7 +437,7 @@ func calculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 		return nil, err
 	}
 
-	players, err := GetLegPlayers(legID)
+	players, err := GetPlayersScore(legID)
 	if err != nil {
 		return nil, err
 	}
@@ -531,7 +535,7 @@ func calculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout,
 		return nil, err
 	}
 
-	players, err := GetLegPlayers(legID)
+	players, err := GetPlayersScore(legID)
 	if err != nil {
 		return nil, err
 	}
@@ -568,15 +572,15 @@ func calculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout,
 func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id, m.end_time, l.starting_score, m.is_finished,
-			m.current_player_id, m.winner_id, m.created_at, m.updated_at,
-			m.match_id, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
+			l.id, l.end_time, l.starting_score, l.is_finished,
+			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
+			l.match_id, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
 		FROM leg l
-			JOIN match m on m.id = l.match_id
+			JOIN matches m on m.id = l.match_id
 			JOIN player2leg p2l ON p2l.leg_id = l.id
-		WHERE m.is_finished = 1
-			AND m.match_type_id = 1
-		GROUP BY m.id
+			JOIN player2tournament p2t on p2t.tournament_id = m.tournament_id and p2t.player_id = p2l.player_id
+		WHERE m.tournament_id = 16 and p2t.tournament_group_id = 12
+		GROUP BY l.id
 		ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -600,13 +604,101 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 	}
 
 	m := make(map[int]map[int]*models.StatisticsX01)
-	for _, leg := range legs {
+	/*for _, leg := range legs {
 		stats, err := calculateX01Statistics(leg.ID, int(leg.WinnerPlayerID.Int64), leg.StartingScore)
 		if err != nil {
 			return nil, err
 		}
 		m[leg.ID] = stats
+	}*/
+
+	s := make([]*models.CheckoutStatistics, 0)
+	for _, leg := range legs {
+		log.Printf("Getting statistics for %d", leg.ID)
+		stats, err := getCheckoutStatistics(leg.ID, leg.StartingScore)
+		if err != nil {
+			return nil, err
+		}
+		s = append(s, stats)
 	}
 
+	all := make(map[int]int)
+	for _, stats := range s {
+		log.Printf("Checkout: %d, Total: %d, Attempts: %d", stats.Checkout, stats.Count, stats.CheckoutAttempts)
+
+		for checkout, count := range stats.CheckoutAttempts {
+			all[checkout] += count
+		}
+	}
+	log.Printf("All: %v", all)
+
 	return m, err
+}
+
+// getCheckoutStatistics will get all checkout attempts for the given leg
+func getCheckoutStatistics(legID int, startingScore int) (*models.CheckoutStatistics, error) {
+	visits, err := GetLegVisits(legID)
+	if err != nil {
+		return nil, err
+	}
+
+	players, err := GetPlayersScore(legID)
+	if err != nil {
+		return nil, err
+	}
+
+	playersMap := make(map[int]*models.Player2Leg)
+	for _, player := range players {
+		playersMap[player.PlayerID] = player
+		player.CurrentScore = startingScore
+		if player.Handicap.Valid {
+			player.CurrentScore += int(player.Handicap.Int64)
+		}
+	}
+
+	totalAttempts := 0
+	checkoutAttempts := make(map[int]int)
+	for _, visit := range visits {
+		player := playersMap[visit.PlayerID]
+
+		currentScore := player.CurrentScore
+		if visit.FirstDart.IsCheckoutAttempt(currentScore) {
+			totalAttempts++
+			checkoutAttempts[currentScore]++
+		}
+		currentScore -= visit.FirstDart.GetScore()
+
+		if visit.SecondDart.IsCheckoutAttempt(currentScore) {
+			totalAttempts++
+			checkoutAttempts[currentScore]++
+		}
+		currentScore -= visit.SecondDart.GetScore()
+
+		if visit.ThirdDart.IsCheckoutAttempt(currentScore) {
+			totalAttempts++
+			checkoutAttempts[currentScore]++
+		}
+		currentScore -= visit.ThirdDart.GetScore()
+
+		if !visit.IsBust {
+			player.CurrentScore = currentScore
+		}
+	}
+
+	statistics := new(models.CheckoutStatistics)
+	statistics.CheckoutAttempts = checkoutAttempts
+	statistics.Count = totalAttempts
+
+	if len(visits) > 1 {
+		lastVisit := visits[len(visits)-1]
+		if lastVisit.ThirdDart.Value.Valid {
+			statistics.Checkout = lastVisit.ThirdDart.GetScore()
+		} else if lastVisit.SecondDart.Value.Valid {
+			statistics.Checkout = lastVisit.SecondDart.GetScore()
+		} else {
+			statistics.Checkout = lastVisit.FirstDart.GetScore()
+		}
+	}
+
+	return statistics, nil
 }

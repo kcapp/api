@@ -6,8 +6,9 @@ import (
 
 // BestStatistic struct used for storing a value and leg where the statistic was achieved
 type BestStatistic struct {
-	Value int `json:"value"`
-	LegID int `json:"leg_id"`
+	Value    int `json:"value"`
+	LegID    int `json:"leg_id"`
+	PlayerID int `json:"player_id"`
 }
 
 // BestStatisticFloat struct used for storing a value and leg where the statistic was achieved
@@ -53,10 +54,11 @@ type StatisticsX01 struct {
 
 // CheckoutStatistics stuct used for storing detailed checkout statistics
 type CheckoutStatistics struct {
-	Checkout  int      `json:"checkout"`
-	Count     int      `json:"count"`
-	Completed bool     `json:"completed"`
-	Visits    []*Visit `json:"visits,omitempty"`
+	Checkout         int         `json:"checkout"`
+	Count            int         `json:"count"`
+	Completed        bool        `json:"completed"`
+	Visits           []*Visit    `json:"visits,omitempty"`
+	CheckoutAttempts map[int]int `json:"checkout_attempts,omitempty"`
 }
 
 // Hits sturct used to store summary of hits for players/legs

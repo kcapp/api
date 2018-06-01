@@ -75,6 +75,7 @@ func main() {
 	router.HandleFunc("/tournament", controllers.GetTournaments).Methods("GET")
 	router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")
 	router.HandleFunc("/tournament/{id}/matches", controllers.GetTournamentMatches).Methods("GET")
+	router.HandleFunc("/tournament/{id}/overview", controllers.GetTournamentOverview).Methods("GET")
 	router.HandleFunc("/tournament/{id}/statistics", controllers.GetTournamentStatistics).Methods("GET")
 	router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
 

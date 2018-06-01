@@ -31,7 +31,7 @@ func AddVisit(visit models.Visit) error {
 	}
 
 	// Determine who the next player will be
-	players, err := GetLegPlayers(visit.LegID)
+	players, err := GetPlayersScore(visit.LegID)
 	if err != nil {
 		return err
 	}

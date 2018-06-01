@@ -6,21 +6,22 @@ import (
 
 // Leg struct used for storing legs
 type Leg struct {
-	ID              int             `json:"id"`
-	Endtime         null.String     `json:"end_time"`
-	StartingScore   int             `json:"starting_score"`
-	IsFinished      bool            `json:"is_finished"`
-	CurrentPlayerID int             `json:"current_player_id"`
-	WinnerPlayerID  null.Int        `json:"winner_player_id"`
-	CreatedAt       string          `json:"created_at"`
-	UpdatedAt       string          `json:"updated_at"`
-	BoardStreamURL  null.String     `json:"board_stream_url,omitempty"`
-	MatchID         int             `json:"match_id"`
-	HasScores       bool            `json:"has_scores"`
-	Players         []int           `json:"players,omitempty"`
-	DartsThrown     int             `json:"darts_thrown,omitempty"`
-	Visits          []*Visit        `json:"visits"`
-	Hits            map[int64]*Hits `json:"hits,omitempty"`
+	ID                 int                 `json:"id"`
+	Endtime            null.String         `json:"end_time"`
+	StartingScore      int                 `json:"starting_score"`
+	IsFinished         bool                `json:"is_finished"`
+	CurrentPlayerID    int                 `json:"current_player_id"`
+	WinnerPlayerID     null.Int            `json:"winner_player_id"`
+	CreatedAt          string              `json:"created_at"`
+	UpdatedAt          string              `json:"updated_at"`
+	BoardStreamURL     null.String         `json:"board_stream_url,omitempty"`
+	MatchID            int                 `json:"match_id"`
+	HasScores          bool                `json:"has_scores"`
+	Players            []int               `json:"players,omitempty"`
+	DartsThrown        int                 `json:"darts_thrown,omitempty"`
+	Visits             []*Visit            `json:"visits"`
+	Hits               map[int64]*Hits     `json:"hits,omitempty"`
+	CheckoutStatistics *CheckoutStatistics `json:"checkout_statistics,omitempty"`
 }
 
 // Player2Leg struct used for stroring players in a leg
