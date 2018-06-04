@@ -196,3 +196,22 @@ func DeleteLeg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// UndoFinishLeg will undo a finalized leg
+func UndoFinishLeg(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	legID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = data.UndoLegFinish(legID)
+	if err != nil {
+		log.Println("Unable to undo leg finish", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}

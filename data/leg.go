@@ -202,6 +202,42 @@ func FinishLeg(visit models.Visit) error {
 	return nil
 }
 
+// UndoLegFinish will undo a finalized leg
+func UndoLegFinish(legID int) error {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Undo the finalized match
+	_, err = tx.Exec("UPDATE matches SET is_finished = 0, winner_id = NULL WHERE id = (SELECT match_id FROM leg WHERE id = ?)", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	// Undo the finalized leg ;
+	_, err = tx.Exec("UPDATE leg SET is_finished = 0, winner_id = NULL WHERE id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	// Remove generated statistics for the leg;
+	_, err = tx.Exec("DELETE FROM statistics_x01 WHERE leg_id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	// Remove the last score
+	_, err = tx.Exec("DELETE FROM score WHERE leg_id = ? ORDER BY id DESC LIMIT 1", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	log.Printf("[%d] Undo finish of leg", legID)
+	return nil
+}
+
 // GetLegsForMatch returns all legs for the given match ID
 func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 	rows, err := models.DB.Query(`
