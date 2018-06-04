@@ -13,8 +13,9 @@ type BestStatistic struct {
 
 // BestStatisticFloat struct used for storing a value and leg where the statistic was achieved
 type BestStatisticFloat struct {
-	Value float32 `json:"value"`
-	LegID int     `json:"leg_id"`
+	Value    float32 `json:"value"`
+	LegID    int     `json:"leg_id"`
+	PlayerID int     `json:"player_id"`
 }
 
 // StatisticsX01 struct used for storing statistics

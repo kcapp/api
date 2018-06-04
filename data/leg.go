@@ -473,6 +473,7 @@ func calculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 		}
 		currentScore -= visit.ThirdDart.GetScore()
 
+		stats.DartsThrown += 3
 		if visit.IsBust {
 			continue
 		}
@@ -497,20 +498,16 @@ func calculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 		accuracyScore := player.CurrentScore
 		if visit.FirstDart.Value.Valid {
 			stats.AccuracyStatistics.GetAccuracyStats(accuracyScore, visit.FirstDart)
-			stats.DartsThrown++
 			accuracyScore -= visit.FirstDart.GetScore()
 		}
 		if visit.SecondDart.Value.Valid {
 			stats.AccuracyStatistics.GetAccuracyStats(accuracyScore, visit.SecondDart)
-			stats.DartsThrown++
 			accuracyScore -= visit.SecondDart.GetScore()
 		}
 		if visit.ThirdDart.Value.Valid {
 			stats.AccuracyStatistics.GetAccuracyStats(accuracyScore, visit.ThirdDart)
-			stats.DartsThrown++
 			accuracyScore -= visit.ThirdDart.GetScore()
 		}
-
 		player.CurrentScore = currentScore
 	}
 
@@ -519,11 +516,17 @@ func calculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 		stats.FirstNinePPD = stats.FirstNinePPD / 9
 		if playerID == winnerID {
 			stats.CheckoutPercentage = null.FloatFrom(100 / float64(stats.CheckoutAttempts))
+
+			// When checking out, it might be done in 1, 2 or 3 darts, so make
+			// sure we set the correct number of darts thrown for the final visit
+			v := visits[len(visits)-1]
+			stats.DartsThrown = stats.DartsThrown - 3 + v.GetDartsThrown()
 		} else {
 			stats.CheckoutPercentage = null.FloatFromPtr(nil)
 		}
 
 		stats.AccuracyStatistics.SetAccuracy()
+		log.Printf("UPDATE statistics_x01 SET darts_thrown = %d WHERE leg_id = %d AND player_id = %d;", stats.DartsThrown, legID, playerID)
 	}
 
 	return statisticsMap, nil
@@ -578,10 +581,9 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 		FROM leg l
 			JOIN matches m on m.id = l.match_id
 			JOIN player2leg p2l ON p2l.leg_id = l.id
-			JOIN player2tournament p2t on p2t.tournament_id = m.tournament_id and p2t.player_id = p2l.player_id
-		WHERE m.tournament_id = 16 and p2t.tournament_group_id = 12
+		WHERE l.has_scores = 1
 		GROUP BY l.id
-		ORDER BY id`)
+		ORDER BY l.id`)
 	if err != nil {
 		return nil, err
 	}
@@ -604,15 +606,15 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 	}
 
 	m := make(map[int]map[int]*models.StatisticsX01)
-	/*for _, leg := range legs {
+	for _, leg := range legs {
 		stats, err := calculateX01Statistics(leg.ID, int(leg.WinnerPlayerID.Int64), leg.StartingScore)
 		if err != nil {
 			return nil, err
 		}
 		m[leg.ID] = stats
-	}*/
+	}
 
-	s := make([]*models.CheckoutStatistics, 0)
+	/*s := make([]*models.CheckoutStatistics, 0)
 	for _, leg := range legs {
 		log.Printf("Getting statistics for %d", leg.ID)
 		stats, err := getCheckoutStatistics(leg.ID, leg.StartingScore)
@@ -630,7 +632,7 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 			all[checkout] += count
 		}
 	}
-	log.Printf("All: %v", all)
+	log.Printf("All: %v", all)*/
 
 	return m, err
 }

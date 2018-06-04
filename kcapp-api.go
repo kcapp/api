@@ -79,6 +79,11 @@ func main() {
 	router.HandleFunc("/tournament/{id}/statistics", controllers.GetTournamentStatistics).Methods("GET")
 	router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
 
+	/*_, err = data.RecalculateX01Statistics()
+	if err != nil {
+		panic(err)
+	}*/
+
 	log.Printf("Listening on port %d", config.APIConfig.Port)
 	log.Println(http.ListenAndServe(fmt.Sprintf(":%d", config.APIConfig.Port), router))
 }

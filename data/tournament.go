@@ -1,7 +1,6 @@
 package data
 
 import (
-	"github.com/jmoiron/sqlx"
 	"github.com/kcapp/api/models"
 	"github.com/kcapp/api/util"
 )
@@ -247,12 +246,30 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 	}
 	statistics.HighestCheckout = checkouts
 
+	a, err := getTournamentBestStatistics(tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	for _, val := range a {
+		statistics.BestPPD = append(statistics.BestPPD, val.BestPPD)
+		statistics.BestFirstNinePPD = append(statistics.BestFirstNinePPD, val.BestFirstNinePPD)
+		if val.Best301 != nil {
+			statistics.Best301DartsThrown = append(statistics.Best301DartsThrown, val.Best301)
+		}
+		if val.Best501 != nil {
+			statistics.Best501DartsThrown = append(statistics.Best501DartsThrown, val.Best501)
+		}
+		if val.Best701 != nil {
+			statistics.Best701DartsThrown = append(statistics.Best701DartsThrown, val.Best701)
+		}
+	}
+
 	return statistics, nil
 }
 
 // getHighestCheckout will calculate the highest checkout for the given players
 func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic, error) {
-	q, args, err := sqlx.In(`
+	rows, err := models.DB.Query(`
 		SELECT
 			player_id,
 			leg_id,
@@ -275,10 +292,6 @@ func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic
 	if err != nil {
 		return nil, err
 	}
-	rows, err := models.DB.Query(q, args...)
-	if err != nil {
-		return nil, err
-	}
 	defer rows.Close()
 
 	best := make([]*models.BestStatistic, 0)
@@ -294,4 +307,104 @@ func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic
 		return nil, err
 	}
 	return best, err
+}
+
+// getBestStatistics will calculate Best PPD, Best First 9, Best 301 and Best 501 for the given players
+func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			p.id AS 'player_id',
+			l.id AS 'leg_id',
+			s.ppd,
+			s.first_nine_ppd,
+			s.checkout_percentage,
+			s.darts_thrown,
+			l.starting_score
+		FROM statistics_x01 s
+			JOIN player p ON p.id = s.player_id
+			JOIN leg l ON l.id = s.leg_id
+		WHERE s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))
+		AND p.id = l.winner_id`, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	stats := make([]*models.StatisticsX01, 0)
+	for rows.Next() {
+		s := new(models.StatisticsX01)
+		err := rows.Scan(&s.PlayerID, &s.LegID, &s.PPD, &s.FirstNinePPD, &s.CheckoutPercentage, &s.DartsThrown, &s.StartingScore)
+		if err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	bestStatistics := make(map[int]*models.StatisticsX01)
+	for _, stat := range stats {
+		best := bestStatistics[stat.PlayerID]
+		if best == nil {
+			best = new(models.StatisticsX01)
+			best.PlayerID = stat.PlayerID
+			bestStatistics[stat.PlayerID] = best
+		}
+
+		// Only count best statistics when the player actually won the leg
+		if stat.StartingScore.Int64 == 301 {
+			if best.Best301 == nil {
+				best.Best301 = new(models.BestStatistic)
+			}
+			if stat.DartsThrown < best.Best301.Value || best.Best301.Value == 0 {
+				best.Best301.Value = stat.DartsThrown
+				best.Best301.LegID = stat.LegID
+				best.Best301.PlayerID = stat.PlayerID
+			}
+		}
+		if stat.StartingScore.Int64 == 501 {
+			if best.Best501 == nil {
+				best.Best501 = new(models.BestStatistic)
+			}
+			if stat.DartsThrown < best.Best501.Value || best.Best501.Value == 0 {
+				best.Best501.Value = stat.DartsThrown
+				best.Best501.LegID = stat.LegID
+				best.Best501.PlayerID = stat.PlayerID
+			}
+		}
+		if stat.StartingScore.Int64 == 701 {
+			if best.Best701 == nil {
+				best.Best701 = new(models.BestStatistic)
+			}
+			if stat.DartsThrown < best.Best701.Value || best.Best701.Value == 0 {
+				best.Best701.Value = stat.DartsThrown
+				best.Best701.LegID = stat.LegID
+				best.Best701.PlayerID = stat.PlayerID
+			}
+		}
+		if best.BestPPD == nil {
+			best.BestPPD = new(models.BestStatisticFloat)
+		}
+		if stat.PPD > best.BestPPD.Value {
+			best.BestPPD.Value = stat.PPD
+			best.BestPPD.LegID = stat.LegID
+			best.BestPPD.PlayerID = stat.PlayerID
+		}
+		if best.BestFirstNinePPD == nil {
+			best.BestFirstNinePPD = new(models.BestStatisticFloat)
+		}
+		if stat.FirstNinePPD > best.BestFirstNinePPD.Value {
+			best.BestFirstNinePPD.Value = stat.FirstNinePPD
+			best.BestFirstNinePPD.LegID = stat.LegID
+			best.BestFirstNinePPD.PlayerID = stat.PlayerID
+		}
+	}
+
+	s := make([]*models.StatisticsX01, 0)
+	for _, val := range bestStatistics {
+		s = append(s, val)
+	}
+
+	return s, nil
 }
