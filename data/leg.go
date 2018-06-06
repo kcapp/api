@@ -515,7 +515,7 @@ func calculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 		}
 
 		visitScore := visit.GetScore()
-		if stats.DartsThrown < 9 {
+		if stats.DartsThrown <= 9 {
 			stats.FirstNinePPD += float32(visitScore)
 		}
 		stats.PPD += float32(visitScore)
@@ -560,9 +560,7 @@ func calculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 		} else {
 			stats.CheckoutPercentage = null.FloatFromPtr(nil)
 		}
-
 		stats.AccuracyStatistics.SetAccuracy()
-		log.Printf("UPDATE statistics_x01 SET darts_thrown = %d WHERE leg_id = %d AND player_id = %d;", stats.DartsThrown, legID, playerID)
 	}
 
 	return statisticsMap, nil
@@ -617,7 +615,7 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 		FROM leg l
 			JOIN matches m on m.id = l.match_id
 			JOIN player2leg p2l ON p2l.leg_id = l.id
-		WHERE l.has_scores = 1
+		WHERE m.match_type_id = 3
 		GROUP BY l.id
 		ORDER BY l.id`)
 	if err != nil {
@@ -646,6 +644,15 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 		stats, err := calculateX01Statistics(leg.ID, int(leg.WinnerPlayerID.Int64), leg.StartingScore)
 		if err != nil {
 			return nil, err
+		}
+		for playerID, stat := range stats {
+			if stat.CheckoutPercentage.Valid {
+				log.Printf("UPDATE statistics_x01 SET checkout_percentage = %f, checkout_attempts = %d WHERE leg_id = %d AND player_id = %d;",
+					stat.CheckoutPercentage.Float64, stat.CheckoutAttempts, leg.ID, playerID)
+			} else {
+				log.Printf("UPDATE statistics_x01 SET checkout_percentage = NULL, checkout_attempts = %d WHERE leg_id = %d AND player_id = %d;",
+					stat.CheckoutAttempts, leg.ID, playerID)
+			}
 		}
 		m[leg.ID] = stats
 	}

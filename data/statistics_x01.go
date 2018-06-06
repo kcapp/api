@@ -74,6 +74,7 @@ func GetX01StatisticsForLeg(id int) ([]*models.StatisticsX01, error) {
 			s.accuracy_20,
 			s.accuracy_19,
 			s.overall_accuracy,
+			s.darts_thrown,
 			s.checkout_attempts,
 			IFNULL(s.checkout_percentage, 0) AS 'checkout_percentage'
 		FROM statistics_x01 s
@@ -93,7 +94,8 @@ func GetX01StatisticsForLeg(id int) ([]*models.StatisticsX01, error) {
 	for rows.Next() {
 		s := new(models.StatisticsX01)
 		err := rows.Scan(&s.LegID, &s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
-			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutAttempts, &s.CheckoutPercentage)
+			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.DartsThrown,
+			&s.CheckoutAttempts, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
 		}
