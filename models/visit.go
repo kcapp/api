@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/guregu/null"
+	"github.com/kcapp/api/util"
 )
 
 // Visit struct used for storing legs
@@ -91,6 +92,20 @@ func (visit Visit) IsViliusVisit() bool {
 		return true
 	}
 	return false
+}
+
+// IsFishAndChips will check if this visit was a Fish and Chips (20,5,1)
+func (visit Visit) IsFishAndChips() bool {
+	twenty := Dart{Value: null.NewInt(20, true), Multiplier: SINGLE}
+	five := Dart{Value: null.NewInt(5, true), Multiplier: SINGLE}
+	one := Dart{Value: null.NewInt(5, true), Multiplier: SINGLE}
+	return visit.checkIfEquivalent(twenty, five, one)
+}
+
+func (visit Visit) checkIfEquivalent(dart1, dart2, dart3 Dart) bool {
+	visitDarts := []Dart{*visit.FirstDart, *visit.SecondDart, *visit.ThirdDart}
+	comparingDarts := []Dart{dart1, dart2, dart3}
+	return util.Compare(visitDarts, comparingDarts)
 }
 
 // GetVisitString will return a (sorted) string based on the darts thrown. This will make sure common visits will be the same

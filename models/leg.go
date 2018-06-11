@@ -37,6 +37,7 @@ type Player2Leg struct {
 
 // PlayerModifiers struct used for storing visit modifiers for a player
 type PlayerModifiers struct {
-	IsViliusVisit bool `json:"is_vilius_visit"`
-	IsBeerMatch   bool `json:"is_beer_match"`
+	IsViliusVisit  bool `json:"is_vilius_visit"`
+	IsBeerMatch    bool `json:"is_beer_match"`
+	IsFishAndChips bool `json:"is_fish_and_chips`
 }
