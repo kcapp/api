@@ -39,5 +39,5 @@ type Player2Leg struct {
 type PlayerModifiers struct {
 	IsViliusVisit  bool `json:"is_vilius_visit"`
 	IsBeerMatch    bool `json:"is_beer_match"`
-	IsFishAndChips bool `json:"is_fish_and_chips`
+	IsFishAndChips bool `json:"is_fish_and_chips"`
 }
