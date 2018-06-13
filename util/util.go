@@ -14,16 +14,3 @@ func StringToIntArray(s string) []int {
 	}
 	return ints
 }
-
-// Equal compares two int slices and returns true if they are equal
-func Equal(a, b []int) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, v := range a {
-		if v != b[i] {
-			return false
-		}
-	}
-	return true
-}
