@@ -84,6 +84,11 @@ func (dart Dart) GetString() string {
 	return fmt.Sprintf("%d-NULL", dart.Multiplier)
 }
 
+// MakeDart will return a new dart with the given settings
+func MakeDart(value null.Int, multipler int64) *Dart {
+	return &Dart{Value: value, Multiplier: multipler}
+}
+
 // IsSingle will check if this dart multipler was a single
 func (dart Dart) IsSingle() bool {
 	return dart.Multiplier == SINGLE

@@ -24,6 +24,12 @@ type Visit struct {
 	DartsThrown int    `json:"darts_thrown,omitempty"`
 }
 
+//MakeListOfDarts does what the title says for a visit
+func (visit Visit) MakeListOfDarts() []Dart {
+	darts := []Dart{*visit.FirstDart, *visit.SecondDart, *visit.ThirdDart}
+	return darts
+}
+
 // ValidateInput will verify the input does not containg any errors
 func (visit Visit) ValidateInput() error {
 	if visit.FirstDart == nil {
@@ -96,16 +102,56 @@ func (visit Visit) IsViliusVisit() bool {
 
 // IsFishAndChips will check if this visit was a Fish and Chips (20,5,1)
 func (visit Visit) IsFishAndChips() bool {
-	twenty := Dart{Value: null.NewInt(20, true), Multiplier: SINGLE}
-	five := Dart{Value: null.NewInt(5, true), Multiplier: SINGLE}
-	one := Dart{Value: null.NewInt(5, true), Multiplier: SINGLE}
-	return visit.checkIfEquivalent(twenty, five, one)
+	fishAndChipsVisit := new(Visit)
+	fishAndChipsVisit.FirstDart = MakeDart(null.NewInt(20, true), SINGLE)
+	fishAndChipsVisit.SecondDart = MakeDart(null.NewInt(5, true), SINGLE)
+	fishAndChipsVisit.ThirdDart = MakeDart(null.NewInt(1, true), SINGLE)
+
+	return visit.checkIfEquivalent(*fishAndChipsVisit)
 }
 
-func (visit Visit) checkIfEquivalent(dart1, dart2, dart3 Dart) bool {
-	visitDarts := []Dart{*visit.FirstDart, *visit.SecondDart, *visit.ThirdDart}
-	comparingDarts := []Dart{dart1, dart2, dart3}
-	return util.Compare(visitDarts, comparingDarts)
+// checkIfEquivalent sees if the input visit is the same as this visit
+func (visit Visit) checkIfEquivalent(comparingVisit Visit) bool {
+	comparingMatrix := makeComparingMatrix(visit, comparingVisit)
+	rowSums := getSumsforRows(comparingMatrix)
+	columnSums := getSumsforColumns(comparingMatrix)
+	sort.Ints(rowSums)
+	sort.Ints(columnSums)
+	return util.Equal(rowSums, columnSums)
+}
+
+func makeComparingMatrix(visit Visit, comparingVisit Visit) [][]bool {
+	comparingMatrix := make([][]bool, 3)
+	for i, visitDart := range visit.MakeListOfDarts() {
+		comparingMatrix[i] = make([]bool, 3)
+		for j, comparingDart := range comparingVisit.MakeListOfDarts() {
+			comparingMatrix[i][j] = visitDart == comparingDart
+		}
+	}
+	return comparingMatrix
+}
+
+func getSumsforRows(matrix [][]bool) []int {
+	retValue := make([]int, 3)
+	for i := 0; i < 3; i++ {
+		for j := 0; j < 3; j++ {
+			if matrix[i][j] {
+				retValue[i]++
+			}
+		}
+	}
+	return retValue
+}
+func getSumsforColumns(matrix [][]bool) []int {
+	retValue := make([]int, 3)
+	for j := 0; j < 3; j++ {
+		for i := 0; i < 3; i++ {
+			if matrix[i][j] {
+				retValue[j]++
+			}
+		}
+	}
+	return retValue
 }
 
 // GetVisitString will return a (sorted) string based on the darts thrown. This will make sure common visits will be the same
