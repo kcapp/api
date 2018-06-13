@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/guregu/null"
-	"github.com/kcapp/api/util"
 )
 
 // Visit struct used for storing legs
@@ -23,6 +22,8 @@ type Visit struct {
 	Count       int    `json:"count,omitempty"`
 	DartsThrown int    `json:"darts_thrown,omitempty"`
 }
+
+type comparingMatrix [][]bool
 
 //MakeListOfDarts does what the title says for a visit
 func (visit Visit) MakeListOfDarts() []Dart {
@@ -112,15 +113,10 @@ func (visit Visit) IsFishAndChips() bool {
 
 // checkIfEquivalent sees if the input visit is the same as this visit
 func (visit Visit) checkIfEquivalent(comparingVisit Visit) bool {
-	comparingMatrix := makeComparingMatrix(visit, comparingVisit)
-	rowSums := getSumsforRows(comparingMatrix)
-	columnSums := getSumsforColumns(comparingMatrix)
-	sort.Ints(rowSums)
-	sort.Ints(columnSums)
-	return util.Equal(rowSums, columnSums)
+	return visit.makeComparingMatrix(comparingVisit).isMatrixEqual()
 }
 
-func makeComparingMatrix(visit Visit, comparingVisit Visit) [][]bool {
+func (visit Visit) makeComparingMatrix(comparingVisit Visit) comparingMatrix {
 	comparingMatrix := make([][]bool, 3)
 	for i, visitDart := range visit.MakeListOfDarts() {
 		comparingMatrix[i] = make([]bool, 3)
@@ -131,16 +127,32 @@ func makeComparingMatrix(visit Visit, comparingVisit Visit) [][]bool {
 	return comparingMatrix
 }
 
-func getSumsforRows(matrix [][]bool) []int {
-	retValue := make([]int, 3)
+func (matrix comparingMatrix) isMatrixEqual() bool {
+	rows := make([]int, 3)
+	//check rows
 	for i := 0; i < 3; i++ {
 		for j := 0; j < 3; j++ {
 			if matrix[i][j] {
-				retValue[i]++
+				rows[i]++
 			}
 		}
+		if rows[i] == 0 {
+			return false
+		}
 	}
-	return retValue
+	columns := make([]int, 3)
+	//check columns
+	for cIndex := 0; cIndex < 3; cIndex++ {
+		for rIndex := 0; rIndex < 3; rIndex++ {
+			if matrix[rIndex][cIndex] {
+				columns[cIndex]++
+			}
+		}
+		if columns[cIndex] == 0 {
+			return false
+		}
+	}
+	return true
 }
 func getSumsforColumns(matrix [][]bool) []int {
 	retValue := make([]int, 3)
