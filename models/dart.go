@@ -84,8 +84,8 @@ func (dart Dart) GetString() string {
 	return fmt.Sprintf("%d-NULL", dart.Multiplier)
 }
 
-// MakeDart will return a new dart with the given settings
-func MakeDart(value null.Int, multipler int64) *Dart {
+// NewDart will return a new dart with the given settings
+func NewDart(value null.Int, multipler int64) *Dart {
 	return &Dart{Value: value, Multiplier: multipler}
 }
 

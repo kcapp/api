@@ -25,8 +25,8 @@ type Visit struct {
 
 type comparingMatrix [][]bool
 
-//MakeListOfDarts does what the title says for a visit
-func (visit Visit) MakeListOfDarts() []Dart {
+// GetDarts does what the title says for a visit
+func (visit Visit) GetDarts() []Dart {
 	darts := []Dart{*visit.FirstDart, *visit.SecondDart, *visit.ThirdDart}
 	return darts
 }
@@ -90,80 +90,27 @@ func (visit *Visit) SetIsBust(currentScore int) {
 
 // IsViliusVisit will check if this visit was a "Vilius Visit" (Two 20s and a Miss)
 func (visit Visit) IsViliusVisit() bool {
-	if visit.FirstDart.Multiplier != 1 || visit.SecondDart.Multiplier != 1 || visit.ThirdDart.Multiplier != 1 {
-		return false
-	}
-	if (visit.FirstDart.Value.Int64 == 20 && visit.SecondDart.Value.Int64 == 0 && visit.ThirdDart.Value.Int64 == 20) ||
-		(visit.FirstDart.Value.Int64 == 0 && visit.SecondDart.Value.Int64 == 20 && visit.ThirdDart.Value.Int64 == 20) ||
-		(visit.FirstDart.Value.Int64 == 20 && visit.SecondDart.Value.Int64 == 20 && visit.ThirdDart.Value.Int64 == 0) {
-		return true
-	}
-	return false
+	viliusVisit := new(Visit)
+	viliusVisit.FirstDart = NewDart(null.IntFrom(20), SINGLE)
+	viliusVisit.SecondDart = NewDart(null.IntFrom(20), SINGLE)
+	viliusVisit.ThirdDart = NewDart(null.IntFrom(0), SINGLE)
+
+	return visit.isEqualTo(*viliusVisit)
 }
 
 // IsFishAndChips will check if this visit was a Fish and Chips (20,5,1)
 func (visit Visit) IsFishAndChips() bool {
 	fishAndChipsVisit := new(Visit)
-	fishAndChipsVisit.FirstDart = MakeDart(null.NewInt(20, true), SINGLE)
-	fishAndChipsVisit.SecondDart = MakeDart(null.NewInt(5, true), SINGLE)
-	fishAndChipsVisit.ThirdDart = MakeDart(null.NewInt(1, true), SINGLE)
+	fishAndChipsVisit.FirstDart = NewDart(null.IntFrom(20), SINGLE)
+	fishAndChipsVisit.SecondDart = NewDart(null.IntFrom(5), SINGLE)
+	fishAndChipsVisit.ThirdDart = NewDart(null.IntFrom(1), SINGLE)
 
-	return visit.checkIfEquivalent(*fishAndChipsVisit)
+	return visit.isEqualTo(*fishAndChipsVisit)
 }
 
 // checkIfEquivalent sees if the input visit is the same as this visit
-func (visit Visit) checkIfEquivalent(comparingVisit Visit) bool {
+func (visit Visit) isEqualTo(comparingVisit Visit) bool {
 	return visit.makeComparingMatrix(comparingVisit).isMatrixEqual()
-}
-
-func (visit Visit) makeComparingMatrix(comparingVisit Visit) comparingMatrix {
-	comparingMatrix := make([][]bool, 3)
-	for i, visitDart := range visit.MakeListOfDarts() {
-		comparingMatrix[i] = make([]bool, 3)
-		for j, comparingDart := range comparingVisit.MakeListOfDarts() {
-			comparingMatrix[i][j] = visitDart == comparingDart
-		}
-	}
-	return comparingMatrix
-}
-
-func (matrix comparingMatrix) isMatrixEqual() bool {
-	rows := make([]int, 3)
-	//check rows
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 3; j++ {
-			if matrix[i][j] {
-				rows[i]++
-			}
-		}
-		if rows[i] == 0 {
-			return false
-		}
-	}
-	columns := make([]int, 3)
-	//check columns
-	for cIndex := 0; cIndex < 3; cIndex++ {
-		for rIndex := 0; rIndex < 3; rIndex++ {
-			if matrix[rIndex][cIndex] {
-				columns[cIndex]++
-			}
-		}
-		if columns[cIndex] == 0 {
-			return false
-		}
-	}
-	return true
-}
-func getSumsforColumns(matrix [][]bool) []int {
-	retValue := make([]int, 3)
-	for j := 0; j < 3; j++ {
-		for i := 0; i < 3; i++ {
-			if matrix[i][j] {
-				retValue[j]++
-			}
-		}
-	}
-	return retValue
 }
 
 // GetVisitString will return a (sorted) string based on the darts thrown. This will make sure common visits will be the same
@@ -242,4 +189,43 @@ func (visit Visit) GetDartsThrown() int {
 		thrown++
 	}
 	return thrown
+}
+
+// makeComparingMatrix will create a comparing matrix for the two visits
+func (visit Visit) makeComparingMatrix(comparingVisit Visit) comparingMatrix {
+	comparingMatrix := make([][]bool, 3)
+	for i, visitDart := range visit.GetDarts() {
+		comparingMatrix[i] = make([]bool, 3)
+		for j, comparingDart := range comparingVisit.GetDarts() {
+			comparingMatrix[i][j] = visitDart == comparingDart
+		}
+	}
+	return comparingMatrix
+}
+
+// isMatrixEqual will check if the values in the matrix are equal
+func (matrix comparingMatrix) isMatrixEqual() bool {
+	rows := make([]int, 3)
+	for i := 0; i < 3; i++ {
+		for j := 0; j < 3; j++ {
+			if matrix[i][j] {
+				rows[i]++
+			}
+		}
+		if rows[i] == 0 {
+			return false
+		}
+	}
+	columns := make([]int, 3)
+	for cIndex := 0; cIndex < 3; cIndex++ {
+		for rIndex := 0; rIndex < 3; rIndex++ {
+			if matrix[rIndex][cIndex] {
+				columns[cIndex]++
+			}
+		}
+		if columns[cIndex] == 0 {
+			return false
+		}
+	}
+	return true
 }
