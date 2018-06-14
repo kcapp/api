@@ -35,6 +35,7 @@ func main() {
 	router.HandleFunc("/match/{id}/continue", controllers.ContinueMatch).Methods("PUT")
 	router.HandleFunc("/match", controllers.GetMatches).Methods("GET")
 	router.HandleFunc("/match/{id}", controllers.GetMatch).Methods("GET")
+	router.HandleFunc("/match/{id}/rematch", controllers.ReMatch).Methods("POST")
 	router.HandleFunc("/match/{id}/statistics", controllers.GetX01StatisticsForMatch).Methods("GET")
 	router.HandleFunc("/match/{id}/legs", controllers.GetLegsForMatch).Methods("GET")
 	router.HandleFunc("/match/{start}/{limit}", controllers.GetMatchesLimit).Methods("GET")
@@ -72,6 +73,8 @@ func main() {
 	router.HandleFunc("/owetype", controllers.GetOweTypes).Methods("GET")
 
 	router.HandleFunc("/venue", controllers.GetVenues).Methods("GET")
+	router.HandleFunc("/venue/{id}", controllers.GetVenue).Methods("GET")
+	router.HandleFunc("/venue/{id}/spectate", controllers.SpectateVenue).Methods("GET")
 
 	router.HandleFunc("/tournament", controllers.GetTournaments).Methods("GET")
 	router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")

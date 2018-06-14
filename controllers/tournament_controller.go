@@ -91,7 +91,7 @@ func GetTournamentOverview(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
-// GetTournamentOverview will return statistics for the given tournament
+// GetTournamentStatistics will return statistics for the given tournament
 func GetTournamentStatistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)

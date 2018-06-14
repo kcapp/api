@@ -35,7 +35,7 @@ func NewLeg(matchID int, startingScore int, players []int) (*models.Leg, error) 
 		return nil, err
 	}
 
-	_, err = tx.Exec("UPDATE matches SET current_leg_id = ? WHERE id = ?", legID, matchID)
+	_, err = tx.Exec("UPDATE matches SET current_leg_id = ?, updated_at = NOW() WHERE id = ?", legID, matchID)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -615,7 +615,7 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 		FROM leg l
 			JOIN matches m on m.id = l.match_id
 			JOIN player2leg p2l ON p2l.leg_id = l.id
-		WHERE m.match_type_id = 3
+		WHERE m.id = 2291
 		GROUP BY l.id
 		ORDER BY l.id`)
 	if err != nil {
@@ -646,13 +646,9 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			if stat.CheckoutPercentage.Valid {
-				log.Printf("UPDATE statistics_x01 SET checkout_percentage = %f, checkout_attempts = %d WHERE leg_id = %d AND player_id = %d;",
-					stat.CheckoutPercentage.Float64, stat.CheckoutAttempts, leg.ID, playerID)
-			} else {
-				log.Printf("UPDATE statistics_x01 SET checkout_percentage = NULL, checkout_attempts = %d WHERE leg_id = %d AND player_id = %d;",
-					stat.CheckoutAttempts, leg.ID, playerID)
-			}
+			log.Printf("UPDATE statistics_x01 SET first_nine_ppd = %f  WHERE leg_id = %d AND player_id = %d;",
+				stat.FirstNinePPD, leg.ID, playerID)
+
 		}
 		m[leg.ID] = stats
 	}

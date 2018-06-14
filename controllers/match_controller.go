@@ -32,6 +32,31 @@ func NewMatch(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(match)
 }
 
+// ReMatch will start a new match with same settings as the given match ID
+func ReMatch(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	match, err := data.GetMatch(id)
+	if err != nil {
+		log.Println("Unable to get match: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	match, err = data.NewMatch(*match)
+	if err != nil {
+		log.Println("Unable to rematch: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(match)
+}
+
 // ContinueMatch will either return the current leg id or create a new leg
 func ContinueMatch(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
@@ -44,7 +69,7 @@ func ContinueMatch(w http.ResponseWriter, r *http.Request) {
 	}
 	match, err := data.ContinueMatch(id)
 	if err != nil {
-		log.Println("Unable to get match: ", err)
+		log.Println("Unable to continue match: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

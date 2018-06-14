@@ -93,6 +93,26 @@ func (visit Visit) IsViliusVisit() bool {
 	return false
 }
 
+// IsFishAndChips will check if this visit was a Fish and Chips (20,5,1)
+func (visit Visit) IsFishAndChips() bool {
+	if !visit.FirstDart.IsSingle() || !visit.SecondDart.IsSingle() || !visit.ThirdDart.IsSingle() {
+		return false
+	}
+	if visit.GetScore() != 26 {
+		return false
+	}
+
+	first := visit.FirstDart.Value.Int64
+	second := visit.SecondDart.Value.Int64
+	third := visit.ThirdDart.Value.Int64
+	if (first == 20 || first == 5 || first == 1) &&
+		(second == 20 || second == 5 || second == 1) &&
+		(third == 20 || third == 5 || third == 1) {
+		return true
+	}
+	return false
+}
+
 // GetVisitString will return a (sorted) string based on the darts thrown. This will make sure common visits will be the same
 func (visit Visit) GetVisitString() string {
 	strs := []string{visit.FirstDart.GetString(), visit.SecondDart.GetString(), visit.ThirdDart.GetString()}

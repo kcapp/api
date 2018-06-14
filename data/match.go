@@ -103,7 +103,7 @@ func GetMatches() ([]*models.Match, error) {
 	return matches, nil
 }
 
-// GetActiveMatches returns all matches
+// GetActiveMatches returns all active matches
 func GetActiveMatches() ([]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
