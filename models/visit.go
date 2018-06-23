@@ -110,7 +110,7 @@ func (visit Visit) IsFishAndChips() bool {
 
 // checkIfEquivalent sees if the input visit is the same as this visit
 func (visit Visit) isEqualTo(comparingVisit Visit) bool {
-	return visit.makeComparingMatrix(comparingVisit).isMatrixEqual()
+	return visit.GetScore() == comparingVisit.GetScore() && visit.makeComparingMatrix(comparingVisit).isMatrixEqual()
 }
 
 // GetVisitString will return a (sorted) string based on the darts thrown. This will make sure common visits will be the same
