@@ -176,6 +176,14 @@ func FinishLeg(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	leg, err := data.GetLeg(visit.LegID)
+	if err != nil {
+		log.Println("Unable to get leg", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(leg)
 }
 
 // DeleteLeg will delete a leg

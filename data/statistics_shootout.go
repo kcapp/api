@@ -20,7 +20,7 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
-			AND m.is_finished = 1
+			AND m.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 2
 		GROUP BY p.id`, from, to)
 	if err != nil {

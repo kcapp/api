@@ -283,7 +283,8 @@ func GetActiveLegs() ([]*models.Leg, error) {
 			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
 		FROM leg l
 			LEFT JOIN player2leg p2l ON p2l.leg_id = l.id
-		WHERE l.is_finished <> 1
+			LEFT JOIN matches m ON m.id = l.match_id
+		WHERE l.is_finished <> 1 AND m.is_abandoned = 0
 		GROUP BY l.id
 		ORDER BY l.id ASC`)
 	if err != nil {

@@ -388,7 +388,7 @@ func GetHeadToHeadMatches(player1 int, player2 int) ([]*models.Match, error) {
 			JOIN match_mode mm ON mm.id = m.match_mode_id
 			JOIN player2leg p2l ON p2l.match_id = m.id
 		WHERE m.id IN (SELECT match_id FROM player2leg GROUP BY match_id HAVING COUNT(DISTINCT player_id) = 2)
-			AND m.is_finished = 1
+			AND m.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 1
 			AND p2l.player_id IN (?, ?)
 		GROUP BY m.id
@@ -430,7 +430,7 @@ func GetPlayerLastMatches(playerID int, limit int) ([]*models.Match, error) {
 			JOIN match_mode mm ON mm.id = m.match_mode_id
 			JOIN player2leg p2l ON p2l.match_id = m.id
 		WHERE m.id IN (SELECT  match_id  FROM player2leg  GROUP BY match_id  HAVING COUNT(DISTINCT player_id) = 2)
-			AND m.is_finished = 1
+			AND m.is_finished = 1 AND m.is_abandoned = 0
 			AND p2l.player_id IN (?)
 		GROUP BY m.id
 		ORDER BY m.created_at DESC LIMIT ?`, playerID, limit)
