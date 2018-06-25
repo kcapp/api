@@ -32,8 +32,15 @@ type Player2Leg struct {
 	CurrentScore    int              `json:"current_score"`
 	IsCurrentPlayer bool             `json:"is_current_player"`
 	Wins            int              `json:"wins,omitempty"`
+	VisitStatistics *VisitStatistics `json:"visit_statistics,omitempty"`
 	Handicap        null.Int         `json:"handicap,omitempty"`
 	Modifiers       *PlayerModifiers `json:"modifiers,omitempty"`
+}
+
+// VisitStatistics tells about the
+type VisitStatistics struct {
+	FishAndChipsCounter int `json:"fish_and_chips_counter"`
+	ViliusVisitCounter  int `json:"vilius_visit_counter"`
 }
 
 // PlayerModifiers struct used for storing visit modifiers for a player
@@ -41,4 +48,19 @@ type PlayerModifiers struct {
 	IsViliusVisit  bool `json:"is_vilius_visit"`
 	IsBeerMatch    bool `json:"is_beer_match"`
 	IsFishAndChips bool `json:"is_fish_and_chips"`
+}
+
+// AddVisitStatistics adds information about
+func (p2l Player2Leg) AddVisitStatistics(leg Leg) {
+
+	for _, visit := range leg.Visits {
+		if visit.PlayerID == p2l.PlayerID {
+			if visit.IsFishAndChips() {
+				p2l.VisitStatistics.FishAndChipsCounter++
+			}
+			if visit.IsViliusVisit() {
+				p2l.VisitStatistics.ViliusVisitCounter++
+			}
+		}
+	}
 }

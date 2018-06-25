@@ -340,6 +340,7 @@ func GetLeg(id int) (*models.Leg, error) {
 		visit.DartsThrown = dartsThrown
 		visitCount++
 	}
+
 	// When checking out, it might be done in 1, 2 or 3 darts, so make
 	// sure we set the correct number of darts thrown for the final visit
 	if len(visits) > 0 {
@@ -397,6 +398,7 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 		if lowestScore < 171 && player.CurrentScore > 199 {
 			player.Modifiers.IsBeerMatch = true
 		}
+		player.AddVisitStatistics(*leg)
 	}
 
 	return players, nil
