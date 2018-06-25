@@ -346,6 +346,51 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 	return checkouts, nil
 }
 
+// GetPlayerTournamentStandings will return all tournament standings for the given player
+func GetPlayerTournamentStandings(playerID int) ([]*models.PlayerTournamentStanding, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			p.id AS 'player_id',
+			t.id AS 'tournament_id',
+			t.name AS 'tournament_name',
+			tg.id AS 'tournament_group_id',
+			tg.name AS 'tournament_group_name',
+			tg.division AS 'tournament_group_division',
+			ts.rank AS 'final_standing',
+			MAX(ts2.rank) AS 'total_players'
+		FROM tournament_standings ts
+			JOIN tournament t ON t.id = ts.tournament_id
+			JOIN player p ON p.id = ts.player_id
+			JOIN player2tournament p2t ON p2t.tournament_id = t.id AND p2t.player_id = p.id
+			JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
+			JOIN tournament_standings ts2 ON ts2.tournament_id = t.id
+		WHERE ts.player_id = ?
+		GROUP BY t.id
+		ORDER BY t.start_time DESC`, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	standings := make([]*models.PlayerTournamentStanding, 0)
+	for rows.Next() {
+		standing := new(models.PlayerTournamentStanding)
+		standing.Tournament = new(models.Tournament)
+		standing.TournamentGroup = new(models.TournamentGroup)
+
+		err := rows.Scan(&standing.PlayerID, &standing.Tournament.ID, &standing.Tournament.Name, &standing.TournamentGroup.ID,
+			&standing.TournamentGroup.Name, &standing.TournamentGroup.Division, &standing.FinalStanding, &standing.TotalPlayers)
+		if err != nil {
+			return nil, err
+		}
+		standings = append(standings, standing)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return standings, nil
+}
+
 // GetPlayerHeadToHead will return head to head statistics between the two players
 func GetPlayerHeadToHead(player1 int, player2 int) (*models.StatisticsHead2Head, error) {
 	head2head := new(models.StatisticsHead2Head)

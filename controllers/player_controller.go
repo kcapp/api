@@ -185,6 +185,27 @@ func GetPlayerCheckouts(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(checkouts)
 }
 
+// GetPlayerTournamentStandings will return all tournament standings for the given player
+func GetPlayerTournamentStandings(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	standings, err := data.GetPlayerTournamentStandings(id)
+	if err != nil {
+		log.Println("Unable to get player tournament standings")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(standings)
+}
+
 // GetPlayerHeadToHead will return head to head statistics between the given players
 func GetPlayerHeadToHead(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
