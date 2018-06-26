@@ -51,8 +51,8 @@ type PlayerModifiers struct {
 }
 
 // AddVisitStatistics adds information about
-func (p2l Player2Leg) AddVisitStatistics(leg Leg) {
-
+func (p2l *Player2Leg) AddVisitStatistics(leg Leg) {
+	p2l.VisitStatistics = new(VisitStatistics)
 	for _, visit := range leg.Visits {
 		if visit.PlayerID == p2l.PlayerID {
 			if visit.IsFishAndChips() {
