@@ -52,6 +52,7 @@ func main() {
 	router.HandleFunc("/visit", controllers.AddVisit).Methods("POST")
 	router.HandleFunc("/visit/{id}/modify", controllers.ModifyVisit).Methods("PUT")
 	router.HandleFunc("/visit/{id}", controllers.DeleteVisit).Methods("DELETE")
+	router.HandleFunc("/visit/{leg_id}/last", controllers.DeleteLastVisit).Methods("DELETE")
 
 	router.HandleFunc("/player", controllers.GetPlayers).Methods("GET")
 	router.HandleFunc("/player/active", controllers.GetActivePlayers).Methods("GET")

@@ -72,3 +72,21 @@ func DeleteVisit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// DeleteLastVisit will delete the last visit for a given leg
+func DeleteLastVisit(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	legID, err := strconv.Atoi(params["leg_id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = data.DeleteLastVisit(legID)
+	if err != nil {
+		log.Println("Unable to delete visit: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}

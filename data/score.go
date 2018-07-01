@@ -138,6 +138,22 @@ func DeleteVisit(id int) error {
 	return nil
 }
 
+// DeleteLastVisit will delete the last visit for the given leg
+func DeleteLastVisit(legID int) error {
+	visits, err := GetLegVisits(legID)
+	if err != nil {
+		return err
+	}
+
+	if len(visits) > 0 {
+		err := DeleteVisit(visits[len(visits)-1].ID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // GetPlayerVisits will return all visits for a given player
 func GetPlayerVisits(id int) ([]*models.Visit, error) {
 	rows, err := models.DB.Query(`
