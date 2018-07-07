@@ -2,8 +2,10 @@ package data
 
 import (
 	"log"
+	"math"
 	"sort"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/kcapp/api/models"
 )
 
@@ -105,16 +107,31 @@ func GetPlayer(id int) (*models.Player, error) {
 
 // AddPlayer will add a new player to the database
 func AddPlayer(player models.Player) error {
-	// Prepare statement for inserting data
-	stmt, err := models.DB.Prepare("INSERT INTO player (name, nickname, color, profile_pic_url) VALUES (?, ?, ?, ?)")
+	tx, err := models.DB.Begin()
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
 
-	_, err = stmt.Exec(player.Name, player.Nickname, player.Color, player.ProfilePicURL)
-	log.Printf("Created new player %s", player.Name)
-	return err
+	// Prepare statement for inserting data
+	res, err := tx.Exec("INSERT INTO player (name, nickname, color, profile_pic_url) VALUES (?, ?, ?, ?)", player.Name, player.Nickname, player.Color, player.ProfilePicURL)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	playerID, err := res.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	_, err = tx.Exec("INSERT INTO player_elo (player_id) VALUES (?)", playerID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	log.Printf("Created new player (%d) %s", playerID, player.Name)
+	tx.Commit()
+	return nil
 }
 
 // UpdatePlayer will update the given player
@@ -127,8 +144,11 @@ func UpdatePlayer(playerID int, player models.Player) error {
 	defer stmt.Close()
 
 	_, err = stmt.Exec(player.Name, player.Nickname, player.Color, player.ProfilePicURL, playerID)
+	if err != nil {
+		return err
+	}
 	log.Printf("Updated player %s (%v)", player.Name, player)
-	return err
+	return nil
 }
 
 // GetPlayerScore will get the score for the given player in the given leg
@@ -472,4 +492,173 @@ func GetPlayerHeadToHead(player1 int, player2 int) (*models.StatisticsHead2Head,
 	head2head.Player501Statistics = statistics
 
 	return head2head, nil
+}
+
+// CalculateElo calculate elo will calculate the elo for each player in a match
+func CalculateElo(matchID int) error {
+	match, err := GetMatch(matchID)
+	if err != nil {
+		return err
+	}
+
+	if len(match.Players) != 2 {
+		log.Printf("Cannot calculate elo for match %d, which doesnt' have 2 player", match.ID)
+		return nil
+	} else if match.IsWalkover {
+		log.Printf("Skipping elo calculation for Walkover match %d", match.ID)
+		return nil
+	}
+
+	elos, err := getPlayerElo(match.Players...)
+	if err != nil {
+		return err
+	}
+	p1 := elos[0]
+	p2 := elos[1]
+	if !match.WinnerID.Valid {
+		// Increment matches played for each player, but elo stays the same
+		p1.CurrentEloMatches++
+		p2.CurrentEloMatches++
+		if match.TournamentID.Valid {
+			p1.TournamentEloMatches++
+			p2.TournamentEloMatches++
+		}
+		err = updateElo(p1, p2)
+	} else {
+		winner := p1
+		looser := p2
+		if match.WinnerID.Int64 == int64(p2.PlayerID) {
+			winner = p2
+			looser = p1
+		}
+		// Calculate elo for winner and looser
+		winner.CurrentElo, looser.CurrentElo = calculateElo(winner.CurrentElo, winner.CurrentEloMatches, looser.CurrentElo, looser.CurrentEloMatches)
+		log.Printf("Calculated Elo: Winner: %d, Looser: %d", winner.CurrentElo, looser.CurrentElo)
+		winner.CurrentEloMatches++
+		looser.CurrentEloMatches++
+		if match.TournamentID.Valid {
+			winner.TournamentElo, looser.TournamentElo = calculateElo(winner.TournamentElo, winner.TournamentEloMatches, looser.TournamentElo, looser.TournamentEloMatches)
+			log.Printf("Calculated Tournament Elo: Winner: %d, Looser: %d", winner.TournamentElo, looser.TournamentElo)
+			winner.TournamentEloMatches++
+			looser.TournamentEloMatches++
+		}
+		err = updateElo(winner, looser)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func calculateElo(winnerElo int, winnerMatches int, looserElo int, looserMatches int) (int, int) {
+	if winnerMatches == 0 {
+		winnerMatches = 1
+	}
+	calculatedWinner := winnerElo + int(800/float64(winnerMatches)*
+		(1-(1/(1+math.Pow(10, float64(looserElo-winnerElo)/400)))))
+
+	if looserMatches == 0 {
+		looserMatches = 1
+	}
+	calculatedLooser := looserElo + int(800/float64(looserMatches)*
+		(0-(1/(1+math.Pow(10, float64(winnerElo-looserElo)/400)))))
+
+	return calculatedWinner, calculatedLooser
+}
+
+func getPlayerElo(playerIDs ...int) ([]*models.PlayerElo, error) {
+	q, args, err := sqlx.In(`
+			SELECT
+				player_id,
+				current_elo,
+				current_elo_matches,
+				tournament_elo,
+				tournament_elo_matches
+			FROM player_elo
+			WHERE player_id IN(?)`, playerIDs)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := models.DB.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	players := make([]*models.PlayerElo, 0)
+	for rows.Next() {
+		p := new(models.PlayerElo)
+		err := rows.Scan(&p.PlayerID, &p.CurrentElo, &p.CurrentEloMatches, &p.TournamentElo, &p.TournamentEloMatches)
+		if err != nil {
+			return nil, err
+		}
+		players = append(players, p)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return players, nil
+}
+
+func updateElo(player1 *models.PlayerElo, player2 *models.PlayerElo) error {
+	// TODO Transaction
+
+	// Prepare statement for inserting data
+	stmt, err := models.DB.Prepare(`
+		UPDATE player_elo SET
+			current_elo = ?,
+			current_elo_matches = ?,
+			tournament_elo = ?,
+			tournament_elo_matches = ?
+		WHERE player_id = ?`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(player1.CurrentElo, player1.CurrentEloMatches, player1.TournamentElo, player1.TournamentEloMatches, player1.PlayerID)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(player2.CurrentElo, player2.CurrentEloMatches, player2.TournamentElo, player2.TournamentEloMatches, player2.PlayerID)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+// RecalculateElo will recalculate Elo for all players
+func RecalculateElo() error {
+	rows, err := models.DB.Query(`
+		SELECT
+			m.id
+		FROM matches m
+		-- WHERE m.tournament_id IN (15,16)
+		ORDER BY m.created_at`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	matches := make([]int, 0)
+	for rows.Next() {
+		var id int
+		err := rows.Scan(&id)
+		if err != nil {
+			return err
+		}
+		matches = append(matches, id)
+	}
+	if err = rows.Err(); err != nil {
+		return err
+	}
+
+	for _, id := range matches {
+		//log.Printf("Calculating Elo for match: %d", id)
+		err := CalculateElo(id)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
