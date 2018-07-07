@@ -500,14 +500,12 @@ func CalculateEloForMatch(matchID int) error {
 	if err != nil {
 		return err
 	}
-
-	if len(match.Players) != 2 {
-		log.Printf("Cannot calculate elo for match %d, which doesnt' have 2 player", match.ID)
-		return nil
-	} else if match.IsWalkover {
-		log.Printf("Skipping elo calculation for Walkover match %d", match.ID)
+	if match.MatchType.ID != models.X01 || len(match.Players) != 2 || match.IsWalkover {
+		// Don't calculate Elo for non-X01 matches, matches which does not have 2 players, and
+		// matches which were walkovers
 		return nil
 	}
+	log.Printf("Calculating Elo for players in match %d", matchID)
 
 	elos, err := getPlayerElo(match.Players...)
 	if err != nil {
@@ -523,12 +521,10 @@ func CalculateEloForMatch(matchID int) error {
 
 	// Calculate elo for winner and looser
 	p1.CurrentEloNew, p2.CurrentEloNew = CalculateElo(p1.CurrentElo, p1.CurrentEloMatches, wins[p1.PlayerID], p2.CurrentElo, p2.CurrentEloMatches, wins[p2.PlayerID])
-	log.Printf("Calculated Elo for %d = %d and %d = %d", p1.PlayerID, p1.CurrentEloNew, p2.PlayerID, p2.CurrentEloNew)
 	p1.CurrentEloMatches++
 	p2.CurrentEloMatches++
 	if match.TournamentID.Valid {
-		p1.TournamentEloNew, p2.TournamentEloNew = CalculateElo(p1.TournamentElo, p2.TournamentEloMatches, wins[p1.PlayerID], p2.TournamentElo, p2.TournamentEloMatches, wins[p2.PlayerID])
-		log.Printf("Calculated Tournament Elo for %d = %d and %d = %d", p1.PlayerID, p1.TournamentEloNew, p2.PlayerID, p2.TournamentEloNew)
+		p1.TournamentEloNew, p2.TournamentEloNew = CalculateElo(p1.TournamentElo, p1.TournamentEloMatches, wins[p1.PlayerID], p2.TournamentElo, p2.TournamentEloMatches, wins[p2.PlayerID])
 		p1.TournamentEloMatches++
 		p2.TournamentEloMatches++
 	}
@@ -577,6 +573,12 @@ func updateElo(matchID int, player1 *models.PlayerElo, player2 *models.PlayerElo
 	tx, err := models.DB.Begin()
 	if err != nil {
 		return err
+	}
+	if player1.TournamentEloNew == 0 {
+		player1.TournamentEloNew = player1.TournamentElo
+	}
+	if player2.TournamentEloNew == 0 {
+		player2.TournamentEloNew = player2.TournamentElo
 	}
 
 	// Update Elo fo player1
@@ -634,8 +636,7 @@ func RecalculateElo() error {
 			m.id
 		FROM matches m
 		-- WHERE m.tournament_id IN (15,16)
-		ORDER BY m.created_at
-		LIMIT 10`)
+		ORDER BY m.created_at`)
 	if err != nil {
 		return err
 	}
@@ -682,16 +683,14 @@ func CalculateElo(player1Elo int, player1Matches int, player1Score int, player2E
 
 	if player1Score > player2Score {
 		multiplier := math.Log(math.Abs(float64(player1Score-player2Score))+1) * (2.2 / ((float64(player1Elo-player2Elo))*0.001 + 2.2))
-		log.Printf("Calculating Elo for Player1 Winning")
-		return calculateElo(player1Elo, player1Matches, player2Elo, player2Matches, multiplier, false)
-	} else if player2Score > player1Score {
+		player1Elo, player2Elo = calculateElo(player1Elo, player1Matches, player2Elo, player2Matches, multiplier, false)
+	} else if player1Score < player2Score {
 		multiplier := math.Log(math.Abs(float64(player1Score-player2Score))+1) * (2.2 / ((float64(player2Elo-player1Elo))*0.001 + 2.2))
-		log.Printf("Calculating Elo for Player2 Winning")
-		return calculateElo(player2Elo, player2Matches, player1Elo, player1Matches, multiplier, false)
+		player2Elo, player1Elo = calculateElo(player2Elo, player2Matches, player1Elo, player1Matches, multiplier, false)
 	} else {
-		log.Printf("Calculating Elo for Draw")
-		return calculateElo(player1Elo, player1Matches, player2Elo, player2Matches, 1.0, true)
+		player1Elo, player2Elo = calculateElo(player1Elo, player1Matches, player2Elo, player2Matches, 1.0, true)
 	}
+	return player1Elo, player2Elo
 }
 
 func calculateElo(winnerElo int, winnerMatches int, looserElo int, looserMatches int, multiplier float64, isDraw bool) (int, int) {
