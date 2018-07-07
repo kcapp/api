@@ -6,12 +6,10 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gorilla/mux"
+	"github.com/kcapp/api/controllers"
 	"github.com/kcapp/api/data"
 	"github.com/kcapp/api/models"
-
-	"github.com/kcapp/api/controllers"
-
-	"github.com/gorilla/mux"
 )
 
 // our main function

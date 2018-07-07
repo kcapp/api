@@ -5,6 +5,8 @@ type PlayerElo struct {
 	PlayerID             int `json:"id"`
 	CurrentElo           int `json:"current_elo"`
 	CurrentEloMatches    int `json:"current_elo_matches"`
+	CurrentEloNew        int
 	TournamentElo        int `json:"tournament_elo"`
 	TournamentEloMatches int `json:"tournament_elo_matches"`
+	TournamentEloNew     int
 }

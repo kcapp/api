@@ -351,7 +351,8 @@ func GetMatchTypes() ([]*models.MatchType, error) {
 // GetWinsPerPlayer gets the number of wins per player for the given match
 func GetWinsPerPlayer(id int) (map[int]int, error) {
 	rows, err := models.DB.Query(`
-		SELECT IFNULL(l.winner_id, 0), COUNT(l.winner_id) AS 'wins'
+		SELECT
+			IFNULL(l.winner_id, 0), COUNT(l.winner_id) AS 'wins'
 		FROM leg l
 		WHERE l.match_id = ?
 		GROUP BY l.winner_id`, id)
