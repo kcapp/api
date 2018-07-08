@@ -507,7 +507,7 @@ func CalculateEloForMatch(matchID int) error {
 	}
 	log.Printf("Calculating Elo for players in match %d", matchID)
 
-	elos, err := getPlayerElo(match.Players...)
+	elos, err := GetPlayersElo(match.Players...)
 	if err != nil {
 		return err
 	}
@@ -520,11 +520,13 @@ func CalculateEloForMatch(matchID int) error {
 	}
 
 	// Calculate elo for winner and looser
-	p1.CurrentEloNew, p2.CurrentEloNew = CalculateElo(p1.CurrentElo, p1.CurrentEloMatches, wins[p1.PlayerID], p2.CurrentElo, p2.CurrentEloMatches, wins[p2.PlayerID])
+	p1.CurrentEloNew, p2.CurrentEloNew = CalculateElo(p1.CurrentElo, p1.CurrentEloMatches, wins[p1.PlayerID], p2.CurrentElo,
+		p2.CurrentEloMatches, wins[p2.PlayerID])
 	p1.CurrentEloMatches++
 	p2.CurrentEloMatches++
 	if match.TournamentID.Valid {
-		p1.TournamentEloNew, p2.TournamentEloNew = CalculateElo(p1.TournamentElo, p1.TournamentEloMatches, wins[p1.PlayerID], p2.TournamentElo, p2.TournamentEloMatches, wins[p2.PlayerID])
+		p1.TournamentEloNew, p2.TournamentEloNew = CalculateElo(p1.TournamentElo, p1.TournamentEloMatches, wins[p1.PlayerID],
+			p2.TournamentElo, p2.TournamentEloMatches, wins[p2.PlayerID])
 		p1.TournamentEloMatches++
 		p2.TournamentEloMatches++
 	}
@@ -535,7 +537,8 @@ func CalculateEloForMatch(matchID int) error {
 	return nil
 }
 
-func getPlayerElo(playerIDs ...int) ([]*models.PlayerElo, error) {
+// GetPlayersElo will get the Elo for the given player IDs
+func GetPlayersElo(playerIDs ...int) ([]*models.PlayerElo, error) {
 	q, args, err := sqlx.In(`
 			SELECT
 				player_id,
@@ -574,8 +577,20 @@ func updateElo(matchID int, player1 *models.PlayerElo, player2 *models.PlayerElo
 	if err != nil {
 		return err
 	}
+	var player1TournamentElo *int
+	var player1TournamentEloNew *int
+	if player1.TournamentEloNew != 0 {
+		player1TournamentElo = &player1.TournamentElo
+		player1TournamentEloNew = &player1.TournamentEloNew
+	}
 	if player1.TournamentEloNew == 0 {
 		player1.TournamentEloNew = player1.TournamentElo
+	}
+	var player2TournamentElo *int
+	var player2TournamentEloNew *int
+	if player2.TournamentEloNew != 0 {
+		player2TournamentElo = &player1.TournamentElo
+		player2TournamentEloNew = &player1.TournamentEloNew
 	}
 	if player2.TournamentEloNew == 0 {
 		player2.TournamentEloNew = player2.TournamentElo
@@ -598,12 +613,6 @@ func updateElo(matchID int, player1 *models.PlayerElo, player2 *models.PlayerElo
 	}
 
 	// Update Elo changelog for player1
-	var player1TournamentElo *int
-	var player1TournamentEloNew *int
-	if player1.TournamentEloNew != 0 {
-		player1TournamentElo = &player1.TournamentElo
-		player1TournamentEloNew = &player1.TournamentEloNew
-	}
 	_, err = tx.Exec(`INSERT INTO player_elo_changelog (match_id, player_id, old_elo, new_elo, old_tournament_elo, new_tournament_elo) VALUES (?, ?, ?, ?, ?, ?)`,
 		matchID, player1.PlayerID, player1.CurrentElo, player1.CurrentEloNew, player1TournamentElo, player1TournamentEloNew)
 	if err != nil {
@@ -612,12 +621,6 @@ func updateElo(matchID int, player1 *models.PlayerElo, player2 *models.PlayerElo
 	}
 
 	// Update Elo changelog for player2
-	var player2TournamentElo *int
-	var player2TournamentEloNew *int
-	if player2.TournamentEloNew != 0 {
-		player2TournamentElo = &player1.TournamentElo
-		player2TournamentEloNew = &player1.TournamentEloNew
-	}
 	_, err = tx.Exec(`INSERT INTO player_elo_changelog (match_id, player_id, old_elo, new_elo, old_tournament_elo, new_tournament_elo) VALUES (?, ?, ?, ?, ?, ?)`,
 		matchID, player2.PlayerID, player2.CurrentElo, player2.CurrentEloNew, player2TournamentElo, player2TournamentEloNew)
 	if err != nil {
@@ -635,7 +638,7 @@ func RecalculateElo() error {
 		SELECT
 			m.id
 		FROM matches m
-		-- WHERE m.tournament_id IN (15,16)
+		-- WHERE m.tournament_id IN (15, 16)
 		ORDER BY m.created_at`)
 	if err != nil {
 		return err
@@ -656,7 +659,6 @@ func RecalculateElo() error {
 	}
 
 	for _, id := range matches {
-		//log.Printf("Calculating Elo for match: %d", id)
 		err := CalculateEloForMatch(id)
 		if err != nil {
 			return err

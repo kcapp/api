@@ -8,7 +8,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/kcapp/api/controllers"
-	"github.com/kcapp/api/data"
 	"github.com/kcapp/api/models"
 )
 
@@ -83,11 +82,6 @@ func main() {
 	router.HandleFunc("/tournament/{id}/overview", controllers.GetTournamentOverview).Methods("GET")
 	router.HandleFunc("/tournament/{id}/statistics", controllers.GetTournamentStatistics).Methods("GET")
 	router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
-
-	err = data.RecalculateElo()
-	if err != nil {
-		panic(err)
-	}
 
 	log.Printf("Listening on port %d", config.APIConfig.Port)
 	log.Println(http.ListenAndServe(fmt.Sprintf(":%d", config.APIConfig.Port), router))
