@@ -420,7 +420,7 @@ func GetHeadToHeadMatches(player1 int, player2 int) ([]*models.Match, error) {
 }
 
 // GetPlayerLastMatches will return the last N matches for the given player
-func GetPlayerLastMatches(playerIds ...int) ([]*models.Match, error) {
+func GetPlayerLastMatches(playerID int, limit int) ([]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.current_leg_id, m.winner_id, m.created_at, m.updated_at,
@@ -434,7 +434,7 @@ func GetPlayerLastMatches(playerIds ...int) ([]*models.Match, error) {
 			AND m.is_finished = 1 AND m.is_abandoned = 0
 			AND p2l.player_id IN (?)
 		GROUP BY m.id
-		ORDER BY m.created_at DESC LIMIT ?`, playerIds)
+		ORDER BY m.created_at DESC LIMIT ?`, playerID, limit)
 	if err != nil {
 		return nil, err
 	}

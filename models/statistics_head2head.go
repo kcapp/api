@@ -9,4 +9,5 @@ type StatisticsHead2Head struct {
 	Player501Statistics map[int]*StatisticsX01        `json:"player_501_statistics"`
 	PlayerVisits        map[int][]*Visit              `json:"player_visits"`
 	PlayerCheckouts     map[int][]*CheckoutStatistics `json:"player_checkouts"`
+	PlayerElos          map[int]*PlayerElo            `json:"player_elo"`
 }

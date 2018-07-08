@@ -160,14 +160,15 @@ func FinishLeg(visit models.Visit) error {
 		}
 	}
 
+	isFinished := false
 	if currentPlayerWins == match.MatchMode.WinsRequired {
 		// Match finished, current player won
+		isFinished = true
 		_, err = tx.Exec("UPDATE matches SET is_finished = 1, winner_id = ? WHERE id = ?", winnerID, match.ID)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
-		log.Printf("Match %d finished with player %d winning", match.ID, winnerID)
 		// Add owes between players in match
 		if match.OweType != nil {
 			for _, playerID := range match.Players {
@@ -186,8 +187,10 @@ func FinishLeg(visit models.Visit) error {
 				log.Printf("Added owes of %s from player %d to player %d", match.OweType.Item.String, playerID, visit.PlayerID)
 			}
 		}
+		log.Printf("Match %d finished with player %d winning", match.ID, winnerID)
 	} else if match.MatchMode.LegsRequired.Valid && playedLegs == int(match.MatchMode.LegsRequired.Int64) {
 		// Match finished, draw
+		isFinished = true
 		_, err = tx.Exec("UPDATE matches SET is_finished = 1 WHERE id = ?", match.ID)
 		if err != nil {
 			tx.Rollback()
@@ -199,6 +202,14 @@ func FinishLeg(visit models.Visit) error {
 		log.Printf("Match %d is not finished, continuing to next leg", match.ID)
 	}
 	tx.Commit()
+
+	if isFinished {
+		// Update Elo for players if match is finished
+		err = UpdateEloForMatch(match.ID)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -215,13 +226,13 @@ func UndoLegFinish(legID int) error {
 		tx.Rollback()
 		return err
 	}
-	// Undo the finalized leg ;
+	// Undo the finalized leg
 	_, err = tx.Exec("UPDATE leg SET is_finished = 0, winner_id = NULL WHERE id = ?", legID)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-	// Remove generated statistics for the leg;
+	// Remove generated statistics for the leg
 	_, err = tx.Exec("DELETE FROM statistics_x01 WHERE leg_id = ?", legID)
 	if err != nil {
 		tx.Rollback()

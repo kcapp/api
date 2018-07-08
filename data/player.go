@@ -491,11 +491,26 @@ func GetPlayerHeadToHead(player1 int, player2 int) (*models.StatisticsHead2Head,
 	}
 	head2head.Player501Statistics = statistics
 
+	elos, err := GetPlayersElo(player1, player2)
+	if err != nil {
+		return nil, err
+	}
+	p1Elo := elos[0].CurrentElo
+	p2Elo := elos[1].CurrentElo
+	elos[0].WinProbability = getPlayerWinProbability(p1Elo, p2Elo)
+	elos[1].WinProbability = getPlayerWinProbability(p2Elo, p1Elo)
+
+	playerElos := make(map[int]*models.PlayerElo)
+	for _, elo := range elos {
+		playerElos[elo.PlayerID] = elo
+	}
+	head2head.PlayerElos = playerElos
+
 	return head2head, nil
 }
 
-// CalculateEloForMatch calculate elo will calculate the elo for each player in a match
-func CalculateEloForMatch(matchID int) error {
+// UpdateEloForMatch will update the elo for each player in a match
+func UpdateEloForMatch(matchID int) error {
 	match, err := GetMatch(matchID)
 	if err != nil {
 		return err
@@ -505,7 +520,7 @@ func CalculateEloForMatch(matchID int) error {
 		// matches which were walkovers
 		return nil
 	}
-	log.Printf("Calculating Elo for players in match %d", matchID)
+	log.Printf("Updating Elo for players %v in match %d", match.Players, matchID)
 
 	elos, err := GetPlayersElo(match.Players...)
 	if err != nil {
@@ -547,7 +562,8 @@ func GetPlayersElo(playerIDs ...int) ([]*models.PlayerElo, error) {
 				tournament_elo,
 				tournament_elo_matches
 			FROM player_elo
-			WHERE player_id IN(?)`, playerIDs)
+			WHERE player_id IN (?)
+			ORDER BY ?`, playerIDs, playerIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -627,7 +643,6 @@ func updateElo(matchID int, player1 *models.PlayerElo, player2 *models.PlayerElo
 		tx.Rollback()
 		return err
 	}
-
 	tx.Commit()
 	return nil
 }
@@ -659,7 +674,7 @@ func RecalculateElo() error {
 	}
 
 	for _, id := range matches {
-		err := CalculateEloForMatch(id)
+		err = UpdateEloForMatch(id)
 		if err != nil {
 			return err
 		}
@@ -711,4 +726,9 @@ func calculateElo(winnerElo int, winnerMatches int, looserElo int, looserMatches
 	calculatedLooser := looserElo + changeLooser
 
 	return calculatedWinner, calculatedLooser
+}
+
+func getPlayerWinProbability(player1Elo int, player2Elo int) float64 {
+	// Pr(A) = 1 / (10^(-ELODIFF/400) + 1)
+	return 1 / (math.Pow(10, float64(-(player1Elo-player2Elo))/400) + 1)
 }
