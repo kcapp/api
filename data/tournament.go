@@ -80,7 +80,7 @@ func GetTournament(id int) (*models.Tournament, error) {
 	if tournament.IsFinished {
 		rows, err := models.DB.Query(`
 			SELECT
-				t.id, t.name, p.id, p.name, ts.rank
+				t.id, t.name, p.id, p.name, ts.rank, ts.elo
 			FROM tournament_standings ts
 				JOIN player p ON p.id = ts.player_id
 				JOIN tournament t ON t.id = ts.tournament_id
@@ -93,7 +93,7 @@ func GetTournament(id int) (*models.Tournament, error) {
 		standings := make([]*models.TournamentStanding, 0)
 		for rows.Next() {
 			ts := new(models.TournamentStanding)
-			err := rows.Scan(&ts.TournamentID, &ts.TournamentName, &ts.PlayerID, &ts.PlayerName, &ts.Rank)
+			err := rows.Scan(&ts.TournamentID, &ts.TournamentName, &ts.PlayerID, &ts.PlayerName, &ts.Rank, &ts.Elo)
 			if err != nil {
 				return nil, err
 			}
@@ -267,6 +267,42 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 	return statistics, nil
 }
 
+// GetTournamentStandings will return statistics for the given tournament
+func GetTournamentStandings() ([]*models.TournamentStanding, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			pe.player_id,
+			p.name,
+			pe.tournament_elo,
+			pe.tournament_elo_matches
+		FROM player_elo pe
+		JOIN player p ON p.id = pe.player_id
+		WHERE pe.tournament_elo_matches > 10
+			AND p.active = 1
+		ORDER BY tournament_elo DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	rank := 0
+	standings := make([]*models.TournamentStanding, 0)
+	for rows.Next() {
+		standing := new(models.TournamentStanding)
+		err := rows.Scan(&standing.PlayerID, &standing.PlayerName, &standing.Elo, &standing.EloPlayed)
+		if err != nil {
+			return nil, err
+		}
+		rank++
+		standing.Rank = rank
+		standings = append(standings, standing)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return standings, nil
+}
+
 // getHighestCheckout will calculate the highest checkout for the given players
 func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic, error) {
 	rows, err := models.DB.Query(`
@@ -306,7 +342,7 @@ func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
-	return best, err
+	return best, nil
 }
 
 // getBestStatistics will calculate Best PPD, Best First 9, Best 301 and Best 501 for the given players

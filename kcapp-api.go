@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"math"
 	"net/http"
 	"os"
 
@@ -78,61 +77,13 @@ func main() {
 	router.HandleFunc("/venue/{id}/spectate", controllers.SpectateVenue).Methods("GET")
 
 	router.HandleFunc("/tournament", controllers.GetTournaments).Methods("GET")
+	router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
+	router.HandleFunc("/tournament/standings", controllers.GetTournamentStandings).Methods("GET")
 	router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")
 	router.HandleFunc("/tournament/{id}/matches", controllers.GetTournamentMatches).Methods("GET")
 	router.HandleFunc("/tournament/{id}/overview", controllers.GetTournamentOverview).Methods("GET")
 	router.HandleFunc("/tournament/{id}/statistics", controllers.GetTournamentStatistics).Methods("GET")
-	router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
-
-	p1Elo, p2Elo := CalculateElo(1774, 240, 1, 1545, 125, 0)
-	log.Printf("P1 = %d, P2 = %d", p1Elo, p2Elo)
 
 	log.Printf("Listening on port %d", config.APIConfig.Port)
 	log.Println(http.ListenAndServe(fmt.Sprintf(":%d", config.APIConfig.Port), router))
-}
-
-// CalculateElo will calculate the Elo for each player based on the given information. Returned value is new Elo for player1 and player2 respectively
-func CalculateElo(player1Elo int, player1Matches int, player1Score int, player2Elo int, player2Matches int, player2Score int) (int, int) {
-	if player1Matches == 0 {
-		player1Matches = 1
-	}
-	if player2Matches == 0 {
-		player2Matches = 1
-	}
-
-	// P1 = Winner
-	// P2 = Looser
-	// PD = Points Difference
-	// Multiplier = ln(abs(PD)+1) * (2.2 / ((P1(old)-P2(old)) * 0.001 + 2.2))
-	// Elo Winner = P1(old) + 800/num_matches * (1 - 1/(1 + 10 ^ (P2(old) - P1(old) / 400) ) )
-	// Elo Looser = P2(old) + 800/num_matches * (0 - 1/(1 + 10 ^ (P2(old) - P1(old) / 400) ) )
-
-	if player1Score > player2Score {
-		multiplier := math.Log(math.Abs(float64(player1Score-player2Score))+1) * (2.2 / ((float64(player1Elo-player2Elo))*0.001 + 2.2))
-		player1Elo, player2Elo = calculateElo(player1Elo, player1Matches, player2Elo, player2Matches, multiplier, false)
-	} else if player1Score < player2Score {
-		multiplier := math.Log(math.Abs(float64(player1Score-player2Score))+1) * (2.2 / ((float64(player2Elo-player1Elo))*0.001 + 2.2))
-		player2Elo, player1Elo = calculateElo(player2Elo, player2Matches, player1Elo, player1Matches, multiplier, false)
-	} else {
-		player1Elo, player2Elo = calculateElo(player1Elo, player1Matches, player2Elo, player2Matches, 1.0, true)
-	}
-	return player1Elo, player2Elo
-}
-
-func calculateElo(winnerElo int, winnerMatches int, looserElo int, looserMatches int, multiplier float64, isDraw bool) (int, int) {
-	constant := 800.0
-
-	Wwinner := 1.0
-	Wlooser := 0.0
-	if isDraw {
-		Wwinner = 0.5
-		Wlooser = 0.5
-	}
-	changeWinner := int((constant / float64(winnerMatches) * (Wwinner - (1 / (1 + math.Pow(10, float64(looserElo-winnerElo)/400))))) * multiplier)
-	calculatedWinner := winnerElo + changeWinner
-
-	changeLooser := int((constant / float64(looserMatches) * (Wlooser - (1 / (1 + math.Pow(10, float64(winnerElo-looserElo)/400))))) * multiplier)
-	calculatedLooser := looserElo + changeLooser
-
-	return calculatedWinner, calculatedLooser
 }

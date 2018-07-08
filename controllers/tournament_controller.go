@@ -109,3 +109,15 @@ func GetTournamentStatistics(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(stats)
 }
+
+// GetTournamentStandings will return statistics for the given tournament
+func GetTournamentStandings(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	stats, err := data.GetTournamentStandings()
+	if err != nil {
+		log.Println("Unable to get tournament standings", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(stats)
+}

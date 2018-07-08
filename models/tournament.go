@@ -41,6 +41,8 @@ type TournamentStanding struct {
 	PlayerID       int    `json:"player_id"`
 	PlayerName     string `json:"player_name"`
 	Rank           int    `json:"rank"`
+	Elo            int    `json:"elo"`
+	EloPlayed      int    `json:"elo_matches"`
 }
 
 // PlayerTournamentStanding struct for storing player tournament standings
@@ -50,4 +52,5 @@ type PlayerTournamentStanding struct {
 	TotalPlayers    int              `json:"total_players"`
 	Tournament      *Tournament      `json:"tournament"`
 	TournamentGroup *TournamentGroup `json:"tournament_group"`
+	Elo             int              `json:"elo,omitempty"`
 }

@@ -377,7 +377,8 @@ func GetPlayerTournamentStandings(playerID int) ([]*models.PlayerTournamentStand
 			tg.name AS 'tournament_group_name',
 			tg.division AS 'tournament_group_division',
 			ts.rank AS 'final_standing',
-			MAX(ts2.rank) AS 'total_players'
+			MAX(ts2.rank) AS 'total_players',
+			ts.elo as 'elo'
 		FROM tournament_standings ts
 			JOIN tournament t ON t.id = ts.tournament_id
 			JOIN player p ON p.id = ts.player_id
@@ -399,7 +400,8 @@ func GetPlayerTournamentStandings(playerID int) ([]*models.PlayerTournamentStand
 		standing.TournamentGroup = new(models.TournamentGroup)
 
 		err := rows.Scan(&standing.PlayerID, &standing.Tournament.ID, &standing.Tournament.Name, &standing.TournamentGroup.ID,
-			&standing.TournamentGroup.Name, &standing.TournamentGroup.Division, &standing.FinalStanding, &standing.TotalPlayers)
+			&standing.TournamentGroup.Name, &standing.TournamentGroup.Division, &standing.FinalStanding, &standing.TotalPlayers,
+			&standing.Elo)
 		if err != nil {
 			return nil, err
 		}
@@ -563,7 +565,7 @@ func GetPlayersElo(playerIDs ...int) ([]*models.PlayerElo, error) {
 				tournament_elo_matches
 			FROM player_elo
 			WHERE player_id IN (?)
-			ORDER BY ?`, playerIDs, playerIDs)
+			ORDER BY FIELD(player_id, ?)`, playerIDs, playerIDs)
 	if err != nil {
 		return nil, err
 	}
