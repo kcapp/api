@@ -280,7 +280,7 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 		GROUP BY s.first_dart, s.first_dart_multiplier,
 			s.second_dart, s.second_dart_multiplier,
 			s.third_dart, s.third_dart_multiplier
-		ORDER BY checkout`, playerID)
+		ORDER BY checkout DESC`, playerID)
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +328,7 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 	}
 
 	checkouts := make([]*models.CheckoutStatistics, 0)
-	for i := 2; i < 171; i++ {
+	for i := 170; i >= 2; i-- {
 		if i == 169 || i == 168 || i == 166 || i == 165 || i == 163 || i == 162 || i == 159 {
 			// Skip values which cannot be checkouts
 			continue
