@@ -274,7 +274,9 @@ func GetTournamentStandings() ([]*models.TournamentStanding, error) {
 			pe.player_id,
 			p.name,
 			pe.tournament_elo,
-			pe.tournament_elo_matches
+			pe.tournament_elo_matches,
+			pe.current_elo,
+			pe.current_elo_matches
 		FROM player_elo pe
 		JOIN player p ON p.id = pe.player_id
 		WHERE pe.tournament_elo_matches > 10
@@ -289,7 +291,7 @@ func GetTournamentStandings() ([]*models.TournamentStanding, error) {
 	standings := make([]*models.TournamentStanding, 0)
 	for rows.Next() {
 		standing := new(models.TournamentStanding)
-		err := rows.Scan(&standing.PlayerID, &standing.PlayerName, &standing.Elo, &standing.EloPlayed)
+		err := rows.Scan(&standing.PlayerID, &standing.PlayerName, &standing.Elo, &standing.EloPlayed, &standing.CurrentElo, &standing.CurrentEloPlayed)
 		if err != nil {
 			return nil, err
 		}

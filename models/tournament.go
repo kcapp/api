@@ -36,13 +36,15 @@ type Player2Tournament struct {
 
 // TournamentStanding struct for stroring final tournament standings
 type TournamentStanding struct {
-	TournamentID   int    `json:"tournament_id"`
-	TournamentName string `json:"tournament_name"`
-	PlayerID       int    `json:"player_id"`
-	PlayerName     string `json:"player_name"`
-	Rank           int    `json:"rank"`
-	Elo            int    `json:"elo"`
-	EloPlayed      int    `json:"elo_matches"`
+	TournamentID     int    `json:"tournament_id"`
+	TournamentName   string `json:"tournament_name"`
+	PlayerID         int    `json:"player_id"`
+	PlayerName       string `json:"player_name"`
+	Rank             int    `json:"rank"`
+	Elo              int    `json:"elo"`
+	EloPlayed        int    `json:"elo_matches"`
+	CurrentElo       int    `json:"current_elo"`
+	CurrentEloPlayed int    `json:"current_elo_matches"`
 }
 
 // PlayerTournamentStanding struct for storing player tournament standings
