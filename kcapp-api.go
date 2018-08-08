@@ -58,6 +58,7 @@ func main() {
 	router.HandleFunc("/player/{id}", controllers.GetPlayer).Methods("GET")
 	router.HandleFunc("/player/{id}", controllers.UpdatePlayer).Methods("PUT")
 	router.HandleFunc("/player/{id}/statistics", controllers.GetPlayerX01Statistics).Methods("GET")
+	router.HandleFunc("/player/{id}/statistics/previous", controllers.GetPlayerX01PreviousStatistics).Methods("GET")
 	router.HandleFunc("/player/{id}/progression", controllers.GetPlayerProgression).Methods("GET")
 	router.HandleFunc("/player/{id}/checkouts", controllers.GetPlayerCheckouts).Methods("GET")
 	router.HandleFunc("/player/{id}/tournament", controllers.GetPlayerTournamentStandings).Methods("GET")
