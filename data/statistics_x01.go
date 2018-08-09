@@ -294,10 +294,10 @@ func GetPlayersX01PreviousStatistics(ids []int, startingScores ...int) ([]*model
 			AND l.starting_score IN (?)
 			AND l.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 1
-			AND m.id NOT IN(SELECT MAX(match_id) FROM player2leg WHERE player_id IN(?) GROUP BY player_id ORDER BY match_id DESC)
+			-- Exclude all matches played this week
+			AND m.updated_at < (CURRENT_DATE - INTERVAL WEEKDAY(CURRENT_DATE) DAY)
 		GROUP BY s.player_id
-		ORDER BY p.id`, ids, startingScores, ids)
-
+		ORDER BY p.id`, ids, startingScores)
 	if err != nil {
 		return nil, err
 	}

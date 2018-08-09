@@ -254,6 +254,54 @@ func GetPlayerHeadToHead(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(head2head)
 }
 
+// SimulateMatch will return the result of a match between the two players
+func SimulateMatch(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	player1, err := strconv.Atoi(params["player_1"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	player2, err := strconv.Atoi(params["player_2"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var input struct {
+		Player1Score int `json:"player1_score"`
+		Player2Score int `json:"player2_score"`
+	}
+	err = json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		log.Println("Unable to deserialize body", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	elos, err := data.GetPlayersElo(player1, player2)
+	if err != nil {
+		log.Println("Unable to get player elos")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var output struct {
+		Player1OldElo int `json:"player1_old_elo"`
+		Player1NewElo int `json:"player1_new_elo"`
+		Player2OldElo int `json:"player2_old_elo"`
+		Player2NewElo int `json:"player2_new_elo"`
+	}
+	output.Player1OldElo = elos[0].CurrentElo
+	output.Player2OldElo = elos[1].CurrentElo
+	output.Player1NewElo, output.Player2NewElo = data.CalculateElo(output.Player1OldElo, elos[0].CurrentEloMatches, input.Player1Score,
+		output.Player2OldElo, elos[1].CurrentEloMatches, input.Player2Score)
+
+	json.NewEncoder(w).Encode(output)
+}
+
 func sliceAtoi(sa []string) ([]int, error) {
 	si := make([]int, 0, len(sa))
 	for _, a := range sa {

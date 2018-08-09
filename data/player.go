@@ -607,8 +607,8 @@ func updateElo(matchID int, player1 *models.PlayerElo, player2 *models.PlayerElo
 	var player2TournamentElo *int
 	var player2TournamentEloNew *int
 	if player2.TournamentEloNew != 0 {
-		player2TournamentElo = &player1.TournamentElo
-		player2TournamentEloNew = &player1.TournamentEloNew
+		player2TournamentElo = &player2.TournamentElo
+		player2TournamentEloNew = &player2.TournamentEloNew
 	}
 	if player2.TournamentEloNew == 0 {
 		player2.TournamentEloNew = player2.TournamentElo
