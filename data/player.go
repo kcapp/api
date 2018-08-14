@@ -84,8 +84,11 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 // GetPlayer returns the player for the given ID
 func GetPlayer(id int) (*models.Player, error) {
 	p := new(models.Player)
-	err := models.DB.QueryRow(`SELECT p.id, p.name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p WHERE p.id = ?`, id).
-		Scan(&p.ID, &p.Name, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt)
+	err := models.DB.QueryRow(`SELECT p.id, p.name, p.nickname, p.color, p.profile_pic_url, p.created_at, pe.current_elo, pe.tournament_elo 
+	FROM player p 
+	JOIN player_elo pe on pe.player_id = p.id
+	WHERE p.id = ?`, id).
+		Scan(&p.ID, &p.Name, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt, &p.TournamentElo, &p.CurrentElo)
 	if err != nil {
 		return nil, err
 	}

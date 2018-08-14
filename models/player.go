@@ -17,4 +17,6 @@ type Player struct {
 	ProfilePicURL null.String `json:"profile_pic_url,omitempty"`
 	CreatedAt     string      `json:"created_at"`
 	UpdatedAt     string      `json:"updated_at,omitempty"`
+	TournamentElo int         `json:"tournament_elo,omitempty"`
+	CurrentElo    int         `json:"current_elo,omitempty"`
 }
