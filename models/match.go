@@ -15,28 +15,29 @@ const (
 
 // Match struct used for storing matches
 type Match struct {
-	ID              int              `json:"id"`
-	CurrentLegID    null.Int         `json:"current_leg_id"`
-	CreatedAt       string           `json:"created_at"`
-	UpdatedAt       string           `json:"updated_at"`
-	EndTime         string           `json:"end_time,omitempty"`
-	MatchType       *MatchType       `json:"match_type"`
-	MatchMode       *MatchMode       `json:"match_mode"`
-	WinnerID        null.Int         `json:"winner_id"`
-	IsFinished      bool             `json:"is_finished"`
-	IsAbandoned     bool             `json:"is_abandoned"`
-	IsWalkover      bool             `json:"is_walkover"`
-	OweTypeID       null.Int         `json:"owe_type_id"`
-	VenueID         null.Int         `json:"venue_id"`
-	Venue           *Venue           `json:"venue"`
-	OweType         *OweType         `json:"owe_type,omitempty"`
-	TournamentID    null.Int         `json:"tournament_id,omitempty"`
-	Tournament      *MatchTournament `json:"tournament,omitempty"`
-	Players         []int            `json:"players"`
-	Legs            []*Leg           `json:"legs,omitempty"`
-	PlayerHandicaps map[int]int      `json:"player_handicaps,omitempty"`
-	FirstThrow      null.String      `json:"first_throw_time,omitempty"`
-	LastThrow       null.String      `json:"last_throw_time,omitempty"`
+	ID              int                `json:"id"`
+	CurrentLegID    null.Int           `json:"current_leg_id"`
+	CreatedAt       string             `json:"created_at"`
+	UpdatedAt       string             `json:"updated_at"`
+	EndTime         string             `json:"end_time,omitempty"`
+	MatchType       *MatchType         `json:"match_type"`
+	MatchMode       *MatchMode         `json:"match_mode"`
+	WinnerID        null.Int           `json:"winner_id"`
+	IsFinished      bool               `json:"is_finished"`
+	IsAbandoned     bool               `json:"is_abandoned"`
+	IsWalkover      bool               `json:"is_walkover"`
+	OweTypeID       null.Int           `json:"owe_type_id"`
+	VenueID         null.Int           `json:"venue_id"`
+	Venue           *Venue             `json:"venue"`
+	OweType         *OweType           `json:"owe_type,omitempty"`
+	TournamentID    null.Int           `json:"tournament_id,omitempty"`
+	Tournament      *MatchTournament   `json:"tournament,omitempty"`
+	Players         []int              `json:"players"`
+	Legs            []*Leg             `json:"legs,omitempty"`
+	PlayerHandicaps map[int]int        `json:"player_handicaps,omitempty"`
+	FirstThrow      null.String        `json:"first_throw_time,omitempty"`
+	LastThrow       null.String        `json:"last_throw_time,omitempty"`
+	EloChange       map[int]*PlayerElo `json:"elo_change,omitempty"`
 }
 
 // MatchType struct used for storing match types

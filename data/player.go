@@ -5,6 +5,8 @@ import (
 	"math"
 	"sort"
 
+	"github.com/guregu/null"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/kcapp/api/models"
 )
@@ -84,11 +86,11 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 // GetPlayer returns the player for the given ID
 func GetPlayer(id int) (*models.Player, error) {
 	p := new(models.Player)
-	err := models.DB.QueryRow(`SELECT p.id, p.name, p.nickname, p.color, p.profile_pic_url, p.created_at, pe.current_elo, pe.tournament_elo 
-	FROM player p 
+	err := models.DB.QueryRow(`SELECT p.id, p.name, p.nickname, p.color, p.profile_pic_url, p.created_at, pe.current_elo, pe.tournament_elo
+	FROM player p
 	JOIN player_elo pe on pe.player_id = p.id
 	WHERE p.id = ?`, id).
-		Scan(&p.ID, &p.Name, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt, &p.TournamentElo, &p.CurrentElo)
+		Scan(&p.ID, &p.Name, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt, &p.CurrentElo, &p.TournamentElo)
 	if err != nil {
 		return nil, err
 	}
@@ -545,8 +547,10 @@ func UpdateEloForMatch(matchID int) error {
 	p1.CurrentEloMatches++
 	p2.CurrentEloMatches++
 	if match.TournamentID.Valid {
-		p1.TournamentEloNew, p2.TournamentEloNew = CalculateElo(p1.TournamentElo, p1.TournamentEloMatches, wins[p1.PlayerID],
-			p2.TournamentElo, p2.TournamentEloMatches, wins[p2.PlayerID])
+		one, two := CalculateElo(int(p1.TournamentElo.Int64), p1.TournamentEloMatches, wins[p1.PlayerID],
+			int(p2.TournamentElo.Int64), p2.TournamentEloMatches, wins[p2.PlayerID])
+		p1.TournamentEloNew = null.IntFrom(int64(one))
+		p2.TournamentEloNew = null.IntFrom(int64(two))
 		p1.TournamentEloMatches++
 		p2.TournamentEloMatches++
 	}
@@ -598,22 +602,22 @@ func updateElo(matchID int, player1 *models.PlayerElo, player2 *models.PlayerElo
 	if err != nil {
 		return err
 	}
-	var player1TournamentElo *int
-	var player1TournamentEloNew *int
-	if player1.TournamentEloNew != 0 {
-		player1TournamentElo = &player1.TournamentElo
-		player1TournamentEloNew = &player1.TournamentEloNew
+	var player1TournamentElo *int64
+	var player1TournamentEloNew *int64
+	if player1.TournamentEloNew.Int64 != 0 {
+		player1TournamentElo = &player1.TournamentElo.Int64
+		player1TournamentEloNew = &player1.TournamentEloNew.Int64
 	}
-	if player1.TournamentEloNew == 0 {
+	if player1.TournamentEloNew.Int64 == 0 {
 		player1.TournamentEloNew = player1.TournamentElo
 	}
-	var player2TournamentElo *int
-	var player2TournamentEloNew *int
-	if player2.TournamentEloNew != 0 {
-		player2TournamentElo = &player2.TournamentElo
-		player2TournamentEloNew = &player2.TournamentEloNew
+	var player2TournamentElo *int64
+	var player2TournamentEloNew *int64
+	if player2.TournamentEloNew.Int64 != 0 {
+		player2TournamentElo = &player2.TournamentElo.Int64
+		player2TournamentEloNew = &player2.TournamentEloNew.Int64
 	}
-	if player2.TournamentEloNew == 0 {
+	if player2.TournamentEloNew.Int64 == 0 {
 		player2.TournamentEloNew = player2.TournamentElo
 	}
 

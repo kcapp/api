@@ -630,7 +630,8 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 		FROM leg l
 			JOIN matches m on m.id = l.match_id
 			JOIN player2leg p2l ON p2l.leg_id = l.id
-		WHERE m.id = 2291
+		WHERE
+			l.id IN(6415, 6413, 6411, 6389, 6387, 6385, 6374, 6373, 6371)
 		GROUP BY l.id
 		ORDER BY l.id`)
 	if err != nil {

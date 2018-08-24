@@ -276,6 +276,11 @@ func GetMatch(id int) (*models.Match, error) {
 	if m.IsFinished {
 		m.EndTime = m.Legs[len(m.Legs)-1].Endtime.String
 	}
+
+	m.EloChange, err = GetMatchEloChange(id)
+	if err != nil {
+		return nil, err
+	}
 	return m, nil
 }
 
@@ -457,4 +462,35 @@ func GetPlayerLastMatches(playerID int, limit int) ([]*models.Match, error) {
 		return nil, err
 	}
 	return matches, nil
+}
+
+// GetMatchEloChange returns Elo change for each player in the given match
+func GetMatchEloChange(id int) (map[int]*models.PlayerElo, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			player_id,
+			old_elo,
+			new_elo,
+			new_tournament_elo,
+			old_tournament_Elo
+		FROM player_elo_changelog
+		WHERE match_id = ?`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	change := make(map[int]*models.PlayerElo)
+	for rows.Next() {
+		elo := new(models.PlayerElo)
+		err := rows.Scan(&elo.PlayerID, &elo.CurrentElo, &elo.CurrentEloNew, &elo.TournamentElo, &elo.TournamentEloNew)
+		if err != nil {
+			return nil, err
+		}
+		change[elo.PlayerID] = elo
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return change, nil
 }
