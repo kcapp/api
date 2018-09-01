@@ -662,7 +662,7 @@ func RecalculateElo() error {
 		SELECT
 			m.id
 		FROM matches m
-		-- WHERE m.tournament_id IN (15, 16)
+		WHERE m.tournament_id IN (15, 16)
 		ORDER BY m.created_at`)
 	if err != nil {
 		return err

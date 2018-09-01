@@ -172,7 +172,7 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			tg.id, tg.name, tg.division,
 			p.id as 'player_id',
 			p2t.is_promoted, p2t.is_relegated, p2t.is_winner,
-			COUNT(DISTINCT m.id) AS 'p',
+			COUNT(DISTINCT finished.id) AS 'p',
 			COUNT(DISTINCT won.id) AS 'w',
 			COUNT(DISTINCT draw.id) AS 'd',
 			COUNT(DISTINCT lost.id) AS 'l',
@@ -180,8 +180,8 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			COUNT(DISTINCT legs_against.id) AS 'A',
 			(COUNT(DISTINCT legs_for.id) - COUNT(DISTINCT legs_against.id)) AS 'diff',
 			COUNT(DISTINCT won.id) * 2 + COUNT(DISTINCT draw.id) AS 'pts',
-			IFNULL(SUM(s.ppd) / COUNT(p.id), 0) AS 'ppd',
-			IFNULL(SUM(s.first_nine_ppd) / COUNT(p.id), 0) AS 'first_nine_ppd',
+			IFNULL(SUM(s.ppd) / COUNT(finished.id), 0) AS 'ppd',
+			IFNULL(SUM(s.first_nine_ppd) / COUNT(finished.id), 0) AS 'first_nine_ppd',
 			IFNULL(SUM(60s_plus), 0) AS '60s_plus',
 			IFNULL(SUM(100s_plus), 0) AS '100s_plus',
 			IFNULL(SUM(140s_plus), 0) AS '140s_plus',
@@ -197,9 +197,10 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			LEFT JOIN statistics_x01 s ON s.leg_id = p2l.leg_id AND s.player_id = p.id
 			LEFT JOIN matches won ON won.id = p2l.match_id AND won.winner_id = p.id
 			LEFT JOIN matches lost ON lost.id = p2l.match_id AND lost.winner_id <> p.id
-			LEFT JOIN matches draw ON draw.id = p2l.match_id AND draw.winner_id IS NULL
+			LEFT JOIN matches draw ON draw.id = p2l.match_id AND draw.is_finished AND draw.winner_id IS NULL
 			LEFT JOIN leg legs_for ON legs_for.id = p2l.leg_id AND legs_for.winner_id = p.id
 			LEFT JOIN leg legs_against ON legs_against.id = p2l.leg_id AND legs_against.winner_id <> p.id
+			LEFT JOIN matches finished ON m.id = finished.id AND finished.is_finished = 1
 			JOIN tournament t ON t.id = m.tournament_id
 			JOIN player2tournament p2t ON p2t.player_id = p.id AND p2t.tournament_id = t.id
 			JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
@@ -279,7 +280,7 @@ func GetTournamentStandings() ([]*models.TournamentStanding, error) {
 			pe.current_elo_matches
 		FROM player_elo pe
 		JOIN player p ON p.id = pe.player_id
-		WHERE pe.tournament_elo_matches > 10
+		WHERE pe.current_elo_matches > 5
 			AND p.active = 1
 		ORDER BY tournament_elo DESC`)
 	if err != nil {

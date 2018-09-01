@@ -178,6 +178,7 @@ func GetMatchesLimit(start int, limit int) ([]*models.Match, error) {
 			LEFT JOIN player2tournament p2t ON p2t.tournament_id = m.tournament_id AND p2t.player_id = p2l.player_id
 			LEFT JOIN tournament t ON t.id = p2t.tournament_id
 			LEFT JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
+		WHERE m.created_at  <= NOW()
 		GROUP BY m.id
 		ORDER BY m.created_at DESC
 		LIMIT ?, ?`, start, limit)
