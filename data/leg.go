@@ -429,7 +429,7 @@ func ChangePlayerOrder(legID int, orderMap map[string]int) error {
 			return err
 		}
 		if order == 1 {
-			_, err = tx.Exec("UPDATE leg SET current_player_id = ? WHERE id = ?", playerID, legID)
+			_, err = tx.Exec("UPDATE leg SET current_player_id = ?, updated_at = NOW() WHERE id = ?", playerID, legID)
 			if err != nil {
 				tx.Rollback()
 				return err
