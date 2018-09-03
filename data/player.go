@@ -703,7 +703,7 @@ func CalculateElo(player1Elo int, player1Matches int, player1Score int, player2E
 	// P1 = Winner
 	// P2 = Looser
 	// PD = Points Difference
-	// Multiplier = ln(abs(PD)+1) * (2.2 / ((P1(old)-P2(old)) * 0.001 + 2.2))
+	// Multiplier = ln(abs(PD) + 1) * (2.2 / ((P1(old)-P2(old)) * 0.001 + 2.2))
 	// Elo Winner = P1(old) + 800/num_matches * (1 - 1/(1 + 10 ^ (P2(old) - P1(old) / 400) ) )
 	// Elo Looser = P2(old) + 800/num_matches * (0 - 1/(1 + 10 ^ (P2(old) - P1(old) / 400) ) )
 

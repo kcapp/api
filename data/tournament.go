@@ -281,6 +281,7 @@ func GetTournamentStandings() ([]*models.TournamentStanding, error) {
 		FROM player_elo pe
 		JOIN player p ON p.id = pe.player_id
 		WHERE pe.current_elo_matches > 5
+			AND pe.tournament_elo_matches > 0
 			AND p.active = 1
 		ORDER BY tournament_elo DESC`)
 	if err != nil {
