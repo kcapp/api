@@ -484,7 +484,7 @@ func GetMatchEloChange(id int) (map[int]*models.PlayerElo, error) {
 	change := make(map[int]*models.PlayerElo)
 	for rows.Next() {
 		elo := new(models.PlayerElo)
-		err := rows.Scan(&elo.PlayerID, &elo.CurrentElo, &elo.CurrentEloNew, &elo.TournamentElo, &elo.TournamentEloNew)
+		err := rows.Scan(&elo.PlayerID, &elo.CurrentElo, &elo.CurrentEloNew, &elo.TournamentEloNew, &elo.TournamentElo)
 		if err != nil {
 			return nil, err
 		}
