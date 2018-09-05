@@ -1,6 +1,7 @@
 package data
 
 import (
+	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
 	"github.com/kcapp/api/util"
 )
@@ -115,13 +116,14 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 			m.id, m.is_finished, m.current_leg_id, m.winner_id, m.created_at, m.updated_at, m.owe_type_id, m.venue_id,
 			mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required,
 			v.id, v.name, v.description, m.updated_at as 'last_throw', GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
-			m.tournament_id, tg.id
+			m.tournament_id, tg.id, GROUP_CONCAT(legs.winner_id ORDER BY legs.id) AS 'legs_won'
 		FROM matches m
 			JOIN match_type mt ON mt.id = m.match_type_id
 			JOIN match_mode mm ON mm.id = m.match_mode_id
 			LEFT JOIN leg l ON l.id = m.current_leg_id
 			LEFT JOIN venue v on v.id = m.venue_id
 			LEFT JOIN player2leg p2l ON p2l.match_id = m.id
+			LEFT JOIN leg legs ON legs.id = p2l.leg_id AND legs.winner_id = p2l.player_id
 			JOIN tournament t ON t.id = m.tournament_id
 			JOIN player2tournament p2t ON p2t.player_id = p2l.player_id AND p2t.tournament_id = t.id
 			JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
@@ -141,10 +143,11 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 		m.MatchMode = new(models.MatchMode)
 		venue := new(models.Venue)
 		var players string
+		var legsWon null.String
 		err := rows.Scan(&m.ID, &m.IsFinished, &m.CurrentLegID, &m.WinnerID, &m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID,
 			&m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
-			&venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players, &m.TournamentID, &groupID)
+			&venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players, &m.TournamentID, &groupID, &legsWon)
 		if err != nil {
 			return nil, err
 		}
@@ -152,6 +155,9 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 			m.Venue = venue
 		}
 		m.Players = util.StringToIntArray(players)
+		if legsWon.Valid {
+			m.LegsWon = util.StringToIntArray(legsWon.String)
+		}
 
 		if _, ok := matches[groupID]; !ok {
 			matches[groupID] = make([]*models.Match, 0)
@@ -180,8 +186,10 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			COUNT(DISTINCT legs_against.id) AS 'A',
 			(COUNT(DISTINCT legs_for.id) - COUNT(DISTINCT legs_against.id)) AS 'diff',
 			COUNT(DISTINCT won.id) * 2 + COUNT(DISTINCT draw.id) AS 'pts',
-			IFNULL(SUM(s.ppd) / COUNT(finished.id), 0) AS 'ppd',
+			IFNULL(SUM(s.ppd_score) / SUM(s.darts_thrown), 0) AS 'ppd',
 			IFNULL(SUM(s.first_nine_ppd) / COUNT(finished.id), 0) AS 'first_nine_ppd',
+			IFNULL(SUM(s.ppd_score) / SUM(s.darts_thrown) * 3, 0) AS 'three_dart_avg',
+			IFNULL(SUM(s.first_nine_ppd) / COUNT(finished.id) * 3, 0) AS 'first_nine_three_dart_avg',
 			IFNULL(SUM(60s_plus), 0) AS '60s_plus',
 			IFNULL(SUM(100s_plus), 0) AS '100s_plus',
 			IFNULL(SUM(140s_plus), 0) AS '140s_plus',
@@ -219,8 +227,8 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.StartTime, &tournament.EndTime, &group.ID,
 			&group.Name, &group.Division, &stats.PlayerID, &stats.IsPromoted, &stats.IsRelegated, &stats.IsWinner, &stats.Played, &stats.MatchesWon,
 			&stats.MatchesDraw, &stats.MatchesLost, &stats.LegsFor, &stats.LegsAgainst, &stats.LegsDifference, &stats.Points, &stats.PPD,
-			&stats.FirstNinePPD, &stats.Score60sPlus, &stats.Score100sPlus, &stats.Score140sPlus, &stats.Score180s, &stats.Accuracy20,
-			&stats.Accuracy19, &stats.AccuracyOverall, &stats.CheckoutAttempts, &stats.CheckoutPercentage)
+			&stats.FirstNinePPD, &stats.ThreeDartAvg, &stats.FirstNineThreeDartAvg, &stats.Score60sPlus, &stats.Score100sPlus, &stats.Score140sPlus,
+			&stats.Score180s, &stats.Accuracy20, &stats.Accuracy19, &stats.AccuracyOverall, &stats.CheckoutAttempts, &stats.CheckoutPercentage)
 		if err != nil {
 			return nil, err
 		}

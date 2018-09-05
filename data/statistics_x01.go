@@ -14,8 +14,10 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT m.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
-			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
-			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
+			SUM(s.ppd_score) / SUM(s.darts_thrown) AS 'ppd',
+			SUM(s.first_nine_ppd) / (COUNT(p.id)) AS 'first_nine_ppd',
+			(SUM(s.ppd_score) / SUM(s.darts_thrown)) * 3 AS 'three_dart_avg',
+			SUM(s.first_nine_ppd) / COUNT(p.id) * 3 AS 'first_nine_three_dart_avg',
 			SUM(60s_plus) AS '60s_plus',
 			SUM(100s_plus) AS '100s_plus',
 			SUM(140s_plus) AS '140s_plus',
@@ -49,8 +51,9 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 	stats := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
-			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg,
+			&s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19,
+			&s.AccuracyOverall, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
 		}
@@ -65,8 +68,10 @@ func GetX01StatisticsForLeg(id int) ([]*models.StatisticsX01, error) {
 		SELECT
 			l.id AS 'leg_id',
 			p.id AS 'player_id',
-			s.ppd,
+			s.ppd_score / s.darts_thrown,
 			s.first_nine_ppd,
+			s.ppd_score / s.darts_thrown * 3,
+			s.first_nine_ppd * 3,
 			s.60s_plus,
 			s.100s_plus,
 			s.140s_plus,
@@ -84,6 +89,7 @@ func GetX01StatisticsForLeg(id int) ([]*models.StatisticsX01, error) {
 			JOIN player2leg p2l ON p2l.leg_id = l.id AND p2l.player_id = s.player_id
 		WHERE l.id = ?
 			AND m.match_type_id IN (1,3)
+		GROUP BY p.id
 		ORDER BY p2l.order`, id)
 	if err != nil {
 		return nil, err
@@ -93,7 +99,7 @@ func GetX01StatisticsForLeg(id int) ([]*models.StatisticsX01, error) {
 	stats := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.LegID, &s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus,
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus,
 			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.DartsThrown,
 			&s.CheckoutAttempts, &s.CheckoutPercentage)
 		if err != nil {
@@ -109,8 +115,10 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id AS 'player_id',
-			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
+			SUM(s.ppd_score) / SUM(s.darts_thrown) AS 'ppd',
 			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
+			(SUM(s.ppd_score) / SUM(s.darts_thrown)) * 3 as 'three_dart_avg',
+			SUM(s.first_nine_ppd) / COUNT(p.id) * 3 as 'first_nine_three_dart_avg',
 			SUM(s.60s_plus) AS '60s_plus',
 			SUM(s.100s_plus) AS '100s_plus',
 			SUM(s.140s_plus) AS '140s_plus',
@@ -137,8 +145,8 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 	stats := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s,
-			&s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutAttempts,
+		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus,
+			&s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutAttempts,
 			&s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
@@ -198,8 +206,10 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
-			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
+			SUM(s.ppd_score) / SUM(s.darts_thrown) AS 'ppd',
 			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
+			(SUM(s.ppd_score) / SUM(s.darts_thrown)) * 3 AS 'three_dart_avg',
+			(SUM(s.first_nine_ppd) / COUNT(p.id)) * 3 AS 'first_nine_three_dart_avg',
 			SUM(s.60s_plus) AS '60s_plus',
 			SUM(s.100s_plus) AS '100s_plus',
 			SUM(s.140s_plus) AS '140s_plus',
@@ -233,8 +243,9 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 	statisticsMap := make(map[int]*models.StatisticsX01)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus,
-			&s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD,
+			&s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s,
+			&s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
 		}
@@ -274,8 +285,10 @@ func GetPlayersX01PreviousStatistics(ids []int, startingScores ...int) ([]*model
 			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
-			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
+			SUM(s.ppd_score) / SUM(s.darts_thrown) AS 'ppd',
 			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
+			(SUM(s.ppd_score) / SUM(s.darts_thrown)) * 3 AS 'three_dart_avg',
+			SUM(s.first_nine_ppd) / COUNT(p.id) * 3 AS 'first_nine_three_dart_avg',
 			SUM(s.60s_plus) AS '60s_plus',
 			SUM(s.100s_plus) AS '100s_plus',
 			SUM(s.140s_plus) AS '140s_plus',
@@ -311,8 +324,9 @@ func GetPlayersX01PreviousStatistics(ids []int, startingScores ...int) ([]*model
 	statisticsMap := make(map[int]*models.StatisticsX01)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus,
-			&s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD,
+			&s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s,
+			&s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
 		}
@@ -345,8 +359,10 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			s.player_id AS 'player_id',
-			SUM(s.ppd) / COUNT(s.player_id) AS 'ppd',
+			SUM(s.ppd_score) / SUM(s.darts_thrown) AS 'ppd',
 			SUM(s.first_nine_ppd) / COUNT(s.player_id) AS 'first_nine_ppd',
+			(SUM(s.ppd_score) / SUM(s.darts_thrown)) * 3 AS 'three_dart_avg',
+			SUM(s.first_nine_ppd) / COUNT(s.player_id) * 3 AS 'first_nine_three_dart_avg',
 			SUM(s.60s_plus) AS '60s_plus',
 			SUM(s.100s_plus) AS '100s_plus',
 			SUM(s.140s_plus) AS '140s_plus',
@@ -373,8 +389,8 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 	for rows.Next() {
 		var date string
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus,
-			&s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage, &date)
+		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus,
+			&s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage, &date)
 		if err != nil {
 			return nil, err
 		}
@@ -394,7 +410,7 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 			p.id,
 			l.winner_id,
 			l.id,
-			s.ppd,
+			s.ppd_score / s.darts_thrown,
 			s.first_nine_ppd,
 			s.checkout_percentage,
 			s.darts_thrown,

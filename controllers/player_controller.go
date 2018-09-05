@@ -294,10 +294,10 @@ func SimulateMatch(w http.ResponseWriter, r *http.Request) {
 		Player2OldElo int `json:"player2_old_elo"`
 		Player2NewElo int `json:"player2_new_elo"`
 	}
-	output.Player1OldElo = elos[0].CurrentElo
-	output.Player2OldElo = elos[1].CurrentElo
-	output.Player1NewElo, output.Player2NewElo = data.CalculateElo(output.Player1OldElo, elos[0].CurrentEloMatches, input.Player1Score,
-		output.Player2OldElo, elos[1].CurrentEloMatches, input.Player2Score)
+	output.Player1OldElo = int(elos[0].TournamentElo.Int64)
+	output.Player2OldElo = int(elos[1].TournamentElo.Int64)
+	output.Player1NewElo, output.Player2NewElo = data.CalculateElo(output.Player1OldElo, elos[0].TournamentEloMatches, input.Player1Score,
+		output.Player2OldElo, elos[1].TournamentEloMatches, input.Player2Score)
 
 	json.NewEncoder(w).Encode(output)
 }

@@ -38,6 +38,7 @@ type Match struct {
 	FirstThrow      null.String        `json:"first_throw_time,omitempty"`
 	LastThrow       null.String        `json:"last_throw_time,omitempty"`
 	EloChange       map[int]*PlayerElo `json:"elo_change,omitempty"`
+	LegsWon         []int              `json:"legs_won,omitempty"`
 }
 
 // MatchType struct used for storing match types

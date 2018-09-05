@@ -130,9 +130,9 @@ func FinishLeg(visit models.Visit) error {
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_x01
-					(leg_id, player_id, ppd, first_nine_ppd, checkout_percentage, checkout_attempts, darts_thrown, 60s_plus,
+					(leg_id, player_id, ppd, ppd_score, first_nine_ppd, first_nine_ppd_score, checkout_percentage, checkout_attempts, darts_thrown, 60s_plus,
 					 100s_plus, 140s_plus, 180s, accuracy_20, accuracy_19, overall_accuracy)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.PPD, stats.FirstNinePPD,
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.PPD, stats.PPDScore, stats.FirstNinePPD, stats.FirstNinePPDScore,
 				stats.CheckoutPercentage, stats.CheckoutAttempts, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
 				stats.Score180s, stats.AccuracyStatistics.Accuracy20, stats.AccuracyStatistics.Accuracy19, stats.AccuracyStatistics.AccuracyOverall)
 			if err != nil {
@@ -531,9 +531,9 @@ func calculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 
 		visitScore := visit.GetScore()
 		if stats.DartsThrown <= 9 {
-			stats.FirstNinePPD += float32(visitScore)
+			stats.FirstNinePPDScore += visitScore
 		}
-		stats.PPD += float32(visitScore)
+		stats.PPDScore += visitScore
 
 		if visitScore >= 60 && visitScore < 100 {
 			stats.Score60sPlus++
@@ -563,8 +563,6 @@ func calculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 	}
 
 	for playerID, stats := range statisticsMap {
-		stats.PPD = stats.PPD / float32(stats.DartsThrown)
-		stats.FirstNinePPD = stats.FirstNinePPD / 9
 		if playerID == winnerID {
 			stats.CheckoutPercentage = null.FloatFrom(100 / float64(stats.CheckoutAttempts))
 
@@ -576,6 +574,10 @@ func calculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 			stats.CheckoutPercentage = null.FloatFromPtr(nil)
 		}
 		stats.AccuracyStatistics.SetAccuracy()
+
+		// Set PPD and First 9 PPD
+		stats.PPD = float32(stats.PPDScore) / float32(stats.DartsThrown)
+		stats.FirstNinePPD = float32(stats.FirstNinePPDScore) / float32(9)
 	}
 
 	return statisticsMap, nil
@@ -631,7 +633,7 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 			JOIN matches m on m.id = l.match_id
 			JOIN player2leg p2l ON p2l.leg_id = l.id
 		WHERE
-			l.id IN(6415, 6413, 6411, 6389, 6387, 6385, 6374, 6373, 6371)
+			l.has_scores = 1
 		GROUP BY l.id
 		ORDER BY l.id`)
 	if err != nil {
@@ -662,8 +664,8 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf("UPDATE statistics_x01 SET first_nine_ppd = %f  WHERE leg_id = %d AND player_id = %d;",
-				stat.FirstNinePPD, leg.ID, playerID)
+			log.Printf("UPDATE statistics_x01 SET ppd = %f, ppd_score = %d, first_nine_ppd = %f, first_nine_ppd_score = %d, darts_thrown = %d WHERE leg_id = %d AND player_id = %d;",
+				stat.PPD, stat.PPDScore, stat.FirstNinePPD, stat.FirstNinePPDScore, stat.DartsThrown, leg.ID, playerID)
 
 		}
 		m[leg.ID] = stats
