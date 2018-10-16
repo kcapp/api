@@ -176,7 +176,7 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 		SELECT
 			t.id, t.name, t.short_name, t.start_time, t.end_time,
 			tg.id, tg.name, tg.division,
-			p.id as 'player_id',
+			p.id AS 'player_id',
 			p2t.is_promoted, p2t.is_relegated, p2t.is_winner,
 			COUNT(DISTINCT finished.id) AS 'p',
 			COUNT(DISTINCT won.id) AS 'w',
@@ -186,19 +186,19 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			COUNT(DISTINCT legs_against.id) AS 'A',
 			(COUNT(DISTINCT legs_for.id) - COUNT(DISTINCT legs_against.id)) AS 'diff',
 			COUNT(DISTINCT won.id) * 2 + COUNT(DISTINCT draw.id) AS 'pts',
-			IFNULL(SUM(s.ppd_score) / SUM(s.darts_thrown), 0) AS 'ppd',
-			IFNULL(SUM(s.first_nine_ppd) / COUNT(finished.id), 0) AS 'first_nine_ppd',
-			IFNULL(SUM(s.ppd_score) / SUM(s.darts_thrown) * 3, 0) AS 'three_dart_avg',
-			IFNULL(SUM(s.first_nine_ppd) / COUNT(finished.id) * 3, 0) AS 'first_nine_three_dart_avg',
+			IFNULL(SUM(s.ppd_score) / SUM(s.darts_thrown), -1) AS 'ppd',
+			IFNULL(SUM(s.first_nine_ppd) / COUNT(finished.id), -1) AS 'first_nine_ppd',
+			IFNULL(SUM(s.ppd_score) / SUM(s.darts_thrown) * 3, -1) AS 'three_dart_avg',
+			IFNULL(SUM(s.first_nine_ppd) / COUNT(finished.id) * 3, -1) AS 'first_nine_three_dart_avg',
 			IFNULL(SUM(60s_plus), 0) AS '60s_plus',
 			IFNULL(SUM(100s_plus), 0) AS '100s_plus',
 			IFNULL(SUM(140s_plus), 0) AS '140s_plus',
 			IFNULL(SUM(180s), 0) AS '180s',
-			IFNULL(SUM(accuracy_20) / COUNT(accuracy_20), 0) AS 'accuracy_20s',
-			IFNULL(SUM(accuracy_19) / COUNT(accuracy_19), 0) AS 'accuracy_19s',
-			IFNULL(SUM(overall_accuracy) / COUNT(overall_accuracy), 0) AS 'accuracy_overall',
-			IFNULL(SUM(s.checkout_attempts), 0) as 'checkout_attempts',
-			IFNULL(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100, 0) AS 'checkout_percentage'
+			IFNULL(SUM(accuracy_20) / COUNT(accuracy_20), -1) AS 'accuracy_20s',
+			IFNULL(SUM(accuracy_19) / COUNT(accuracy_19), -1) AS 'accuracy_19s',
+			IFNULL(SUM(overall_accuracy) / COUNT(overall_accuracy), -1) AS 'accuracy_overall',
+			IFNULL(SUM(s.checkout_attempts), -1) AS 'checkout_attempts',
+			IFNULL(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100, -1) AS 'checkout_percentage'
 		FROM player2leg p2l
 			JOIN matches m ON m.id = p2l.match_id
 			JOIN player p ON p.id = p2l.player_id
