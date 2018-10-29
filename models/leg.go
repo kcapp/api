@@ -28,6 +28,7 @@ type Leg struct {
 type Player2Leg struct {
 	LegID           int              `json:"leg_id"`
 	PlayerID        int              `json:"player_id"`
+	PlayerName      string           `json:"player_name"`
 	Order           int              `json:"order"`
 	CurrentScore    int              `json:"current_score"`
 	IsCurrentPlayer bool             `json:"is_current_player"`

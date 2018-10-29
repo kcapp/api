@@ -171,6 +171,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		SELECT
 			p2l.leg_id,
 			p2l.player_id,
+			p.name,
 			p2l.order,
 			p2l.handicap,
 			p2l.player_id = l.current_player_id AS 'is_current_player',
@@ -183,6 +184,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 				-- For X01 score goes down, while Shootout it counts up
 				* IF(m.match_type_id = 2, -1, 1) AS 'current_score'
 		FROM player2leg p2l
+			LEFT JOIN player p on p.id = p2l.player_id
 			LEFT JOIN leg l ON l.id = p2l.leg_id
 			LEFT JOIN score s ON s.leg_id = p2l.leg_id AND s.player_id = p2l.player_id
 			LEFT JOIN matches m on m.id = l.match_id
@@ -197,7 +199,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 	scores := make(map[int]*models.Player2Leg)
 	for rows.Next() {
 		p2l := new(models.Player2Leg)
-		err := rows.Scan(&p2l.LegID, &p2l.PlayerID, &p2l.Order, &p2l.Handicap, &p2l.IsCurrentPlayer, &p2l.CurrentScore)
+		err := rows.Scan(&p2l.LegID, &p2l.PlayerID, &p2l.PlayerName, &p2l.Order, &p2l.Handicap, &p2l.IsCurrentPlayer, &p2l.CurrentScore)
 		if err != nil {
 			return nil, err
 		}
