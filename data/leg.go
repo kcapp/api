@@ -653,6 +653,7 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 			JOIN player2leg p2l ON p2l.leg_id = l.id
 		WHERE
 			l.has_scores = 1
+			AND m.match_type_id = 1
 		GROUP BY l.id
 		ORDER BY l.id`)
 	if err != nil {
