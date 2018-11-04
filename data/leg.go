@@ -530,15 +530,15 @@ func calculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 		stats := statisticsMap[visit.PlayerID]
 
 		currentScore := player.CurrentScore
-		if visit.FirstDart.IsCheckoutAttempt(currentScore) {
+		if visit.FirstDart.IsCheckoutAttempt(currentScore, 1) {
 			stats.CheckoutAttempts++
 		}
 		currentScore -= visit.FirstDart.GetScore()
-		if visit.SecondDart.IsCheckoutAttempt(currentScore) {
+		if visit.SecondDart.IsCheckoutAttempt(currentScore, 2) {
 			stats.CheckoutAttempts++
 		}
 		currentScore -= visit.SecondDart.GetScore()
-		if visit.ThirdDart.IsCheckoutAttempt(currentScore) {
+		if visit.ThirdDart.IsCheckoutAttempt(currentScore, 3) {
 			stats.CheckoutAttempts++
 		}
 		currentScore -= visit.ThirdDart.GetScore()
@@ -683,8 +683,13 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf("UPDATE statistics_x01 SET ppd = %f, ppd_score = %d, first_nine_ppd = %f, first_nine_ppd_score = %d, darts_thrown = %d WHERE leg_id = %d AND player_id = %d;",
-				stat.PPD, stat.PPDScore, stat.FirstNinePPD, stat.FirstNinePPDScore, stat.DartsThrown, leg.ID, playerID)
+			if stat.CheckoutPercentage.Valid {
+				log.Printf("UPDATE statistics_x01 SET checkout_attempts = %d, checkout_percentage = %f WHERE leg_id = %d AND player_id = %d;",
+					stat.CheckoutAttempts, stat.CheckoutPercentage.Float64, leg.ID, playerID)
+			} else {
+				log.Printf("UPDATE statistics_x01 SET checkout_attempts = %d, checkout_percentage = NULL WHERE leg_id = %d AND player_id = %d;",
+					stat.CheckoutAttempts, leg.ID, playerID)
+			}
 
 		}
 		m[leg.ID] = stats
@@ -740,19 +745,19 @@ func getCheckoutStatistics(legID int, startingScore int) (*models.CheckoutStatis
 		player := playersMap[visit.PlayerID]
 
 		currentScore := player.CurrentScore
-		if visit.FirstDart.IsCheckoutAttempt(currentScore) {
+		if visit.FirstDart.IsCheckoutAttempt(currentScore, 1) {
 			totalAttempts++
 			checkoutAttempts[currentScore]++
 		}
 		currentScore -= visit.FirstDart.GetScore()
 
-		if visit.SecondDart.IsCheckoutAttempt(currentScore) {
+		if visit.SecondDart.IsCheckoutAttempt(currentScore, 2) {
 			totalAttempts++
 			checkoutAttempts[currentScore]++
 		}
 		currentScore -= visit.SecondDart.GetScore()
 
-		if visit.ThirdDart.IsCheckoutAttempt(currentScore) {
+		if visit.ThirdDart.IsCheckoutAttempt(currentScore, 3) {
 			totalAttempts++
 			checkoutAttempts[currentScore]++
 		}

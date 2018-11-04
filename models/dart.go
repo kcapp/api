@@ -61,7 +61,7 @@ func (dart Dart) GetScore() int {
 }
 
 // IsCheckoutAttempt checks if this dart was a checkout attempt
-func (dart Dart) IsCheckoutAttempt(currentScore int) bool {
+func (dart Dart) IsCheckoutAttempt(currentScore int, num int) bool {
 	if !dart.Value.Valid {
 		// Dart was not actually thrown, player busted/checked out already
 		return false
@@ -69,8 +69,8 @@ func (dart Dart) IsCheckoutAttempt(currentScore int) bool {
 	if currentScore-dart.GetScore() == 0 && dart.IsDouble() {
 		// Actual checkout
 		return true
-	} else if currentScore == 50 || (currentScore <= 40 && currentScore%2 == 0 && currentScore > 1) {
-		// Checkout attempt
+	} else if (num == 3 && currentScore == 50) || (currentScore <= 40 && currentScore%2 == 0 && currentScore > 1) {
+		// Checkout attempt (bull only counts if it was on the third dart)
 		return true
 	}
 	return false
