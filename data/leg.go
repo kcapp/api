@@ -250,7 +250,7 @@ func UndoLegFinish(legID int) error {
 		SET pe.current_elo = pec.old_elo,
 			pe.current_elo_matches = pe.current_elo_matches - 1,
 			pe.tournament_elo = IFNULL(pec.old_tournament_elo, pe.tournament_elo),
-			pe.tournament_elo_matches = IFNULL(pec.old_tournament_elo - 1, pe.tournament_elo_matches)
+			pe.tournament_elo_matches = IF(pec.old_tournament_elo = NULL, pe.tournament_elo_matches, pe.tournament_elo_matches - 1)
 		WHERE pe.player_id IN (SELECT player_id FROM player2leg WHERE leg_id = ?) AND pec.match_id = (SELECT match_id FROM leg WHERE id = ?)`, legID, legID)
 	if err != nil {
 		tx.Rollback()
