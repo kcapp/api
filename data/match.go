@@ -479,7 +479,7 @@ func GetMatchEloChange(id int) (map[int]*models.PlayerElo, error) {
 			old_elo,
 			new_elo,
 			new_tournament_elo,
-			old_tournament_Elo
+			old_tournament_elo
 		FROM player_elo_changelog
 		WHERE match_id = ?`, id)
 	if err != nil {

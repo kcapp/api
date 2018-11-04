@@ -244,6 +244,25 @@ func UndoLegFinish(legID int) error {
 		tx.Rollback()
 		return err
 	}
+	// Reset the calculated elo for the match
+	_, err = tx.Exec(`UPDATE player_elo pe
+			INNER JOIN player_elo_changelog pec ON pec.player_id = pe.player_id
+		SET pe.current_elo = pec.old_elo,
+			pe.current_elo_matches = pe.current_elo_matches - 1,
+			pe.tournament_elo = IFNULL(pec.old_tournament_elo, pe.tournament_elo),
+			pe.tournament_elo_matches = IFNULL(pec.old_tournament_elo - 1, pe.tournament_elo_matches)
+		WHERE pe.player_id IN (SELECT player_id FROM player2leg WHERE leg_id = ?) AND pec.match_id = (SELECT match_id FROM leg WHERE id = ?)`, legID, legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	// Delete elo changelog for match
+	_, err = tx.Exec("DELETE from player_elo_changelog WHERE match_id = (SELECT match_id FROM leg WHERE id = ?)", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
 	tx.Commit()
 	log.Printf("[%d] Undo finish of leg", legID)
 	return nil
