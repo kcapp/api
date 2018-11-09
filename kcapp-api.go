@@ -79,6 +79,7 @@ func main() {
 	router.HandleFunc("/venue/{id}/spectate", controllers.SpectateVenue).Methods("GET")
 
 	router.HandleFunc("/tournament", controllers.GetTournaments).Methods("GET")
+	router.HandleFunc("/tournament/current", controllers.GetCurrentTournament).Methods("GET")
 	router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
 	router.HandleFunc("/tournament/standings", controllers.GetTournamentStandings).Methods("GET")
 	router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")

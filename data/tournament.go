@@ -109,6 +109,16 @@ func GetTournament(id int) (*models.Tournament, error) {
 	return tournament, nil
 }
 
+// GetCurrentTournament will return the current active tournament
+func GetCurrentTournament() (*models.Tournament, error) {
+	var tournamentID int
+	err := models.DB.QueryRow("SELECT id FROM tournament t WHERE t.is_finished = 0 ORDER BY start_time LIMIT 1").Scan(&tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	return GetTournament(tournamentID)
+}
+
 // GetTournamentMatches will return all matches for the given tournament
 func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 	rows, err := models.DB.Query(`
