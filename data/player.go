@@ -18,7 +18,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 		return nil, err
 	}
 
-	rows, err := models.DB.Query(`SELECT p.id, p.name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p`)
+	rows, err := models.DB.Query(`SELECT p.id, p.name, p.vocal_name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p`)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.Name, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt)
+		err := rows.Scan(&p.ID, &p.Name, &p.VocalName, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -54,7 +54,7 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 		return nil, err
 	}
 
-	rows, err := models.DB.Query(`SELECT p.id, p.name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p WHERE active = 1`)
+	rows, err := models.DB.Query(`SELECT p.id, p.name, p.vocal_name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p WHERE active = 1`)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.Name, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt)
+		err := rows.Scan(&p.ID, &p.Name, &p.VocalName, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -86,11 +86,11 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 // GetPlayer returns the player for the given ID
 func GetPlayer(id int) (*models.Player, error) {
 	p := new(models.Player)
-	err := models.DB.QueryRow(`SELECT p.id, p.name, p.nickname, p.color, p.profile_pic_url, p.created_at, pe.current_elo, pe.tournament_elo
-	FROM player p
-	JOIN player_elo pe on pe.player_id = p.id
-	WHERE p.id = ?`, id).
-		Scan(&p.ID, &p.Name, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt, &p.CurrentElo, &p.TournamentElo)
+	err := models.DB.QueryRow(`SELECT p.id, p.name, p.vocal_name, p.nickname, p.color, p.profile_pic_url, p.created_at, pe.current_elo, pe.tournament_elo
+		FROM player p
+		JOIN player_elo pe on pe.player_id = p.id
+		WHERE p.id = ?`, id).
+		Scan(&p.ID, &p.Name, &p.VocalName, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt, &p.CurrentElo, &p.TournamentElo)
 	if err != nil {
 		return nil, err
 	}
@@ -167,6 +167,10 @@ func GetPlayerScore(playerID int, legID int) (int, error) {
 
 // GetPlayersScore will get the score for all players in the given leg
 func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
+	players, err := GetPlayersInLeg(legID)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := models.DB.Query(`
 		SELECT
 			p2l.leg_id,
@@ -203,12 +207,45 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		if err != nil {
 			return nil, err
 		}
+		p2l.Player = players[p2l.PlayerID]
 		scores[p2l.PlayerID] = p2l
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 	return scores, nil
+}
+
+// GetPlayersInLeg will get all players in a given leg
+func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			p.id,
+			p.name,
+			p.vocal_name,
+			p.nickname,
+			p.color,
+			p.profile_pic_url
+		FROM player2leg p2l
+		LEFT JOIN player p ON p.id = p2l.player_id WHERE p2l.leg_id = ?`, legID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	players := make(map[int]*models.Player)
+	for rows.Next() {
+		p := new(models.Player)
+		err := rows.Scan(&p.ID, &p.Name, &p.VocalName, &p.Nickname, &p.Color, &p.ProfilePicURL)
+		if err != nil {
+			return nil, err
+		}
+		players[p.ID] = p
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return players, nil
 }
 
 // GetMatchesPlayedPerPlayer will get the number of matches and legs played and won for each player

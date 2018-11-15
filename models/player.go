@@ -8,6 +8,7 @@ import (
 type Player struct {
 	ID            int         `json:"id"`
 	Name          string      `json:"name"`
+	VocalName     null.String `json:"vocal_name,omitempty"`
 	Nickname      null.String `json:"nickname,omitempty"`
 	MatchesPlayed int         `json:"matches_played"`
 	MatchesWon    int         `json:"matches_won"`

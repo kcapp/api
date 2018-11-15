@@ -36,6 +36,7 @@ type Player2Leg struct {
 	VisitStatistics *VisitStatistics `json:"visit_statistics,omitempty"`
 	Handicap        null.Int         `json:"handicap,omitempty"`
 	Modifiers       *PlayerModifiers `json:"modifiers,omitempty"`
+	Player          *Player          `json:"player,omitempty"`
 }
 
 // VisitStatistics tells about the
