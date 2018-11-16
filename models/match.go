@@ -71,3 +71,20 @@ type MatchTournament struct {
 	TournamentGroupID   null.Int    `json:"tournament_group_id"`
 	TournamentGroupName null.String `json:"tournament_group_name"`
 }
+
+// MatchMetadata struct used for storing metadata about matches
+type MatchMetadata struct {
+	ID               int              `json:"id"`
+	MatchID          int              `json:"match_id"`
+	OrderOfPlay      int              `json:"order_of_play"`
+	TournamentGroup  *TournamentGroup `json:"tournament_group_id"`
+	HomePlayer       int              `json:"player_home"`
+	AwayPlayer       int              `json:"player_away"`
+	MatchDisplayname string           `json:"match_displayname"`
+	Elimination      bool             `json:"elimination"`
+	Trophy           bool             `json:"trophy"`
+	Promotion        bool             `json:"promotion"`
+	SemiFinal        bool             `json:"semi_final"`
+	GrandFinal       bool             `json:"grand_final"`
+	WinnerPrize      null.String      `json:"winner_prize"`
+}

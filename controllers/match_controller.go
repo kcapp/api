@@ -144,6 +144,25 @@ func GetMatch(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(match)
 }
 
+// GetMatchMetadata will reurn metadata for the given match
+func GetMatchMetadata(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	metadata, err := data.GetMatchMetadata(id)
+	if err != nil {
+		log.Println("Unable to get match metadata: ", err)
+		http.Error(w, "Unable to get match metadata", http.StatusBadRequest)
+		return
+	}
+	json.NewEncoder(w).Encode(metadata)
+}
+
 // GetX01StatisticsForMatch will return X01 statistics for all players in the given leg
 func GetX01StatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

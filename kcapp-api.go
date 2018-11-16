@@ -33,6 +33,7 @@ func main() {
 	router.HandleFunc("/match/{id}/continue", controllers.ContinueMatch).Methods("PUT")
 	router.HandleFunc("/match", controllers.GetMatches).Methods("GET")
 	router.HandleFunc("/match/{id}", controllers.GetMatch).Methods("GET")
+	router.HandleFunc("/match/{id}/metadata", controllers.GetMatchMetadata).Methods("GET")
 	router.HandleFunc("/match/{id}/rematch", controllers.ReMatch).Methods("POST")
 	router.HandleFunc("/match/{id}/statistics", controllers.GetX01StatisticsForMatch).Methods("GET")
 	router.HandleFunc("/match/{id}/legs", controllers.GetLegsForMatch).Methods("GET")

@@ -291,6 +291,34 @@ func GetMatch(id int) (*models.Match, error) {
 	return m, nil
 }
 
+// GetMatchMetadata returns a metadata about the given match
+func GetMatchMetadata(id int) (*models.MatchMetadata, error) {
+	m := new(models.MatchMetadata)
+	m.TournamentGroup = new(models.TournamentGroup)
+	var playersStr string
+	err := models.DB.QueryRow(`
+		SELECT
+			mm.id, mm.match_id, mm.order_of_play, mm.match_displayname, mm.elimination,
+			mm.trophy, mm.promotion, mm.semi_final, mm.grand_final, mm.winner_prize,
+			tg.id, tg.name, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
+		FROM match_metadata mm
+			JOIN tournament_group tg ON tg.id = mm.tournament_group_id
+			JOIN player2leg p2l ON p2l.match_id = mm.match_id
+		WHERE mm.match_id = ?`, id).Scan(&m.ID, &m.MatchID, &m.OrderOfPlay, &m.MatchDisplayname, &m.Elimination,
+		&m.Trophy, &m.Promotion, &m.SemiFinal, &m.GrandFinal, &m.WinnerPrize, &m.TournamentGroup.ID, &m.TournamentGroup.Name, &playersStr)
+	if err != nil {
+		return nil, err
+	}
+
+	players := util.StringToIntArray(playersStr)
+	m.HomePlayer = players[0]
+	m.AwayPlayer = players[1]
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // ContinueMatch will either return the current leg or create a new leg
 func ContinueMatch(id int) (*models.Leg, error) {
 	match, err := GetMatch(id)

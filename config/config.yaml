@@ -3,6 +3,6 @@ db:
   port: 3306
   username: root
   password: abcd1234
-  schema: cakeapp_dev
+  schema: kcapp
 api:
   port: 8001
