@@ -289,34 +289,35 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 // GetTournamentStandings will return statistics for the given tournament
 func GetTournamentStandings() ([]*models.TournamentStanding, error) {
 	rows, err := models.DB.Query(`
-		SELECT
-			pe.player_id,
-			p.name,
-			pe.tournament_elo,
-			pe.tournament_elo_matches,
-			pe.current_elo,
-			pe.current_elo_matches
-		FROM player_elo pe
-		JOIN player p ON p.id = pe.player_id
-		WHERE pe.current_elo_matches > 5
-			AND pe.tournament_elo_matches > 0
-			AND p.active = 1
-		ORDER BY tournament_elo DESC`)
+		SELECT player_id, ` + "name" + `, tournament_elo, tournament_elo_matches, current_elo, current_elo_matches,
+			@curRank := @curRank + 1 AS rank FROM (
+				SELECT
+					pe.player_id,
+					p.name,
+					pe.tournament_elo,
+					pe.tournament_elo_matches,
+					pe.current_elo,
+					pe.current_elo_matches
+				FROM player_elo pe
+				JOIN player p ON p.id = pe.player_id
+				WHERE pe.current_elo_matches > 5
+					AND pe.tournament_elo_matches > 0
+					AND p.active = 1
+				ORDER BY tournament_elo DESC
+		) elo, (SELECT @curRank := 0) r`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	rank := 0
 	standings := make([]*models.TournamentStanding, 0)
 	for rows.Next() {
 		standing := new(models.TournamentStanding)
-		err := rows.Scan(&standing.PlayerID, &standing.PlayerName, &standing.Elo, &standing.EloPlayed, &standing.CurrentElo, &standing.CurrentEloPlayed)
+		err := rows.Scan(&standing.PlayerID, &standing.PlayerName, &standing.Elo, &standing.EloPlayed, &standing.CurrentElo,
+			&standing.CurrentEloPlayed, &standing.Rank)
 		if err != nil {
 			return nil, err
 		}
-		rank++
-		standing.Rank = rank
 		standings = append(standings, standing)
 	}
 	if err = rows.Err(); err != nil {

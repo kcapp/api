@@ -86,5 +86,6 @@ type MatchMetadata struct {
 	Promotion        bool             `json:"promotion"`
 	SemiFinal        bool             `json:"semi_final"`
 	GrandFinal       bool             `json:"grand_final"`
-	WinnerPrize      null.String      `json:"winner_prize"`
+	WinnerOutcome    null.String      `json:"winner_outcome"`
+	LooserOutcome    null.String      `json:"looser_outcome"`
 }
