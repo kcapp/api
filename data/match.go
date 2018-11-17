@@ -319,6 +319,46 @@ func GetMatchMetadata(id int) (*models.MatchMetadata, error) {
 	return m, nil
 }
 
+// GetMatchMetadataForTournament returns metadata for all matches in a given tournament
+func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			mm.id, mm.match_id, mm.order_of_play, mm.match_displayname, mm.elimination,
+			mm.trophy, mm.promotion, mm.semi_final, mm.grand_final, mm.winner_prize,
+			tg.id, tg.name, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
+		FROM match_metadata mm
+			JOIN matches m on m.id = mm.match_id
+			JOIN tournament_group tg ON tg.id = mm.tournament_group_id
+			JOIN player2leg p2l ON p2l.match_id = mm.match_id
+		WHERE m.tournament_id = ?
+		GROUP BY mm.match_id`, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	metadata := make([]*models.MatchMetadata, 0)
+	for rows.Next() {
+		m := new(models.MatchMetadata)
+		m.TournamentGroup = new(models.TournamentGroup)
+		var playersStr string
+		err := rows.Scan(&m.ID, &m.MatchID, &m.OrderOfPlay, &m.MatchDisplayname, &m.Elimination,
+			&m.Trophy, &m.Promotion, &m.SemiFinal, &m.GrandFinal, &m.WinnerPrize, &m.TournamentGroup.ID, &m.TournamentGroup.Name, &playersStr)
+		if err != nil {
+			return nil, err
+		}
+		players := util.StringToIntArray(playersStr)
+		m.HomePlayer = players[0]
+		m.AwayPlayer = players[1]
+
+		metadata = append(metadata, m)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return metadata, nil
+}
+
 // ContinueMatch will either return the current leg or create a new leg
 func ContinueMatch(id int) (*models.Leg, error) {
 	match, err := GetMatch(id)

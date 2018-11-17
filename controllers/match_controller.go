@@ -144,7 +144,7 @@ func GetMatch(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(match)
 }
 
-// GetMatchMetadata will reurn metadata for the given match
+// GetMatchMetadata will return metadata for the given match
 func GetMatchMetadata(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
@@ -158,6 +158,25 @@ func GetMatchMetadata(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Unable to get match metadata: ", err)
 		http.Error(w, "Unable to get match metadata", http.StatusBadRequest)
+		return
+	}
+	json.NewEncoder(w).Encode(metadata)
+}
+
+// GetMatchMetadataForTournament will return metadata for all matches in a tournament
+func GetMatchMetadataForTournament(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	tournamentID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	metadata, err := data.GetMatchMetadataForTournament(tournamentID)
+	if err != nil {
+		log.Println("Unable to get match metadata for tournament: ", err)
+		http.Error(w, "Unable to get match metadata for tournament", http.StatusBadRequest)
 		return
 	}
 	json.NewEncoder(w).Encode(metadata)
