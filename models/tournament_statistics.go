@@ -1,5 +1,7 @@
 package models
 
+import "github.com/guregu/null"
+
 // TournamentStatistics struct for stroring tournament statistics
 type TournamentStatistics struct {
 	HighestCheckout    []*BestStatistic      `json:"checkout_highest,omitempty"`
@@ -39,4 +41,5 @@ type TournamentOverview struct {
 	IsPromoted            bool             `json:"is_promoted"`
 	IsRelegated           bool             `json:"is_relegated"`
 	IsWinner              bool             `json:"is_winner"`
+	ManualOrder           null.Int         `json:"manual_order"`
 }

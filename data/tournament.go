@@ -187,7 +187,7 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			t.id, t.name, t.short_name, t.start_time, t.end_time,
 			tg.id, tg.name, tg.division,
 			p.id AS 'player_id',
-			p2t.is_promoted, p2t.is_relegated, p2t.is_winner,
+			p2t.is_promoted, p2t.is_relegated, p2t.is_winner, p2t.manual_order,
 			COUNT(DISTINCT finished.id) AS 'p',
 			COUNT(DISTINCT won.id) AS 'w',
 			COUNT(DISTINCT draw.id) AS 'd',
@@ -235,7 +235,7 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 		group := new(models.TournamentGroup)
 		stats := new(models.TournamentOverview)
 		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.StartTime, &tournament.EndTime, &group.ID,
-			&group.Name, &group.Division, &stats.PlayerID, &stats.IsPromoted, &stats.IsRelegated, &stats.IsWinner, &stats.Played, &stats.MatchesWon,
+			&group.Name, &group.Division, &stats.PlayerID, &stats.IsPromoted, &stats.IsRelegated, &stats.IsWinner, &stats.ManualOrder, &stats.Played, &stats.MatchesWon,
 			&stats.MatchesDraw, &stats.MatchesLost, &stats.LegsFor, &stats.LegsAgainst, &stats.LegsDifference, &stats.Points, &stats.PPD,
 			&stats.FirstNinePPD, &stats.ThreeDartAvg, &stats.FirstNineThreeDartAvg, &stats.Score60sPlus, &stats.Score100sPlus, &stats.Score140sPlus,
 			&stats.Score180s, &stats.Accuracy20, &stats.Accuracy19, &stats.AccuracyOverall, &stats.CheckoutAttempts, &stats.CheckoutPercentage)
