@@ -328,7 +328,7 @@ func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, e
 		SELECT
 			mm.id, mm.match_id, mm.order_of_play, mm.match_displayname, mm.elimination,
 			mm.trophy, mm.promotion, mm.semi_final, mm.grand_final, mm.winner_outcome, mm.looser_outcome,
-			tg.id, tg.name, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
+			tg.id, tg.name, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
 		FROM match_metadata mm
 			JOIN matches m on m.id = mm.match_id
 			JOIN tournament_group tg ON tg.id = mm.tournament_group_id

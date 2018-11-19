@@ -222,7 +222,7 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			JOIN tournament t ON t.id = m.tournament_id
 			JOIN player2tournament p2t ON p2t.player_id = p.id AND p2t.tournament_id = t.id
 			JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
-		WHERE m.tournament_id = ?
+		WHERE m.tournament_id = ? AND m.match_type_id = 1
 		GROUP BY p2l.player_id, tg.id
 		ORDER BY tg.division, pts DESC, diff DESC, is_relegated, manual_order`, id)
 	if err != nil {
