@@ -1,6 +1,7 @@
 package data
 
 import (
+	"database/sql"
 	"errors"
 	"log"
 
@@ -302,21 +303,22 @@ func GetMatchMetadata(id int) (*models.MatchMetadata, error) {
 			mm.trophy, mm.promotion, mm.semi_final, mm.grand_final, mm.winner_outcome, mm.looser_outcome,
 			tg.id, tg.name, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
 		FROM match_metadata mm
-			JOIN tournament_group tg ON tg.id = mm.tournament_group_id
-			JOIN player2leg p2l ON p2l.match_id = mm.match_id
-		WHERE mm.match_id = ?`, id).Scan(&m.ID, &m.MatchID, &m.OrderOfPlay, &m.MatchDisplayname, &m.Elimination,
+			LEFT JOIN tournament_group tg ON tg.id = mm.tournament_group_id
+			LEFT JOIN player2leg p2l ON p2l.match_id = mm.match_id
+		WHERE mm.match_id = ?
+		GROUP BY mm.match_id`, id).Scan(&m.ID, &m.MatchID, &m.OrderOfPlay, &m.MatchDisplayname, &m.Elimination,
 		&m.Trophy, &m.Promotion, &m.SemiFinal, &m.GrandFinal, &m.WinnerOutcome, &m.LooserOutcome, &m.TournamentGroup.ID,
 		&m.TournamentGroup.Name, &playersStr)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
 	players := util.StringToIntArray(playersStr)
-	m.HomePlayer = players[0]
-	m.AwayPlayer = players[1]
-	if err != nil {
-		return nil, err
+	if len(players) == 2 {
+		m.HomePlayer = players[0]
+		m.AwayPlayer = players[1]
 	}
+
 	return m, nil
 }
 
@@ -326,7 +328,7 @@ func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, e
 		SELECT
 			mm.id, mm.match_id, mm.order_of_play, mm.match_displayname, mm.elimination,
 			mm.trophy, mm.promotion, mm.semi_final, mm.grand_final, mm.winner_outcome, mm.looser_outcome,
-			tg.id, tg.name, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
+			tg.id, tg.name, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
 		FROM match_metadata mm
 			JOIN matches m on m.id = mm.match_id
 			JOIN tournament_group tg ON tg.id = mm.tournament_group_id
@@ -341,6 +343,7 @@ func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, e
 	metadata := make([]*models.MatchMetadata, 0)
 	for rows.Next() {
 		m := new(models.MatchMetadata)
+		m.Match = new(models.Match)
 		m.TournamentGroup = new(models.TournamentGroup)
 		var playersStr string
 		err := rows.Scan(&m.ID, &m.MatchID, &m.OrderOfPlay, &m.MatchDisplayname, &m.Elimination,

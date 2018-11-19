@@ -77,7 +77,7 @@ type MatchMetadata struct {
 	ID               int              `json:"id"`
 	MatchID          int              `json:"match_id"`
 	OrderOfPlay      int              `json:"order_of_play"`
-	TournamentGroup  *TournamentGroup `json:"tournament_group_id"`
+	TournamentGroup  *TournamentGroup `json:"tournament_group"`
 	HomePlayer       int              `json:"player_home"`
 	AwayPlayer       int              `json:"player_away"`
 	MatchDisplayname string           `json:"match_displayname"`
