@@ -343,7 +343,6 @@ func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, e
 	metadata := make([]*models.MatchMetadata, 0)
 	for rows.Next() {
 		m := new(models.MatchMetadata)
-		m.Match = new(models.Match)
 		m.TournamentGroup = new(models.TournamentGroup)
 		var playersStr string
 		err := rows.Scan(&m.ID, &m.MatchID, &m.OrderOfPlay, &m.MatchDisplayname, &m.Elimination,
