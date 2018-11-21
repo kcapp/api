@@ -81,7 +81,7 @@ func GetTournament(id int) (*models.Tournament, error) {
 	if tournament.IsFinished {
 		rows, err := models.DB.Query(`
 			SELECT
-				t.id, t.name, p.id, p.name, ts.rank, ts.elo
+				t.id, t.name, p.id, p.first_name, ts.rank, ts.elo
 			FROM tournament_standings ts
 				JOIN player p ON p.id = ts.player_id
 				JOIN tournament t ON t.id = ts.tournament_id
@@ -289,11 +289,11 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 // GetTournamentStandings will return statistics for the given tournament
 func GetTournamentStandings() ([]*models.TournamentStanding, error) {
 	rows, err := models.DB.Query(`
-		SELECT player_id, ` + "name" + `, tournament_elo, tournament_elo_matches, current_elo, current_elo_matches,
+		SELECT player_id, first_name, tournament_elo, tournament_elo_matches, current_elo, current_elo_matches,
 			@curRank := @curRank + 1 AS rank FROM (
 				SELECT
 					pe.player_id,
-					p.name,
+					p.first_name,
 					pe.tournament_elo,
 					pe.tournament_elo_matches,
 					pe.current_elo,

@@ -18,7 +18,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 		return nil, err
 	}
 
-	rows, err := models.DB.Query(`SELECT p.id, p.name, p.vocal_name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p`)
+	rows, err := models.DB.Query(`SELECT p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p`)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.Name, &p.VocalName, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt)
+		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -54,7 +54,7 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 		return nil, err
 	}
 
-	rows, err := models.DB.Query(`SELECT p.id, p.name, p.vocal_name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p WHERE active = 1`)
+	rows, err := models.DB.Query(`SELECT p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p WHERE active = 1`)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.Name, &p.VocalName, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt)
+		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -86,11 +86,11 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 // GetPlayer returns the player for the given ID
 func GetPlayer(id int) (*models.Player, error) {
 	p := new(models.Player)
-	err := models.DB.QueryRow(`SELECT p.id, p.name, p.vocal_name, p.nickname, p.color, p.profile_pic_url, p.created_at, pe.current_elo, pe.tournament_elo
+	err := models.DB.QueryRow(`SELECT p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.color, p.profile_pic_url, p.created_at, pe.current_elo, pe.tournament_elo
 		FROM player p
 		JOIN player_elo pe on pe.player_id = p.id
 		WHERE p.id = ?`, id).
-		Scan(&p.ID, &p.Name, &p.VocalName, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt, &p.CurrentElo, &p.TournamentElo)
+		Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.Color, &p.ProfilePicURL, &p.CreatedAt, &p.CurrentElo, &p.TournamentElo)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func AddPlayer(player models.Player) error {
 	}
 
 	// Prepare statement for inserting data
-	res, err := tx.Exec("INSERT INTO player (name, nickname, color, profile_pic_url) VALUES (?, ?, ?, ?)", player.Name, player.Nickname, player.Color, player.ProfilePicURL)
+	res, err := tx.Exec("INSERT INTO player (first_name, nickname, color, profile_pic_url) VALUES (?, ?, ?, ?)", player.FirstName, player.Nickname, player.Color, player.ProfilePicURL)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -134,7 +134,7 @@ func AddPlayer(player models.Player) error {
 		tx.Rollback()
 		return err
 	}
-	log.Printf("Created new player (%d) %s", playerID, player.Name)
+	log.Printf("Created new player (%d) %s", playerID, player.FirstName)
 	tx.Commit()
 	return nil
 }
@@ -142,17 +142,17 @@ func AddPlayer(player models.Player) error {
 // UpdatePlayer will update the given player
 func UpdatePlayer(playerID int, player models.Player) error {
 	// Prepare statement for inserting data
-	stmt, err := models.DB.Prepare("UPDATE player SET name = ?, nickname = ?, color = ?, profile_pic_url = ? WHERE id = ?")
+	stmt, err := models.DB.Prepare("UPDATE player SET first_name = ?, nickname = ?, color = ?, profile_pic_url = ? WHERE id = ?")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(player.Name, player.Nickname, player.Color, player.ProfilePicURL, playerID)
+	_, err = stmt.Exec(player.FirstName, player.Nickname, player.Color, player.ProfilePicURL, playerID)
 	if err != nil {
 		return err
 	}
-	log.Printf("Updated player %s (%v)", player.Name, player)
+	log.Printf("Updated player %s (%v)", player.FirstName, player)
 	return nil
 }
 
@@ -175,7 +175,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		SELECT
 			p2l.leg_id,
 			p2l.player_id,
-			p.name,
+			p.first_name,
 			p2l.order,
 			p2l.handicap,
 			p2l.player_id = l.current_player_id AS 'is_current_player',
@@ -221,7 +221,8 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id,
-			p.name,
+			p.first_name,
+			p.last_name,
 			p.vocal_name,
 			p.nickname,
 			p.color,
@@ -236,7 +237,7 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.Name, &p.VocalName, &p.Nickname, &p.Color, &p.ProfilePicURL)
+		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.Color, &p.ProfilePicURL)
 		if err != nil {
 			return nil, err
 		}
