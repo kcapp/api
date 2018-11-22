@@ -9,21 +9,21 @@ import (
 
 // Player struct used for storing players
 type Player struct {
-	ID            int
-	FirstName     string
-	LastName      null.String
-	VocalName     null.String
-	Nickname      null.String
-	MatchesPlayed int
-	MatchesWon    int
-	LegsPlayed    int
-	LegsWon       int
-	Color         null.String
-	ProfilePicURL null.String
-	CreatedAt     string
-	UpdatedAt     string
-	TournamentElo int
-	CurrentElo    int
+	ID            int         `json:"id"`
+	FirstName     string      `json:"first_name"`
+	LastName      null.String `json:"last_name"`
+	VocalName     null.String `json:"vocal_name,omitempty"`
+	Nickname      null.String `json:"nickname,omitempty"`
+	MatchesPlayed int         `json:"matches_played"`
+	MatchesWon    int         `json:"matches_won"`
+	LegsPlayed    int         `json:"legs_played"`
+	LegsWon       int         `json:"legs_won"`
+	Color         null.String `json:"color,omitempty"`
+	ProfilePicURL null.String `json:"profile_pic_url,omitempty"`
+	CreatedAt     string      `json:"created_at"`
+	UpdatedAt     string      `json:"updated_at,omitempty"`
+	TournamentElo int         `json:"tournament_elo,omitempty"`
+	CurrentElo    int         `json:"current_elo,omitempty"`
 }
 
 // MarshalJSON will marshall the given object to JSON
