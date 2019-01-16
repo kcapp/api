@@ -28,12 +28,13 @@ func AddVisit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.AddVisit(visit)
+	insertedVisit, err := data.AddVisit(visit)
 	if err != nil {
 		log.Println("Unable to add visit", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	json.NewEncoder(w).Encode(insertedVisit)
 }
 
 // ModifyVisit will modify the scores of the given visit

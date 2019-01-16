@@ -140,7 +140,7 @@ func ChangePlayerOrder(w http.ResponseWriter, r *http.Request) {
 	orderMap := make(map[string]int)
 	err = json.NewDecoder(r.Body).Decode(&orderMap)
 	if err != nil {
-		log.Println("Unable to deserialize body", err)
+		log.Println("Unable to deserialize order body", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

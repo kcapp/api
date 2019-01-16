@@ -7,10 +7,10 @@ import (
 )
 
 // AddVisit will write thegiven visit to database
-func AddVisit(visit models.Visit) error {
+func AddVisit(visit models.Visit) (*models.Visit, error) {
 	currentScore, err := GetPlayerScore(visit.PlayerID, visit.LegID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// TODO Don't allow to save score for same player twice in a row
@@ -18,11 +18,11 @@ func AddVisit(visit models.Visit) error {
 
 	leg, err := GetLeg(visit.LegID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	match, err := GetMatch(leg.MatchID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if match.MatchType.ID == models.X01 || match.MatchType.ID == models.X01HANDICAP {
@@ -33,7 +33,7 @@ func AddVisit(visit models.Visit) error {
 	// Determine who the next player will be
 	players, err := GetPlayersScore(visit.LegID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	currentPlayerOrder := 1
@@ -48,7 +48,7 @@ func AddVisit(visit models.Visit) error {
 
 	tx, err := models.DB.Begin()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, err = tx.Exec(`
 		INSERT INTO score(
@@ -65,12 +65,12 @@ func AddVisit(visit models.Visit) error {
 		visit.IsBust)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return nil, err
 	}
 	_, err = tx.Exec(`UPDATE leg SET current_player_id = ?, updated_at = NOW() WHERE id = ?`, nextPlayerID, visit.LegID)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return nil, err
 	}
 	tx.Commit()
 
@@ -78,7 +78,7 @@ func AddVisit(visit models.Visit) error {
 		visit.FirstDart.Multiplier, visit.SecondDart.Value.Int64, visit.SecondDart.Multiplier, visit.ThirdDart.Value.Int64, visit.ThirdDart.Multiplier,
 		visit.IsBust)
 
-	return nil
+	return &visit, nil
 }
 
 // ModifyVisit modify the scores of a visit

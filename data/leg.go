@@ -82,7 +82,7 @@ func FinishLeg(visit models.Visit) error {
 		return err
 	}
 
-	err = AddVisit(visit)
+	_, err = AddVisit(visit)
 	if err != nil {
 		return err
 	}
