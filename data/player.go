@@ -54,7 +54,11 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 		return nil, err
 	}
 
-	rows, err := models.DB.Query(`SELECT p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.color, p.profile_pic_url, p.created_at FROM player p WHERE active = 1`)
+	rows, err := models.DB.Query(`
+		SELECT
+			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.color, p.profile_pic_url, p.created_at 
+		FROM player p
+		WHERE active = 1`)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +122,8 @@ func AddPlayer(player models.Player) error {
 	}
 
 	// Prepare statement for inserting data
-	res, err := tx.Exec("INSERT INTO player (first_name, nickname, color, profile_pic_url) VALUES (?, ?, ?, ?)", player.FirstName, player.Nickname, player.Color, player.ProfilePicURL)
+	res, err := tx.Exec("INSERT INTO player (first_name, last_name, vocal_name, nickname, color, profile_pic_url) VALUES (?, ?, ?, ?, ?, ?)",
+		player.FirstName, player.LastName, player.VocalName, player.Nickname, player.Color, player.ProfilePicURL)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -142,13 +147,13 @@ func AddPlayer(player models.Player) error {
 // UpdatePlayer will update the given player
 func UpdatePlayer(playerID int, player models.Player) error {
 	// Prepare statement for inserting data
-	stmt, err := models.DB.Prepare("UPDATE player SET first_name = ?, nickname = ?, color = ?, profile_pic_url = ? WHERE id = ?")
+	stmt, err := models.DB.Prepare("UPDATE player SET first_name = ?, last_name = ?, vocal_name = ?, nickname = ?, color = ?, profile_pic_url = ? WHERE id = ?")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(player.FirstName, player.Nickname, player.Color, player.ProfilePicURL, playerID)
+	_, err = stmt.Exec(player.FirstName, player.LastName, player.VocalName, player.Nickname, player.Color, player.ProfilePicURL, playerID)
 	if err != nil {
 		return err
 	}
