@@ -14,12 +14,14 @@ type Player struct {
 	LastName      null.String `json:"last_name"`
 	VocalName     null.String `json:"vocal_name,omitempty"`
 	Nickname      null.String `json:"nickname,omitempty"`
+	SlackHandle   null.String `json:"slack_handle,omitempty"`
 	MatchesPlayed int         `json:"matches_played"`
 	MatchesWon    int         `json:"matches_won"`
 	LegsPlayed    int         `json:"legs_played"`
 	LegsWon       int         `json:"legs_won"`
 	Color         null.String `json:"color,omitempty"`
 	ProfilePicURL null.String `json:"profile_pic_url,omitempty"`
+	OfficeID      null.Int    `json:"office_id,omitempty"`
 	CreatedAt     string      `json:"created_at"`
 	UpdatedAt     string      `json:"updated_at,omitempty"`
 	TournamentElo int         `json:"tournament_elo,omitempty"`
@@ -36,12 +38,14 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		LastName      null.String `json:"last_name"`
 		VocalName     null.String `json:"vocal_name,omitempty"`
 		Nickname      null.String `json:"nickname,omitempty"`
+		SlackHandle   null.String `json:"slack_handle,omitempty"`
 		MatchesPlayed int         `json:"matches_played"`
 		MatchesWon    int         `json:"matches_won"`
 		LegsPlayed    int         `json:"legs_played"`
 		LegsWon       int         `json:"legs_won"`
 		Color         null.String `json:"color,omitempty"`
 		ProfilePicURL null.String `json:"profile_pic_url,omitempty"`
+		OfficeID      null.Int    `json:"office_id,omitempty"`
 		CreatedAt     string      `json:"created_at"`
 		UpdatedAt     string      `json:"updated_at,omitempty"`
 		TournamentElo int         `json:"tournament_elo,omitempty"`
@@ -54,12 +58,14 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		LastName:      player.LastName,
 		VocalName:     player.VocalName,
 		Nickname:      player.Nickname,
+		SlackHandle:   player.SlackHandle,
 		MatchesPlayed: player.MatchesPlayed,
 		MatchesWon:    player.MatchesWon,
 		LegsPlayed:    player.LegsPlayed,
 		LegsWon:       player.LegsWon,
 		Color:         player.Color,
 		ProfilePicURL: player.ProfilePicURL,
+		OfficeID:      player.OfficeID,
 		CreatedAt:     player.CreatedAt,
 		UpdatedAt:     player.UpdatedAt,
 		TournamentElo: player.TournamentElo,
