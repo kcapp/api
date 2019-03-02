@@ -29,7 +29,7 @@ func GetVenues() ([]*models.Venue, error) {
 	return venues, nil
 }
 
-// GetVenue will return all venues
+// GetVenue will return a venue for the given id
 func GetVenue(id int) (*models.Venue, error) {
 	venue := new(models.Venue)
 	err := models.DB.QueryRow("SELECT id, name, description FROM venue WHERE id = ?", id).Scan(&venue.ID, &venue.Name, &venue.Description)

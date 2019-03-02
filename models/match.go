@@ -57,13 +57,6 @@ type MatchMode struct {
 	LegsRequired null.Int `json:"legs_required"`
 }
 
-// Venue struct used for storing venues
-type Venue struct {
-	ID          null.Int    `json:"id"`
-	Name        null.String `json:"name"`
-	Description null.String `json:"description"`
-}
-
 // MatchTournament struct for storing tournament information
 type MatchTournament struct {
 	TournamentID        null.Int    `json:"tournament_id"`
