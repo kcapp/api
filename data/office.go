@@ -4,7 +4,7 @@ import "github.com/kcapp/api/models"
 
 // GetOffices will return all offices
 func GetOffices() (map[int]*models.Office, error) {
-	rows, err := models.DB.Query("SELECT id, name FROM office")
+	rows, err := models.DB.Query("SELECT id, name, is_active FROM office")
 	if err != nil {
 		return nil, err
 	}
@@ -13,7 +13,7 @@ func GetOffices() (map[int]*models.Office, error) {
 	offices := make(map[int]*models.Office, 0)
 	for rows.Next() {
 		office := new(models.Office)
-		err := rows.Scan(&office.ID, &office.Name)
+		err := rows.Scan(&office.ID, &office.Name, &office.IsActive)
 		if err != nil {
 			return nil, err
 		}
@@ -29,7 +29,7 @@ func GetOffices() (map[int]*models.Office, error) {
 // GetOffice will return a office for the given id
 func GetOffice(id int) (*models.Office, error) {
 	office := new(models.Office)
-	err := models.DB.QueryRow("SELECT id, name FROM office WHERE id = ?", id).Scan(&office.ID, &office.Name)
+	err := models.DB.QueryRow("SELECT id, name, is_active FROM office WHERE id = ?", id).Scan(&office.ID, &office.Name, &office.IsActive)
 	if err != nil {
 		return nil, err
 	}
