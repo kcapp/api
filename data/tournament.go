@@ -1,6 +1,8 @@
 package data
 
 import (
+	"log"
+
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
 	"github.com/kcapp/api/util"
@@ -10,7 +12,7 @@ import (
 func GetTournaments() ([]*models.Tournament, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, start_time, end_time
+			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, office_id, start_time, end_time
 		FROM tournament
 		WHERE is_playoffs = 0
 		ORDER BY id DESC`)
@@ -23,7 +25,7 @@ func GetTournaments() ([]*models.Tournament, error) {
 	for rows.Next() {
 		tournament := new(models.Tournament)
 		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
-			&tournament.PlayoffsTournamentID, &tournament.StartTime, &tournament.EndTime)
+			&tournament.PlayoffsTournamentID, &tournament.OfficeID, &tournament.StartTime, &tournament.EndTime)
 		if err != nil {
 			return nil, err
 		}
@@ -65,9 +67,9 @@ func GetTournament(id int) (*models.Tournament, error) {
 	tournament := new(models.Tournament)
 	err := models.DB.QueryRow(`
 		SELECT
-			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, start_time, end_time
+			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, office_id, start_time, end_time
 		FROM tournament t WHERE t.id = ?`, id).Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
-		&tournament.PlayoffsTournamentID, &tournament.StartTime, &tournament.EndTime)
+		&tournament.PlayoffsTournamentID, &tournament.OfficeID, &tournament.StartTime, &tournament.EndTime)
 	if err != nil {
 		return nil, err
 	}
@@ -466,4 +468,41 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 	}
 
 	return s, nil
+}
+
+// NewTournament will create a new tournament
+func NewTournament(tournament models.Tournament) (*models.Tournament, error) {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := tx.Exec(`
+		INSERT INTO tournament (name, short_name, is_finished, is_playoffs, playoffs_tournament_id, office_id, start_time, end_time) VALUES
+		(?, ?, ?, ?, ?, ?, ?, ?)`, tournament.Name, tournament.ShortName, 0, tournament.IsPlayoffs, tournament.PlayoffsTournamentID,
+		tournament.OfficeID, tournament.StartTime, tournament.EndTime)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	tournamentID, err := res.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	for _, player := range tournament.Players {
+		res, err = tx.Exec(`INSERT INTO player2tournament (player_id, tournament_id, tournament_group_id) VALUES (?, ?, ?)`,
+			player.PlayerID, tournamentID, player.TournamentGroupID)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	tx.Commit()
+	log.Printf("Created new tournament %d", tournamentID)
+	return GetTournament(int(tournamentID))
 }

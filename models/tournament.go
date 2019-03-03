@@ -11,10 +11,12 @@ type Tournament struct {
 	IsPlayoffs           bool                  `json:"is_playoffs"`
 	PlayoffsTournamentID null.Int              `json:"playoffs_tournament_id,omitempty"`
 	PlayoffsTournament   *Tournament           `json:"playoffs,omitempty"`
+	OfficeID             int                   `json:"office_id"`
 	StartTime            null.String           `json:"start_time"`
 	EndTime              null.String           `json:"end_time"`
 	Groups               []*TournamentGroup    `json:"groups,omitempty"`
 	Standings            []*TournamentStanding `json:"standings,omitempty"`
+	Players              []*Player2Tournament  `json:"players,omitempty"`
 }
 
 // TournamentGroup struct for storing tournament groups
@@ -26,12 +28,12 @@ type TournamentGroup struct {
 
 // Player2Tournament struct for storing player to tounament links
 type Player2Tournament struct {
-	PlayerID          int
-	TournamentID      int
-	TournamentGroupID int
-	IsPromoted        bool
-	IsRelegated       bool
-	IsWinner          bool
+	PlayerID          int  `json:"player_id"`
+	TournamentID      int  `json:"tournament_id"`
+	TournamentGroupID int  `json:"tournament_group_id"`
+	IsPromoted        bool `json:"is_promoted"`
+	IsRelegated       bool `json:"is_relegated"`
+	IsWinner          bool `json:"is_winner"`
 }
 
 // TournamentStanding struct for stroring final tournament standings

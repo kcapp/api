@@ -7,7 +7,7 @@ import (
 
 // GetVenues will return all venues
 func GetVenues() ([]*models.Venue, error) {
-	rows, err := models.DB.Query("SELECT id, name, description FROM venue")
+	rows, err := models.DB.Query("SELECT id, name, office_id, description FROM venue")
 	if err != nil {
 		return nil, err
 	}
@@ -16,7 +16,7 @@ func GetVenues() ([]*models.Venue, error) {
 	venues := make([]*models.Venue, 0)
 	for rows.Next() {
 		venue := new(models.Venue)
-		err := rows.Scan(&venue.ID, &venue.Name, &venue.Description)
+		err := rows.Scan(&venue.ID, &venue.Name, &venue.OfficeID, &venue.Description)
 		if err != nil {
 			return nil, err
 		}
@@ -32,7 +32,7 @@ func GetVenues() ([]*models.Venue, error) {
 // GetVenue will return a venue for the given id
 func GetVenue(id int) (*models.Venue, error) {
 	venue := new(models.Venue)
-	err := models.DB.QueryRow("SELECT id, name, description FROM venue WHERE id = ?", id).Scan(&venue.ID, &venue.Name, &venue.Description)
+	err := models.DB.QueryRow("SELECT id, name, office_id, description FROM venue WHERE id = ?", id).Scan(&venue.ID, &venue.Name, &venue.OfficeID, &venue.Description)
 	if err != nil {
 		return nil, err
 	}

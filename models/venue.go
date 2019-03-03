@@ -6,5 +6,6 @@ import "github.com/guregu/null"
 type Venue struct {
 	ID          null.Int    `json:"id"`
 	Name        null.String `json:"name"`
+	OfficeID    null.Int    `json:"office_id"`
 	Description null.String `json:"description"`
 }

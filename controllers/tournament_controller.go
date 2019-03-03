@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/kcapp/api/data"
+	"github.com/kcapp/api/models"
 )
 
 // GetTournaments will return all tournaments
@@ -132,4 +133,24 @@ func GetTournamentStandings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(stats)
+}
+
+// NewTournament will create a new tournament
+func NewTournament(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	var tournamentInput models.Tournament
+	err := json.NewDecoder(r.Body).Decode(&tournamentInput)
+	if err != nil {
+		log.Println("Unable to deserialize body", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	tournament, err := data.NewTournament(tournamentInput)
+	if err != nil {
+		log.Println("Unable to create new tournament", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(tournament)
 }
