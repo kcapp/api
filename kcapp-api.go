@@ -69,6 +69,7 @@ func main() {
 
 	router.HandleFunc("/statistics/x01/{from}/{to}", controllers.GetX01Statistics).Methods("GET")
 	router.HandleFunc("/statistics/shootout/{from}/{to}", controllers.GetShootoutStatistics).Methods("GET")
+	router.HandleFunc("/statistics/global", controllers.GetGlobalStatistics).Methods("GET")
 
 	router.HandleFunc("/owe", controllers.GetOwes).Methods("GET")
 	router.HandleFunc("/owe/payback", controllers.RegisterPayback).Methods("PUT")

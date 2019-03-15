@@ -24,3 +24,6 @@ config/config.yaml
 # Ignore logs folder
 log/
 logs/
+
+api
+kcapp-api

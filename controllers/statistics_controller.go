@@ -35,3 +35,16 @@ func GetShootoutStatistics(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(stats)
 }
+
+// GetGlobalStatistics will return some global statistics for all legs played
+func GetGlobalStatistics(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+
+	global, err := data.GetGlobalStatistics()
+	if err != nil {
+		log.Println("Unable to get global statistics", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(global)
+}

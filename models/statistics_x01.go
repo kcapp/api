@@ -57,6 +57,11 @@ type StatisticsX01 struct {
 	StartingScore         null.Int            `json:"-"`
 }
 
+// GlobalStatistics struct used for storing global statistics
+type GlobalStatistics struct {
+	FishNChips int `json:"fish_n_chips"`
+}
+
 // CheckoutStatistics stuct used for storing detailed checkout statistics
 type CheckoutStatistics struct {
 	Checkout         int         `json:"checkout"`
