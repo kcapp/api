@@ -3,6 +3,7 @@ package data
 import (
 	"database/sql"
 	"log"
+	"sort"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
@@ -432,6 +433,9 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 		player.AddVisitStatistics(*leg)
 	}
 
+	sort.Slice(players, func(i, j int) bool {
+		return players[i].Order < players[j].Order
+	})
 	return players, nil
 }
 
