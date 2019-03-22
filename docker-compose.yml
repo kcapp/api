@@ -1,0 +1,13 @@
+version: '3.3'
+services:
+  kcapp_api:
+    image: golang:latest
+    build:
+      context: .
+    command: ./api
+    restart: always
+    network_mode: "host"
+    ports:
+      - '8001:8001'
+    expose:
+      - '8001'
