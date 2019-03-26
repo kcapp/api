@@ -214,6 +214,163 @@ func FinishLeg(visit models.Visit) error {
 	return nil
 }
 
+// FinishLegNew will finalize a leg by updating the winner and writing statistics for each player
+func FinishLegNew(visit models.Visit) error {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+	leg, err := GetLeg(visit.LegID)
+	if err != nil {
+		return err
+	}
+	// Write statistics for each player
+	match, err := GetMatch(leg.MatchID)
+	if err != nil {
+		return err
+	}
+
+	// Insert visit
+	_, err = tx.Exec(`
+		INSERT INTO score(
+			leg_id, player_id,
+			first_dart, first_dart_multiplier,
+			second_dart, second_dart_multiplier,
+			third_dart, third_dart_multiplier,
+			is_bust, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+		visit.LegID, visit.PlayerID,
+		visit.FirstDart.Value, visit.FirstDart.Multiplier,
+		visit.SecondDart.Value, visit.SecondDart.Multiplier,
+		visit.ThirdDart.Value, visit.ThirdDart.Multiplier,
+		visit.IsBust)
+
+	// Update leg with winner
+	winnerID := visit.PlayerID
+	if match.MatchType.ID == models.SHOOTOUT {
+		// For 9 Dart Shootout we need to check the scores of each player
+		// to determine which player won the leg with the highest score
+		scores, err := GetPlayersScore(visit.LegID)
+		if err != nil {
+			return err
+		}
+		highScore := 0
+		for playerID, player := range scores {
+			if player.CurrentScore > highScore {
+				highScore = player.CurrentScore
+				winnerID = playerID
+			}
+		}
+	}
+	_, err = tx.Exec(`UPDATE leg SET current_player_id = ?, winner_id = ?, is_finished = 1, end_time = NOW() WHERE id = ?`,
+		winnerID, winnerID, visit.LegID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	log.Printf("[%d] Finished with player %d winning", visit.LegID, winnerID)
+
+	if match.MatchType.ID == models.SHOOTOUT {
+		statisticsMap, err := calculateShootoutStatistics(visit.LegID)
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+				INSERT INTO statistics_shootout(leg_id, player_id, ppd, 60s_plus, 100s_plus, 140s_plus, 180s)
+				VALUES (?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.PPD, stats.Score60sPlus,
+				stats.Score100sPlus, stats.Score140sPlus, stats.Score180s)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("[%d] Inserting shootout statistics for player %d", visit.LegID, playerID)
+		}
+	} else {
+		statisticsMap, err := calculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+				INSERT INTO statistics_x01
+					(leg_id, player_id, ppd, ppd_score, first_nine_ppd, first_nine_ppd_score, checkout_percentage, checkout_attempts, darts_thrown, 60s_plus,
+					 100s_plus, 140s_plus, 180s, accuracy_20, accuracy_19, overall_accuracy)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.PPD, stats.PPDScore, stats.FirstNinePPD, stats.FirstNinePPDScore,
+				stats.CheckoutPercentage, stats.CheckoutAttempts, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
+				stats.Score180s, stats.AccuracyStatistics.Accuracy20, stats.AccuracyStatistics.Accuracy19, stats.AccuracyStatistics.AccuracyOverall)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("[%d] Inserting x01 statistics for player %d", visit.LegID, playerID)
+		}
+	}
+
+	// Check if match is finished or not
+	winsMap, err := GetWinsPerPlayer(match.ID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Determine how many legs has been played, and how many current player has won
+	playedLegs := 1
+	currentPlayerWins := 1
+	for playerID, wins := range winsMap {
+		playedLegs += wins
+		if playerID == winnerID {
+			currentPlayerWins += wins
+		}
+	}
+
+	isFinished := false
+	if currentPlayerWins == match.MatchMode.WinsRequired {
+		// Match finished, current player won
+		isFinished = true
+		_, err = tx.Exec("UPDATE matches SET is_finished = 1, winner_id = ? WHERE id = ?", winnerID, match.ID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		// Add owes between players in match
+		if match.OweType != nil {
+			for _, playerID := range match.Players {
+				if playerID == winnerID {
+					// Don't add payback to ourself
+					continue
+				}
+				_, err = tx.Exec(`
+					INSERT INTO owes (player_ower_id, player_owee_id, owe_type_id, amount)
+					VALUES (?, ?, ?, 1)
+					ON DUPLICATE KEY UPDATE amount = amount + 1`, playerID, visit.PlayerID, match.OweTypeID)
+				if err != nil {
+					tx.Rollback()
+					return err
+				}
+				log.Printf("Added owes of %s from player %d to player %d", match.OweType.Item.String, playerID, visit.PlayerID)
+			}
+		}
+		log.Printf("Match %d finished with player %d winning", match.ID, winnerID)
+	} else if match.MatchMode.LegsRequired.Valid && playedLegs == int(match.MatchMode.LegsRequired.Int64) {
+		// Match finished, draw
+		isFinished = true
+		_, err = tx.Exec("UPDATE matches SET is_finished = 1 WHERE id = ?", match.ID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		log.Printf("Match %d finished with a Draw", match.ID)
+	} else {
+		// Match is not finished
+		log.Printf("Match %d is not finished, continuing to next leg", match.ID)
+	}
+	tx.Commit()
+
+	if isFinished {
+		// Update Elo for players if match is finished
+		err = UpdateEloForMatch(match.ID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // UndoLegFinish will undo a finalized leg
 func UndoLegFinish(legID int) error {
 	tx, err := models.DB.Begin()

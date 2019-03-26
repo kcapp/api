@@ -88,6 +88,21 @@ func (visit *Visit) SetIsBust(currentScore int) {
 	visit.IsBust = isBust
 }
 
+// IsCheckout will check if the given visit is a checkout (remaining score is 0 and last dart thrown is a double)
+func (visit Visit) IsCheckout(currentScore int) bool {
+	remaining := currentScore - visit.GetScore()
+	if remaining == 0 {
+		if visit.ThirdDart.Value.Valid {
+			return visit.ThirdDart.IsDouble()
+		} else if visit.SecondDart.Value.Valid {
+			return visit.SecondDart.IsDouble()
+		} else {
+			return visit.FirstDart.IsDouble()
+		}
+	}
+	return false
+}
+
 // IsViliusVisit will check if this visit was a "Vilius Visit" (Two 20s and a Miss)
 func (visit Visit) IsViliusVisit() bool {
 	viliusVisit := new(Visit)

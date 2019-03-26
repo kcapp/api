@@ -20,6 +20,9 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO Don't allow to insert if leg is finished?
+
 	match, err := GetMatch(leg.MatchID)
 	if err != nil {
 		return nil, err
@@ -30,54 +33,61 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		visit.SetIsBust(currentScore)
 	}
 
-	// Determine who the next player will be
-	players, err := GetPlayersScore(visit.LegID)
-	if err != nil {
-		return nil, err
-	}
-
-	currentPlayerOrder := 1
-	order := make(map[int]int)
-	for _, player := range players {
-		if player.PlayerID == visit.PlayerID {
-			currentPlayerOrder = player.Order
+	if !visit.IsBust && visit.IsCheckout(currentScore) {
+		// Finalize leg, since leg is finished!
+		err = FinishLegNew(visit)
+		if err != nil {
+			return nil, err
 		}
-		order[player.Order] = player.PlayerID
-	}
-	nextPlayerID := order[(currentPlayerOrder%len(players))+1]
+	} else {
+		// Determine who the next player will be
+		players, err := GetPlayersScore(visit.LegID)
+		if err != nil {
+			return nil, err
+		}
 
-	tx, err := models.DB.Begin()
-	if err != nil {
-		return nil, err
-	}
-	_, err = tx.Exec(`
-		INSERT INTO score(
-			leg_id, player_id,
-			first_dart, first_dart_multiplier,
-			second_dart, second_dart_multiplier,
-			third_dart, third_dart_multiplier,
-			is_bust, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-		visit.LegID, visit.PlayerID,
-		visit.FirstDart.Value, visit.FirstDart.Multiplier,
-		visit.SecondDart.Value, visit.SecondDart.Multiplier,
-		visit.ThirdDart.Value, visit.ThirdDart.Multiplier,
-		visit.IsBust)
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-	_, err = tx.Exec(`UPDATE leg SET current_player_id = ?, updated_at = NOW() WHERE id = ?`, nextPlayerID, visit.LegID)
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-	tx.Commit()
+		currentPlayerOrder := 1
+		order := make(map[int]int)
+		for _, player := range players {
+			if player.PlayerID == visit.PlayerID {
+				currentPlayerOrder = player.Order
+			}
+			order[player.Order] = player.PlayerID
+		}
+		nextPlayerID := order[(currentPlayerOrder%len(players))+1]
 
-	log.Printf("[%d] Added score for player %d, (%d-%d, %d-%d, %d-%d, %t)", visit.LegID, visit.PlayerID, visit.FirstDart.Value.Int64,
-		visit.FirstDart.Multiplier, visit.SecondDart.Value.Int64, visit.SecondDart.Multiplier, visit.ThirdDart.Value.Int64, visit.ThirdDart.Multiplier,
-		visit.IsBust)
+		tx, err := models.DB.Begin()
+		if err != nil {
+			return nil, err
+		}
+		_, err = tx.Exec(`
+			INSERT INTO score(
+				leg_id, player_id,
+				first_dart, first_dart_multiplier,
+				second_dart, second_dart_multiplier,
+				third_dart, third_dart_multiplier,
+				is_bust, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+			visit.LegID, visit.PlayerID,
+			visit.FirstDart.Value, visit.FirstDart.Multiplier,
+			visit.SecondDart.Value, visit.SecondDart.Multiplier,
+			visit.ThirdDart.Value, visit.ThirdDart.Multiplier,
+			visit.IsBust)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		_, err = tx.Exec(`UPDATE leg SET current_player_id = ?, updated_at = NOW() WHERE id = ?`, nextPlayerID, visit.LegID)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		tx.Commit()
 
+		log.Printf("[%d] Added score for player %d, (%d-%d, %d-%d, %d-%d, %t)", visit.LegID, visit.PlayerID, visit.FirstDart.Value.Int64,
+			visit.FirstDart.Multiplier, visit.SecondDart.Value.Int64, visit.SecondDart.Multiplier, visit.ThirdDart.Value.Int64, visit.ThirdDart.Multiplier,
+			visit.IsBust)
+	}
 	return &visit, nil
 }
 
