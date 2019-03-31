@@ -230,21 +230,6 @@ func FinishLegNew(visit models.Visit) error {
 		return err
 	}
 
-	// Insert visit
-	_, err = tx.Exec(`
-		INSERT INTO score(
-			leg_id, player_id,
-			first_dart, first_dart_multiplier,
-			second_dart, second_dart_multiplier,
-			third_dart, third_dart_multiplier,
-			is_bust, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-		visit.LegID, visit.PlayerID,
-		visit.FirstDart.Value, visit.FirstDart.Multiplier,
-		visit.SecondDart.Value, visit.SecondDart.Multiplier,
-		visit.ThirdDart.Value, visit.ThirdDart.Multiplier,
-		visit.IsBust)
-
 	// Update leg with winner
 	winnerID := visit.PlayerID
 	if match.MatchType.ID == models.SHOOTOUT {
