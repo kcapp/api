@@ -352,6 +352,35 @@ func FinishLegNew(visit models.Visit) error {
 		if err != nil {
 			return err
 		}
+
+		if match.TournamentID.Valid {
+			metadata, err := GetMatchMetadata(match.ID)
+			if err != nil {
+				return err
+			}
+
+			if metadata.WinnerOutcomeMatchID.Valid {
+				winnerMatch, err := GetMatch(int(metadata.WinnerOutcomeMatchID.Int64))
+				if err != nil {
+					return err
+				}
+				err = SwapPlayers(winnerMatch.ID, winnerID, winnerMatch.Players[0])
+				if err != nil {
+					return err
+				}
+			}
+			if metadata.LooserOutcomeMatchID.Valid {
+				looserID := getMatchLooser(match, winnerID)
+				looserMatch, err := GetMatch(int(metadata.LooserOutcomeMatchID.Int64))
+				if err != nil {
+					return err
+				}
+				err = SwapPlayers(looserMatch.ID, looserID, looserMatch.Players[1])
+				if err != nil {
+					return err
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -931,4 +960,11 @@ func getCheckoutStatistics(legID int, startingScore int) (*models.CheckoutStatis
 	}
 
 	return statistics, nil
+}
+
+func getMatchLooser(match *models.Match, winnerID int) int {
+	if match.Players[0] == winnerID {
+		return match.Players[1]
+	}
+	return match.Players[0]
 }

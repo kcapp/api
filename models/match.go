@@ -68,18 +68,20 @@ type MatchTournament struct {
 
 // MatchMetadata struct used for storing metadata about matches
 type MatchMetadata struct {
-	ID               int              `json:"id"`
-	MatchID          int              `json:"match_id"`
-	OrderOfPlay      int              `json:"order_of_play"`
-	TournamentGroup  *TournamentGroup `json:"tournament_group"`
-	HomePlayer       int              `json:"player_home"`
-	AwayPlayer       int              `json:"player_away"`
-	MatchDisplayname string           `json:"match_displayname"`
-	Elimination      bool             `json:"elimination"`
-	Trophy           bool             `json:"trophy"`
-	Promotion        bool             `json:"promotion"`
-	SemiFinal        bool             `json:"semi_final"`
-	GrandFinal       bool             `json:"grand_final"`
-	WinnerOutcome    null.String      `json:"winner_outcome"`
-	LooserOutcome    null.String      `json:"looser_outcome"`
+	ID                   int              `json:"id"`
+	MatchID              int              `json:"match_id"`
+	OrderOfPlay          int              `json:"order_of_play"`
+	TournamentGroup      *TournamentGroup `json:"tournament_group"`
+	HomePlayer           int              `json:"player_home"`
+	AwayPlayer           int              `json:"player_away"`
+	MatchDisplayname     string           `json:"match_displayname"`
+	Elimination          bool             `json:"elimination"`
+	Trophy               bool             `json:"trophy"`
+	Promotion            bool             `json:"promotion"`
+	SemiFinal            bool             `json:"semi_final"`
+	GrandFinal           bool             `json:"grand_final"`
+	WinnerOutcomeMatchID null.Int         `json:"winner_outcome_match_id"`
+	LooserOutcomeMatchID null.Int         `json:"looser_outcome_match_id"`
+	WinnerOutcome        null.String      `json:"winner_outcome"`
+	LooserOutcome        null.String      `json:"looser_outcome"`
 }
