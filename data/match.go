@@ -305,15 +305,16 @@ func GetMatchMetadata(id int) (*models.MatchMetadata, error) {
 	err := models.DB.QueryRow(`
 		SELECT
 			mm.id, mm.match_id, mm.order_of_play, mm.match_displayname, mm.elimination,
-			mm.trophy, mm.promotion, mm.semi_final, mm.grand_final, mm.winner_outcome, mm.looser_outcome,
+			mm.trophy, mm.promotion, mm.semi_final, mm.grand_final, mm.winner_outcome_match_id,
+			mm.looser_outcome_match_id, mm.winner_outcome, mm.looser_outcome,
 			tg.id, tg.name, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
 		FROM match_metadata mm
 			LEFT JOIN tournament_group tg ON tg.id = mm.tournament_group_id
 			LEFT JOIN player2leg p2l ON p2l.match_id = mm.match_id
 		WHERE mm.match_id = ?
 		GROUP BY mm.match_id`, id).Scan(&m.ID, &m.MatchID, &m.OrderOfPlay, &m.MatchDisplayname, &m.Elimination,
-		&m.Trophy, &m.Promotion, &m.SemiFinal, &m.GrandFinal, &m.WinnerOutcome, &m.LooserOutcome, &m.TournamentGroup.ID,
-		&m.TournamentGroup.Name, &playersStr)
+		&m.Trophy, &m.Promotion, &m.SemiFinal, &m.GrandFinal, &m.WinnerOutcomeMatchID, &m.LooserOutcomeMatchID,
+		&m.WinnerOutcome, &m.LooserOutcome, &m.TournamentGroup.ID, &m.TournamentGroup.Name, &playersStr)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
@@ -332,8 +333,9 @@ func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, e
 	rows, err := models.DB.Query(`
 		SELECT
 			mm.id, mm.match_id, mm.order_of_play, mm.match_displayname, mm.elimination,
-			mm.trophy, mm.promotion, mm.semi_final, mm.grand_final, mm.winner_outcome, mm.looser_outcome,
-			tg.id, tg.name, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
+			mm.trophy, mm.promotion, mm.semi_final, mm.grand_final, mm.winner_outcome_match_id,
+			mm.looser_outcome_match_id, mm.winner_outcome, mm.looser_outcome, tg.id, tg.name,
+			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
 		FROM match_metadata mm
 			JOIN matches m on m.id = mm.match_id
 			JOIN tournament_group tg ON tg.id = mm.tournament_group_id
@@ -351,8 +353,8 @@ func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, e
 		m.TournamentGroup = new(models.TournamentGroup)
 		var playersStr string
 		err := rows.Scan(&m.ID, &m.MatchID, &m.OrderOfPlay, &m.MatchDisplayname, &m.Elimination,
-			&m.Trophy, &m.Promotion, &m.SemiFinal, &m.GrandFinal, &m.WinnerOutcome, &m.LooserOutcome, &m.TournamentGroup.ID,
-			&m.TournamentGroup.Name, &playersStr)
+			&m.Trophy, &m.Promotion, &m.SemiFinal, &m.GrandFinal, &m.WinnerOutcomeMatchID, &m.LooserOutcomeMatchID,
+			&m.WinnerOutcome, &m.LooserOutcome, &m.TournamentGroup.ID, &m.TournamentGroup.Name, &playersStr)
 		if err != nil {
 			return nil, err
 		}
@@ -577,4 +579,30 @@ func GetMatchEloChange(id int) (map[int]*models.PlayerElo, error) {
 		return nil, err
 	}
 	return change, nil
+}
+
+// SwapPlayers will swap the two players for the given match
+func SwapPlayers(matchID int, newPlayerID int, oldPlayerID int) error {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Update current player of the leg
+	_, err = tx.Exec("UPDATE leg SET current_player_id = ? WHERE match_id = ?", newPlayerID, matchID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Update player2leg
+	_, err = tx.Exec("UPDATE player2leg SET player_id = ? WHERE match_id = ? AND player_id = ?", newPlayerID, matchID, oldPlayerID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	tx.Commit()
+	log.Printf("Swapped player %d with %d for match %d", oldPlayerID, newPlayerID, matchID)
+	return nil
 }
