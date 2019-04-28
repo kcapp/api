@@ -29,6 +29,7 @@ type Match struct {
 	OfficeID        null.Int           `json:"office_id,omitempty"`
 	OweTypeID       null.Int           `json:"owe_type_id"`
 	VenueID         null.Int           `json:"venue_id"`
+	IsPractice      bool               `json:"is_practice"`
 	Venue           *Venue             `json:"venue"`
 	OweType         *OweType           `json:"owe_type,omitempty"`
 	TournamentID    null.Int           `json:"tournament_id,omitempty"`

@@ -22,6 +22,7 @@ type Player struct {
 	Color         null.String `json:"color,omitempty"`
 	ProfilePicURL null.String `json:"profile_pic_url,omitempty"`
 	OfficeID      null.Int    `json:"office_id,omitempty"`
+	IsBot         bool        `json:"is_bot"`
 	CreatedAt     string      `json:"created_at"`
 	UpdatedAt     string      `json:"updated_at,omitempty"`
 	TournamentElo int         `json:"tournament_elo,omitempty"`
@@ -46,6 +47,7 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		Color         null.String `json:"color,omitempty"`
 		ProfilePicURL null.String `json:"profile_pic_url,omitempty"`
 		OfficeID      null.Int    `json:"office_id,omitempty"`
+		IsBot         bool        `json:"is_bot"`
 		CreatedAt     string      `json:"created_at"`
 		UpdatedAt     string      `json:"updated_at,omitempty"`
 		TournamentElo int         `json:"tournament_elo,omitempty"`
@@ -66,6 +68,7 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		Color:         player.Color,
 		ProfilePicURL: player.ProfilePicURL,
 		OfficeID:      player.OfficeID,
+		IsBot:         player.IsBot,
 		CreatedAt:     player.CreatedAt,
 		UpdatedAt:     player.UpdatedAt,
 		TournamentElo: player.TournamentElo,
