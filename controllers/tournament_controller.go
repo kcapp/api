@@ -66,6 +66,25 @@ func GetCurrentTournament(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tournament)
 }
 
+// GetCurrentTournamentForOffice will return the current active tournament for a given office
+func GetCurrentTournamentForOffice(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	officeID, err := strconv.Atoi(params["office_id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	tournament, err := data.GetCurrentTournamentForOffice(officeID)
+	if err != nil {
+		log.Println("Unable to get tournament for office", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(tournament)
+}
+
 // GetTournamentMatches will return all matches for the given tournament
 func GetTournamentMatches(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

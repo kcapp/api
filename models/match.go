@@ -65,6 +65,7 @@ type MatchTournament struct {
 	TournamentName      null.String `json:"tournament_name"`
 	TournamentGroupID   null.Int    `json:"tournament_group_id"`
 	TournamentGroupName null.String `json:"tournament_group_name"`
+	OfficeID            null.Int    `json:"office_id"`
 }
 
 // MatchMetadata struct used for storing metadata about matches
