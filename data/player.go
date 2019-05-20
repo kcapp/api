@@ -585,7 +585,7 @@ func UpdateEloForMatch(matchID int) error {
 	if err != nil {
 		return err
 	}
-	if match.MatchType.ID != models.X01 || len(match.Players) != 2 || match.IsWalkover {
+	if match.MatchType.ID != models.X01 || len(match.Players) != 2 || match.IsWalkover || match.IsPractice {
 		// Don't calculate Elo for non-X01 matches, matches which does not have 2 players, and
 		// matches which were walkovers
 		return nil
