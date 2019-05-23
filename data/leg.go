@@ -364,7 +364,11 @@ func FinishLegNew(visit models.Visit) error {
 				if err != nil {
 					return err
 				}
-				err = SwapPlayers(winnerMatch.ID, winnerID, winnerMatch.Players[0])
+				idx := 0
+				if !metadata.IsWinnerOutcomeHome {
+					idx = 1
+				}
+				err = SwapPlayers(winnerMatch.ID, winnerID, winnerMatch.Players[idx])
 				if err != nil {
 					return err
 				}
@@ -375,7 +379,11 @@ func FinishLegNew(visit models.Visit) error {
 				if err != nil {
 					return err
 				}
-				err = SwapPlayers(looserMatch.ID, looserID, looserMatch.Players[1])
+				idx := 0
+				if !metadata.IsLooserOutcomeHome {
+					idx = 1
+				}
+				err = SwapPlayers(looserMatch.ID, looserID, looserMatch.Players[idx])
 				if err != nil {
 					return err
 				}

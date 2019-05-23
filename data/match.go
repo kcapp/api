@@ -306,15 +306,17 @@ func GetMatchMetadata(id int) (*models.MatchMetadata, error) {
 		SELECT
 			mm.id, mm.match_id, mm.order_of_play, mm.match_displayname, mm.elimination,
 			mm.trophy, mm.promotion, mm.semi_final, mm.grand_final, mm.winner_outcome_match_id,
-			mm.looser_outcome_match_id, mm.winner_outcome, mm.looser_outcome,
+			mm.is_winner_outcome_home,  mm.looser_outcome_match_id, mm.is_looser_outcome_home,
+			mm.winner_outcome, mm.looser_outcome,
 			tg.id, tg.name, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
 		FROM match_metadata mm
 			LEFT JOIN tournament_group tg ON tg.id = mm.tournament_group_id
 			LEFT JOIN player2leg p2l ON p2l.match_id = mm.match_id
 		WHERE mm.match_id = ?
 		GROUP BY mm.match_id`, id).Scan(&m.ID, &m.MatchID, &m.OrderOfPlay, &m.MatchDisplayname, &m.Elimination,
-		&m.Trophy, &m.Promotion, &m.SemiFinal, &m.GrandFinal, &m.WinnerOutcomeMatchID, &m.LooserOutcomeMatchID,
-		&m.WinnerOutcome, &m.LooserOutcome, &m.TournamentGroup.ID, &m.TournamentGroup.Name, &playersStr)
+		&m.Trophy, &m.Promotion, &m.SemiFinal, &m.GrandFinal, &m.WinnerOutcomeMatchID, &m.IsWinnerOutcomeHome,
+		&m.LooserOutcomeMatchID, &m.IsLooserOutcomeHome, &m.WinnerOutcome, &m.LooserOutcome, &m.TournamentGroup.ID,
+		&m.TournamentGroup.Name, &playersStr)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}

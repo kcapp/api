@@ -83,7 +83,9 @@ type MatchMetadata struct {
 	SemiFinal            bool             `json:"semi_final"`
 	GrandFinal           bool             `json:"grand_final"`
 	WinnerOutcomeMatchID null.Int         `json:"winner_outcome_match_id"`
+	IsWinnerOutcomeHome  bool             `json:"is_winner_outcome_home"`
 	LooserOutcomeMatchID null.Int         `json:"looser_outcome_match_id"`
+	IsLooserOutcomeHome  bool             `json:"is_looser_outcome_home"`
 	WinnerOutcome        null.String      `json:"winner_outcome"`
 	LooserOutcome        null.String      `json:"looser_outcome"`
 }
