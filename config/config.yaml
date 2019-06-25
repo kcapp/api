@@ -1,6 +1,6 @@
 db:
   address: localhost
-  port: 3306
+  port: 3366
   username: kcapp
   password: abcd1234
   schema: kcapp
