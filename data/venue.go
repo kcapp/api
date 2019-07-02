@@ -1,6 +1,8 @@
 package data
 
 import (
+	"log"
+
 	"github.com/kcapp/api/models"
 	"github.com/kcapp/api/util"
 )
@@ -36,7 +38,22 @@ func GetVenue(id int) (*models.Venue, error) {
 	if err != nil {
 		return nil, err
 	}
+	venue.Config, err = GetVenueConfiguration(id)
+	if err != nil {
+		log.Printf("Unable to get venue configuration for %d", id)
+	}
 	return venue, nil
+}
+
+// GetVenueConfiguration will return the configuration for a venue with the given id
+func GetVenueConfiguration(id int) (*models.VenueConfig, error) {
+	config := new(models.VenueConfig)
+	err := models.DB.QueryRow("SELECT venue_id, has_dual_monitor, has_leg_lights, has_smartboard, smartboard_uuid, smartboard_button_number FROM venue_configuration WHERE venue_id = ?",
+		id).Scan(&config.VenueID, &config.HasDualMonitor, &config.HasLEDLights, &config.HasSmartboard, &config.SmartboardUUID, &config.SmartboardButtonNumber)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
 }
 
 // SpectateVenue will return the current active match at a venue

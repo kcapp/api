@@ -276,7 +276,10 @@ func GetMatch(id int) (*models.Match, error) {
 		m.OweType = ot
 	}
 	if m.VenueID.Valid {
-		m.Venue = venue
+		m.Venue, err = GetVenue(int(m.VenueID.Int64))
+		if err != nil {
+			return nil, err
+		}
 	}
 	if m.TournamentID.Valid {
 		m.Tournament = tournament

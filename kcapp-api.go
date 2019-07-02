@@ -80,6 +80,7 @@ func main() {
 
 	router.HandleFunc("/venue", controllers.GetVenues).Methods("GET")
 	router.HandleFunc("/venue/{id}", controllers.GetVenue).Methods("GET")
+	router.HandleFunc("/venue/{id}/config", controllers.GetVenueConfiguration).Methods("GET")
 	router.HandleFunc("/venue/{id}/spectate", controllers.SpectateVenue).Methods("GET")
 
 	router.HandleFunc("/tournament", controllers.NewTournament).Methods("POST")

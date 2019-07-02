@@ -41,6 +41,25 @@ func GetVenue(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(venue)
 }
 
+// GetVenueConfiguration will return the configuration for the given venue
+func GetVenueConfiguration(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	config, err := data.GetVenueConfiguration(id)
+	if err != nil {
+		log.Println("Unable to get venue configuration", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(config)
+}
+
 // SpectateVenue will spectate the current match active at a given venue
 func SpectateVenue(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
