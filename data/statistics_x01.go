@@ -34,7 +34,7 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
 			AND m.match_type_id = 1
 		GROUP BY p.id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC,
@@ -226,7 +226,7 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 			LEFT JOIN matches m2 ON m2.id = l2.match_id AND l2.winner_id = p.id
 		WHERE s.player_id IN (?)
 			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
 			AND m.match_type_id = 1
 		GROUP BY s.player_id
 		ORDER BY p.id`, ids, startingScores)
@@ -305,7 +305,7 @@ func GetPlayersX01PreviousStatistics(ids []int, startingScores ...int) ([]*model
 			LEFT JOIN matches m2 ON m2.id = l2.match_id AND l2.winner_id = p.id
 		WHERE s.player_id IN (?)
 			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
 			AND m.match_type_id = 1
 			-- Exclude all matches played this week
 			AND m.updated_at < (CURRENT_DATE - INTERVAL WEEKDAY(CURRENT_DATE) DAY)
@@ -377,7 +377,7 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 			JOIN matches m ON m.id = l.match_id
 		WHERE s.player_id = ?
 			AND m.match_type_id = 1
-			AND m.is_finished = 1 AND m.is_abandoned = 0
+			AND m.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
 		GROUP BY YEAR(m.updateD_at), WEEK(m.updated_at)
 		ORDER BY date DESC`, id)
 	if err != nil {
@@ -551,7 +551,7 @@ func GetGlobalStatistics() (*models.GlobalStatistics, error) {
 			first_dart IN (1,20,5) AND first_dart_multiplier = 1 AND
 			second_dart IN (1,20,5) AND second_dart_multiplier = 1 AND
 			third_dart IN (1,20,5) AND third_dart_multiplier = 1  AND
-			((first_dart * first_dart_multiplier) + (second_dart * second_dart_multiplier) + 
+			((first_dart * first_dart_multiplier) + (second_dart * second_dart_multiplier) +
 			(third_dart * third_dart_multiplier) = 26)`).Scan(&global.FishNChips)
 	if err != nil {
 		return nil, err

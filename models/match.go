@@ -29,6 +29,7 @@ type Match struct {
 	OfficeID        null.Int           `json:"office_id,omitempty"`
 	OweTypeID       null.Int           `json:"owe_type_id"`
 	VenueID         null.Int           `json:"venue_id"`
+	IsPractice      bool               `json:"is_practice"`
 	Venue           *Venue             `json:"venue"`
 	OweType         *OweType           `json:"owe_type,omitempty"`
 	TournamentID    null.Int           `json:"tournament_id,omitempty"`
@@ -64,6 +65,7 @@ type MatchTournament struct {
 	TournamentName      null.String `json:"tournament_name"`
 	TournamentGroupID   null.Int    `json:"tournament_group_id"`
 	TournamentGroupName null.String `json:"tournament_group_name"`
+	OfficeID            null.Int    `json:"office_id"`
 }
 
 // MatchMetadata struct used for storing metadata about matches
@@ -81,7 +83,9 @@ type MatchMetadata struct {
 	SemiFinal            bool             `json:"semi_final"`
 	GrandFinal           bool             `json:"grand_final"`
 	WinnerOutcomeMatchID null.Int         `json:"winner_outcome_match_id"`
+	IsWinnerOutcomeHome  bool             `json:"is_winner_outcome_home"`
 	LooserOutcomeMatchID null.Int         `json:"looser_outcome_match_id"`
+	IsLooserOutcomeHome  bool             `json:"is_looser_outcome_home"`
 	WinnerOutcome        null.String      `json:"winner_outcome"`
 	LooserOutcome        null.String      `json:"looser_outcome"`
 }

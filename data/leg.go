@@ -364,7 +364,11 @@ func FinishLegNew(visit models.Visit) error {
 				if err != nil {
 					return err
 				}
-				err = SwapPlayers(winnerMatch.ID, winnerID, winnerMatch.Players[0])
+				idx := 0
+				if !metadata.IsWinnerOutcomeHome {
+					idx = 1
+				}
+				err = SwapPlayers(winnerMatch.ID, winnerID, winnerMatch.Players[idx])
 				if err != nil {
 					return err
 				}
@@ -375,7 +379,11 @@ func FinishLegNew(visit models.Visit) error {
 				if err != nil {
 					return err
 				}
-				err = SwapPlayers(looserMatch.ID, looserID, looserMatch.Players[1])
+				idx := 0
+				if !metadata.IsLooserOutcomeHome {
+					idx = 1
+				}
+				err = SwapPlayers(looserMatch.ID, looserID, looserMatch.Players[idx])
 				if err != nil {
 					return err
 				}
@@ -459,15 +467,20 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 
 	legs := make([]*models.Leg, 0)
 	for rows.Next() {
-		m := new(models.Leg)
+		leg := new(models.Leg)
 		var players string
-		err := rows.Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
-			&m.MatchID, &m.HasScores, &players)
+		err := rows.Scan(&leg.ID, &leg.Endtime, &leg.StartingScore, &leg.IsFinished, &leg.CurrentPlayerID,
+			&leg.WinnerPlayerID, &leg.CreatedAt, &leg.UpdatedAt, &leg.MatchID, &leg.HasScores, &players)
 		if err != nil {
 			return nil, err
 		}
-		m.Players = util.StringToIntArray(players)
-		legs = append(legs, m)
+		leg.Players = util.StringToIntArray(players)
+		visits, err := GetLegVisits(leg.ID)
+		if err != nil {
+			return nil, err
+		}
+		leg.Visits = visits
+		legs = append(legs, leg)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err

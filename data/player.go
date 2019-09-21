@@ -21,7 +21,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname,
-			p.slack_handle, p.color, p.profile_pic_url, p.office_id, p.created_at
+			p.slack_handle, p.color, p.profile_pic_url, p.office_id, p.is_bot, p.created_at
 		FROM player p`)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
-			&p.Color, &p.ProfilePicURL, &p.OfficeID, &p.CreatedAt)
+			&p.Color, &p.ProfilePicURL, &p.OfficeID, &p.IsBot, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -61,8 +61,8 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 
 	rows, err := models.DB.Query(`
 		SELECT
-			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname,
-			p.slack_handle, p.color, p.profile_pic_url, p.office_id, p.created_at
+			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color,
+			p.profile_pic_url, p.office_id, p.is_bot, p.created_at
 		FROM player p
 		WHERE active = 1`)
 	if err != nil {
@@ -74,7 +74,7 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
-			&p.Color, &p.ProfilePicURL, &p.OfficeID, &p.CreatedAt)
+			&p.Color, &p.ProfilePicURL, &p.OfficeID, &p.IsBot, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -100,13 +100,13 @@ func GetPlayer(id int) (*models.Player, error) {
 	err := models.DB.QueryRow(`
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname,
-			p.slack_handle, p.color, p.profile_pic_url, p.office_id, p.created_at,
-			 pe.current_elo, pe.tournament_elo
+			p.slack_handle, p.color, p.profile_pic_url, p.office_id, p.is_bot,
+			p.created_at, pe.current_elo, pe.tournament_elo
 		FROM player p
 		JOIN player_elo pe on pe.player_id = p.id
 		WHERE p.id = ?`, id).
 		Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
-			&p.Color, &p.ProfilePicURL, &p.OfficeID, &p.CreatedAt, &p.CurrentElo, &p.TournamentElo)
+			&p.Color, &p.ProfilePicURL, &p.OfficeID, &p.IsBot, &p.CreatedAt, &p.CurrentElo, &p.TournamentElo)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func AddPlayer(player models.Player) error {
 	}
 
 	// Prepare statement for inserting data
-	res, err := tx.Exec("INSERT INTO player (first_name, last_name, vocal_name, nickname, slack_handle, color, profile_pic_url, office_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+	res, err := tx.Exec("INSERT INTO player (first_name, last_name, vocal_name, nickname, slack_handle, color, profile_pic_url, office_id, is_bot) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)",
 		player.FirstName, player.LastName, player.VocalName, player.Nickname, player.SlackHandle, player.Color, player.ProfilePicURL, player.OfficeID)
 	if err != nil {
 		tx.Rollback()
@@ -248,7 +248,8 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 			p.slack_handle,
 			p.color,
 			p.profile_pic_url,
-			p.office_id
+			p.office_id,
+			p.is_bot
 		FROM player2leg p2l
 		LEFT JOIN player p ON p.id = p2l.player_id WHERE p2l.leg_id = ?`, legID)
 	if err != nil {
@@ -259,7 +260,7 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL, &p.OfficeID)
+		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL, &p.OfficeID, &p.IsBot)
 		if err != nil {
 			return nil, err
 		}
@@ -584,7 +585,7 @@ func UpdateEloForMatch(matchID int) error {
 	if err != nil {
 		return err
 	}
-	if match.MatchType.ID != models.X01 || len(match.Players) != 2 || match.IsWalkover {
+	if match.MatchType.ID != models.X01 || len(match.Players) != 2 || match.IsWalkover || match.IsPractice {
 		// Don't calculate Elo for non-X01 matches, matches which does not have 2 players, and
 		// matches which were walkovers
 		return nil
