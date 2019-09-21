@@ -1,4 +1,6 @@
-# kcapp-api
+![kcapp logo](https://raw.githubusercontent.com/kcapp/frontend/master/public/images/logo.png) 
+
+# api
 Backend API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
 ## Install
