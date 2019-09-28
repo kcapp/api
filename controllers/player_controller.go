@@ -5,11 +5,14 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
+	"bytes"
 
 	"github.com/kcapp/api/data"
 	"github.com/kcapp/api/models"
 
 	"github.com/gorilla/mux"
+	"github.com/jordic/goics"
 )
 
 // GetPlayers will return a map containing all players
@@ -300,6 +303,69 @@ func SimulateMatch(w http.ResponseWriter, r *http.Request) {
 		output.Player2OldElo, elos[1].TournamentEloMatches, input.Player2Score)
 
 	json.NewEncoder(w).Encode(output)
+}
+
+// GetPlayerCalendar will return a calendar feed for all official matches for the given player
+func GetPlayerCalendar(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	w.Header().Set("Content-type", "text/calendar")
+	w.Header().Set("charset", "utf-8")
+	w.Header().Set("Content-Disposition", "inline")
+	w.Header().Set("filename", "kcapp-calendar.ics")
+
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	matches, err := data.GetPlayerOfficialMatches(id)
+	if err != nil {
+		log.Println("Unable to get official matches for player", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	players, err := data.GetPlayers()
+	if err != nil {
+		log.Println("Unable to get players", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	result := models.Entries{}
+    for _, match := range matches {
+		if match.IsFinished {
+			continue
+		}
+		entry := new(models.Entry)
+
+		t, err := time.Parse("2006-01-02 15:04:05", match.CreatedAt)
+		if err != nil {
+			log.Println("Unable to parse time")
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		home := players[match.Players[0]]
+		away := players[match.Players[1]]
+
+		entry.DateStart = t
+		entry.DateEnd = t.Add(time.Minute * time.Duration(30))
+		entry.Summary = home.FirstName + " vs. " + away.FirstName
+		location := "Dart Board"
+		if match.Venue.Name.Valid {
+			location = match.Venue.Name.String
+		}
+		entry.Location = location
+		entry.Description =  "Official Darts Match (" + strconv.Itoa(match.ID) + ") - " + home.FirstName + " vs. " + away.FirstName + " at " + location
+		result = append(result, entry)
+	}
+
+	b := bytes.Buffer{}
+	goics.NewICalEncode(&b).Encode(result)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(b.String()))
 }
 
 func sliceAtoi(sa []string) ([]int, error) {
