@@ -4,19 +4,20 @@ import "github.com/guregu/null"
 
 // Tournament struct for storing tournaments
 type Tournament struct {
-	ID                   int                   `json:"id"`
-	Name                 string                `json:"name"`
-	ShortName            string                `json:"short_name"`
-	IsFinished           bool                  `json:"is_finished"`
-	IsPlayoffs           bool                  `json:"is_playoffs"`
-	PlayoffsTournamentID null.Int              `json:"playoffs_tournament_id,omitempty"`
-	PlayoffsTournament   *Tournament           `json:"playoffs,omitempty"`
-	OfficeID             int                   `json:"office_id"`
-	StartTime            null.String           `json:"start_time"`
-	EndTime              null.String           `json:"end_time"`
-	Groups               []*TournamentGroup    `json:"groups,omitempty"`
-	Standings            []*TournamentStanding `json:"standings,omitempty"`
-	Players              []*Player2Tournament  `json:"players,omitempty"`
+	ID                   int                       `json:"id"`
+	Name                 string                    `json:"name"`
+	ShortName            string                    `json:"short_name"`
+	IsFinished           bool                      `json:"is_finished"`
+	IsPlayoffs           bool                      `json:"is_playoffs"`
+	PlayoffsTournamentID null.Int                  `json:"playoffs_tournament_id,omitempty"`
+	PlayoffsTournament   *Tournament               `json:"playoffs,omitempty"`
+	OfficeID             int                       `json:"office_id"`
+	StartTime            null.String               `json:"start_time"`
+	EndTime              null.String               `json:"end_time"`
+	Groups               []*TournamentGroup        `json:"groups,omitempty"`
+	Standings            []*TournamentStanding     `json:"standings,omitempty"`
+	Players              []*Player2Tournament      `json:"players,omitempty"`
+	TournamentConfig     map[int]*TournamentConfig `json:"config,omitempty"`
 }
 
 // TournamentGroup struct for storing tournament groups
@@ -57,4 +58,14 @@ type PlayerTournamentStanding struct {
 	Tournament      *Tournament      `json:"tournament"`
 	TournamentGroup *TournamentGroup `json:"tournament_group"`
 	Elo             int              `json:"elo,omitempty"`
+}
+
+// TournamentConfig struct for storing tournament configuration
+type TournamentConfig struct {
+	TournamentID        int `json:"tournament_id"`
+	TournamentGroupID   int `json:"tournament_group_id"`
+	NumPlayersPromoted  int `json:"num_players_promoted"`
+	NumPlayersRelegated int `json:"num_players_relegated"`
+	NumPlayersWinners   int `json:"num_players_winners"`
+	NumPlayersPlayoff   int `json:"num_players_playoff"`
 }
