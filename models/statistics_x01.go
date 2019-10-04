@@ -77,3 +77,10 @@ type Hits struct {
 	Doubles int `json:"2,omitempty"`
 	Triples int `json:"3,omitempty"`
 }
+
+// OfficeStatistics struct used for storing statistics for a office
+type OfficeStatistics struct {
+	PlayerID int `json:"player_id,omitempty"`
+	LegID    int `json:"leg_id,omitempty"`
+	Checkout int `json:"checkout,omitempty"`
+}

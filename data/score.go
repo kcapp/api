@@ -81,11 +81,21 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		visit.FirstDart.Multiplier, visit.SecondDart.Value.Int64, visit.SecondDart.Multiplier, visit.ThirdDart.Value.Int64, visit.ThirdDart.Multiplier,
 		visit.IsBust)
 
-	if !visit.IsBust && visit.IsCheckout(currentScore) {
-		// Finalize leg, since leg is finished!
-		err = FinishLegNew(visit)
-		if err != nil {
-			return nil, err
+	if match.MatchType.ID == models.SHOOTOUT {
+		if ((len(leg.Visits)+1)*3)%(9*len(leg.Players)) == 0 {
+			// Finalize leg, since leg is finished!
+			err = FinishLegNew(visit)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		if !visit.IsBust && visit.IsCheckout(currentScore) {
+			// Finalize leg, since leg is finished!
+			err = FinishLegNew(visit)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	return &visit, nil

@@ -559,3 +559,37 @@ func GetGlobalStatistics() (*models.GlobalStatistics, error) {
 
 	return global, nil
 }
+
+// GetOfficeStatistics will return office statistics for the given period
+func GetOfficeStatistics(officeID int, from string, to string) ([]*models.OfficeStatistics, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			s.player_id,
+			s.leg_id,
+			s.first_dart * s.first_dart_multiplier +
+				IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
+				IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
+		FROM score s
+		WHERE id IN(
+			SELECT MAX(id) FROM score
+			WHERE leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT m.id FROM matches m
+				WHERE m.office_id = ? AND m.is_finished = 1
+				AND m.updated_at >= ? AND m.updated_at < ?))
+			GROUP BY leg_id)
+		ORDER BY checkout DESC`, officeID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	stats := make([]*models.OfficeStatistics, 0)
+	for rows.Next() {
+		s := new(models.OfficeStatistics)
+		err := rows.Scan(&s.PlayerID, &s.LegID, &s.Checkout)
+		if err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	return stats, nil
+}

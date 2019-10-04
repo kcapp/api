@@ -13,8 +13,7 @@ import (
 )
 
 // GetPlayers returns a map of all players
-func GetPlayers() (map[int]*models.Player, error) {
-	played, err := GetMatchesPlayedPerPlayer()
+func GetPlayers() (map[int]*models.Player, error) {played, err := GetMatchesPlayedPerPlayer()
 	if err != nil {
 		return nil, err
 	}
