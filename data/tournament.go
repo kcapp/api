@@ -117,20 +117,32 @@ func GetTournament(id int) (*models.Tournament, error) {
 
 // GetTournamentConfig will return the configuration for the given tournament
 func GetTournamentConfig(id int) (map[int]*models.TournamentConfig, error) {
-	configs = make(map[int]*models.TournamentConfig)
-	config := new(models.TournamentConfig)
-	err := models.DB.QueryRow(`
-	SELECT
-		tournament_id, tournament_group_id, num_players_promoted,
-		num_players_relegated, num_players_winners, num_players_playoff
-	FROM tournament_configuration
-	WHERE tournament_id = ?`, id).Scan(&config.TournamentID, &config.TournamentGroupID,
-		&config.NumPlayersPromoted, &config.NumPlayersRelegated, &config.NumPlayersWinners, &config.NumPlayersPlayoff)
+	configs := make(map[int]*models.TournamentConfig)
+	rows, err := models.DB.Query(`
+		SELECT
+			tournament_id, tournament_group_id, num_players_promoted,
+			num_players_relegated, num_players_winners, num_players_playoff
+		FROM tournament_configuration
+		WHERE tournament_id = ?`, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	return config, nil
+
+	for rows.Next() {
+		config := new(models.TournamentConfig)
+		err := rows.Scan(&config.TournamentID, &config.TournamentGroupID,
+			&config.NumPlayersPromoted, &config.NumPlayersRelegated, &config.NumPlayersWinners, &config.NumPlayersPlayoff)
+		if err != nil {
+			return nil, err
+		}
+		configs[config.TournamentGroupID] = config
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return configs, nil
 }
 
 // GetCurrentTournament will return the current active tournament
