@@ -57,16 +57,21 @@ func GetOfficeStatistics(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(params["office_id"])
 	if err != nil {
-		log.Println("Invalid id parameter")
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		statistics, err := data.GetOfficeStatistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get statistics for office", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(statistics)
+	} else {
+		statistics, err := data.GetOfficeStatisticsForOffice(id, params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get statistics for office", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(statistics)
 	}
 
-	statistics, err := data.GetOfficeStatistics(id, params["from"], params["to"])
-	if err != nil {
-		log.Println("Unable to get statistics for office", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(statistics)
 }

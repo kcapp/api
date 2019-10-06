@@ -82,5 +82,6 @@ type Hits struct {
 type OfficeStatistics struct {
 	PlayerID int `json:"player_id,omitempty"`
 	LegID    int `json:"leg_id,omitempty"`
+	OfficeID int `json:"office_id,omitempty"`
 	Checkout int `json:"checkout,omitempty"`
 }

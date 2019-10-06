@@ -561,19 +561,58 @@ func GetGlobalStatistics() (*models.GlobalStatistics, error) {
 }
 
 // GetOfficeStatistics will return office statistics for the given period
-func GetOfficeStatistics(officeID int, from string, to string) ([]*models.OfficeStatistics, error) {
+func GetOfficeStatistics(from string, to string) ([]*models.OfficeStatistics, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			s.player_id,
 			s.leg_id,
+			m.office_id,
 			s.first_dart * s.first_dart_multiplier +
 				IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
 				IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
 		FROM score s
-		WHERE id IN(
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+		WHERE s.id IN(
 			SELECT MAX(id) FROM score
 			WHERE leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT m.id FROM matches m
-				WHERE m.office_id = ? AND m.is_finished = 1
+				WHERE m.match_type_id = 1 AND m.is_finished = 1 AND m.updated_at >= ? AND m.updated_at < ?))
+			GROUP BY leg_id)
+		ORDER BY checkout DESC`, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	stats := make([]*models.OfficeStatistics, 0)
+	for rows.Next() {
+		s := new(models.OfficeStatistics)
+		err := rows.Scan(&s.PlayerID, &s.LegID, &s.OfficeID, &s.Checkout)
+		if err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	return stats, nil
+}
+
+// GetOfficeStatisticsForOffice will return office statistics for the given office and period
+func GetOfficeStatisticsForOffice(officeID int, from string, to string) ([]*models.OfficeStatistics, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			s.player_id,
+			s.leg_id,
+			m.office_id,
+			s.first_dart * s.first_dart_multiplier +
+				IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
+				IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
+		FROM score s
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+		WHERE s.id IN(
+			SELECT MAX(id) FROM score
+			WHERE leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT m.id FROM matches m
+				WHERE m.office_id = ? AND m.match_type_id = 1 AND m.is_finished = 1
 				AND m.updated_at >= ? AND m.updated_at < ?))
 			GROUP BY leg_id)
 		ORDER BY checkout DESC`, officeID, from, to)
@@ -585,7 +624,7 @@ func GetOfficeStatistics(officeID int, from string, to string) ([]*models.Office
 	stats := make([]*models.OfficeStatistics, 0)
 	for rows.Next() {
 		s := new(models.OfficeStatistics)
-		err := rows.Scan(&s.PlayerID, &s.LegID, &s.Checkout)
+		err := rows.Scan(&s.PlayerID, &s.LegID, &s.OfficeID, &s.Checkout)
 		if err != nil {
 			return nil, err
 		}
