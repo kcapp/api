@@ -567,9 +567,9 @@ func GetOfficeStatistics(from string, to string) ([]*models.OfficeStatistics, er
 			s.player_id,
 			s.leg_id,
 			m.office_id,
-			s.first_dart * s.first_dart_multiplier +
+			MAX(s.first_dart * s.first_dart_multiplier +
 				IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
-				IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
+				IFNULL(s.third_dart * s.third_dart_multiplier, 0)) AS 'checkout'
 		FROM score s
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
@@ -578,7 +578,8 @@ func GetOfficeStatistics(from string, to string) ([]*models.OfficeStatistics, er
 			WHERE leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT m.id FROM matches m
 				WHERE m.match_type_id = 1 AND m.is_finished = 1 AND m.updated_at >= ? AND m.updated_at < ?))
 			GROUP BY leg_id)
-		ORDER BY checkout DESC`, from, to)
+		GROUP BY s.player_id
+		ORDER BY checkout DESC, leg_id`, from, to)
 	if err != nil {
 		return nil, err
 	}
@@ -603,9 +604,9 @@ func GetOfficeStatisticsForOffice(officeID int, from string, to string) ([]*mode
 			s.player_id,
 			s.leg_id,
 			m.office_id,
-			s.first_dart * s.first_dart_multiplier +
+			MAX(s.first_dart * s.first_dart_multiplier +
 				IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
-				IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
+				IFNULL(s.third_dart * s.third_dart_multiplier, 0)) AS 'checkout'
 		FROM score s
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
@@ -615,7 +616,8 @@ func GetOfficeStatisticsForOffice(officeID int, from string, to string) ([]*mode
 				WHERE m.office_id = ? AND m.match_type_id = 1 AND m.is_finished = 1
 				AND m.updated_at >= ? AND m.updated_at < ?))
 			GROUP BY leg_id)
-		ORDER BY checkout DESC`, officeID, from, to)
+		GROUP BY s.player_id
+		ORDER BY checkout DESC, leg_id`, officeID, from, to)
 	if err != nil {
 		return nil, err
 	}
