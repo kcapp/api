@@ -564,21 +564,37 @@ func GetGlobalStatistics() (*models.GlobalStatistics, error) {
 func GetOfficeStatistics(from string, to string) ([]*models.OfficeStatistics, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			s.player_id,
-			s.leg_id,
-			m.office_id,
-			MAX(s.first_dart * s.first_dart_multiplier +
-				IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
-				IFNULL(s.third_dart * s.third_dart_multiplier, 0)) AS 'checkout'
-		FROM score s
-			JOIN leg l ON l.id = s.leg_id
-			JOIN matches m ON m.id = l.match_id
-		WHERE s.id IN(
-			SELECT MAX(id) FROM score
-			WHERE leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT m.id FROM matches m
-				WHERE m.match_type_id = 1 AND m.is_finished = 1 AND m.updated_at >= ? AND m.updated_at < ?))
-			GROUP BY leg_id)
-		GROUP BY s.player_id
+			player_id,
+			leg_id,
+			office_id,
+			MAX(checkout) AS 'checkout',
+			first_dart, first_dart_multiplier,
+			second_dart, second_dart_multiplier,
+			third_dart, third_dart_multiplier
+		FROM (
+			SELECT s.player_id,
+					s.leg_id,
+					m.office_id,
+					s.first_dart * s.first_dart_multiplier +
+						IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
+						IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout',
+					s.first_dart, s.first_dart_multiplier,
+					s.second_dart, s.second_dart_multiplier,
+					s.third_dart, s.third_dart_multiplier
+			FROM score s
+					JOIN leg l ON l.id = s.leg_id
+					JOIN matches m ON m.id = l.match_id
+					JOIN player p ON s.player_id = p.id
+			WHERE s.id IN (
+				SELECT MAX(id) FROM score
+				WHERE leg_id IN (
+					SELECT id FROM leg WHERE match_id IN (
+						SELECT m.id FROM matches m WHERE m.match_type_id = 1
+						AND m.is_finished = 1 AND m.updated_at >= ? AND m.updated_at < ?))
+				GROUP BY leg_id)
+			ORDER BY checkout DESC, leg_id
+		) checkouts
+		GROUP BY player_id, checkout
 		ORDER BY checkout DESC, leg_id`, from, to)
 	if err != nil {
 		return nil, err
@@ -588,10 +604,16 @@ func GetOfficeStatistics(from string, to string) ([]*models.OfficeStatistics, er
 	stats := make([]*models.OfficeStatistics, 0)
 	for rows.Next() {
 		s := new(models.OfficeStatistics)
-		err := rows.Scan(&s.PlayerID, &s.LegID, &s.OfficeID, &s.Checkout)
+		first := new(models.Dart)
+		second := new(models.Dart)
+		third := new(models.Dart)
+		err := rows.Scan(&s.PlayerID, &s.LegID, &s.OfficeID, &s.Checkout, &first.Value, &first.Multiplier,
+			&second.Value, &second.Multiplier, &third.Value, &third.Multiplier)
 		if err != nil {
 			return nil, err
 		}
+		darts := make([]*models.Dart, 0)
+		s.Darts = append(darts, first, second, third)
 		stats = append(stats, s)
 	}
 	return stats, nil
@@ -601,22 +623,37 @@ func GetOfficeStatistics(from string, to string) ([]*models.OfficeStatistics, er
 func GetOfficeStatisticsForOffice(officeID int, from string, to string) ([]*models.OfficeStatistics, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			s.player_id,
-			s.leg_id,
-			m.office_id,
-			MAX(s.first_dart * s.first_dart_multiplier +
-				IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
-				IFNULL(s.third_dart * s.third_dart_multiplier, 0)) AS 'checkout'
-		FROM score s
-			JOIN leg l ON l.id = s.leg_id
-			JOIN matches m ON m.id = l.match_id
-		WHERE s.id IN(
-			SELECT MAX(id) FROM score
-			WHERE leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT m.id FROM matches m
-				WHERE m.office_id = ? AND m.match_type_id = 1 AND m.is_finished = 1
-				AND m.updated_at >= ? AND m.updated_at < ?))
-			GROUP BY leg_id)
-		GROUP BY s.player_id
+			player_id,
+			leg_id,
+			office_id,
+			MAX(checkout) AS 'checkout',
+			first_dart, first_dart_multiplier,
+			second_dart, second_dart_multiplier,
+			third_dart, third_dart_multiplier
+		FROM (
+			SELECT s.player_id,
+					s.leg_id,
+					m.office_id,
+					s.first_dart * s.first_dart_multiplier +
+					IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
+					IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout',
+					s.first_dart, s.first_dart_multiplier,
+					s.second_dart, s.second_dart_multiplier,
+					s.third_dart, s.third_dart_multiplier
+			FROM score s
+					JOIN leg l ON l.id = s.leg_id
+					JOIN matches m ON m.id = l.match_id
+					JOIN player p ON s.player_id = p.id
+			WHERE s.id IN (
+				SELECT MAX(id) FROM score
+				WHERE leg_id IN (
+					SELECT id FROM leg WHERE match_id IN (
+						SELECT m.id FROM matches m WHERE m.office_id = ? AND m.match_type_id = 1
+						AND m.is_finished = 1 AND m.updated_at >= ? AND m.updated_at < ?))
+				GROUP BY leg_id)
+			ORDER BY checkout DESC, leg_id
+		) checkouts
+		GROUP BY player_id, checkout
 		ORDER BY checkout DESC, leg_id`, officeID, from, to)
 	if err != nil {
 		return nil, err
@@ -626,10 +663,16 @@ func GetOfficeStatisticsForOffice(officeID int, from string, to string) ([]*mode
 	stats := make([]*models.OfficeStatistics, 0)
 	for rows.Next() {
 		s := new(models.OfficeStatistics)
-		err := rows.Scan(&s.PlayerID, &s.LegID, &s.OfficeID, &s.Checkout)
+		first := new(models.Dart)
+		second := new(models.Dart)
+		third := new(models.Dart)
+		err := rows.Scan(&s.PlayerID, &s.LegID, &s.OfficeID, &s.Checkout, &first.Value, &first.Multiplier,
+			&second.Value, &second.Multiplier, &third.Value, &third.Multiplier)
 		if err != nil {
 			return nil, err
 		}
+		darts := make([]*models.Dart, 0)
+		s.Darts = append(darts, first, second, third)
 		stats = append(stats, s)
 	}
 	return stats, nil

@@ -80,8 +80,9 @@ type Hits struct {
 
 // OfficeStatistics struct used for storing statistics for a office
 type OfficeStatistics struct {
-	PlayerID int	  `json:"player_id,omitempty"`
-	LegID    int 	  `json:"leg_id,omitempty"`
+	PlayerID int      `json:"player_id,omitempty"`
+	LegID    int      `json:"leg_id,omitempty"`
 	OfficeID null.Int `json:"office_id,omitempty"`
-	Checkout int 	  `json:"checkout,omitempty"`
+	Checkout int      `json:"checkout,omitempty"`
+	Darts    []*Dart  `json:"darts"`
 }
