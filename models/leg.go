@@ -37,6 +37,13 @@ type Player2Leg struct {
 	Handicap        null.Int         `json:"handicap,omitempty"`
 	Modifiers       *PlayerModifiers `json:"modifiers,omitempty"`
 	Player          *Player          `json:"player,omitempty"`
+	BotConfig		*BotConfig		 `json:"bot_config,omitempty"`
+}
+
+// BotConfig struct used for storing bot configuration
+type BotConfig struct {
+	PlayerID 	null.Int  `json:"player_id"`
+	Skill 		null.Int  `json:"skill_level"`
 }
 
 // VisitStatistics tells about the

@@ -50,6 +50,19 @@ func NewMatch(match models.Match) (*models.Match, error) {
 			tx.Rollback()
 			return nil, err
 		}
+		if config, ok := match.BotPlayerConfig[playerID]; ok {
+			player2LegID, err := res.LastInsertId()
+			if err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+			res, err = tx.Exec("INSERT INTO bot2player2leg (player2leg_id, player_id, skill_level) VALUES (?, ?, ?)", player2LegID, config.PlayerID, config.Skill)
+			if err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+		}
+
 	}
 	tx.Commit()
 	log.Printf("Started new match %d", matchID)

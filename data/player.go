@@ -206,12 +206,15 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 				IFNULL(SUM(second_dart * second_dart_multiplier), 0) +
 				IFNULL(SUM(third_dart * third_dart_multiplier), 0))
 				-- For X01 score goes down, while Shootout it counts up
-				* IF(m.match_type_id = 2, -1, 1) AS 'current_score'
+				* IF(m.match_type_id = 2, -1, 1) AS 'current_score',
+			b.player_id,
+			b.skill_level
 		FROM player2leg p2l
 			LEFT JOIN player p on p.id = p2l.player_id
 			LEFT JOIN leg l ON l.id = p2l.leg_id
 			LEFT JOIN score s ON s.leg_id = p2l.leg_id AND s.player_id = p2l.player_id
 			LEFT JOIN matches m on m.id = l.match_id
+			LEFT JOIN bot2player2leg b ON b.player2leg_id = p2l.id
 		WHERE p2l.leg_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
 		GROUP BY p2l.player_id
 		ORDER BY p2l.order ASC`, legID)
@@ -223,9 +226,13 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 	scores := make(map[int]*models.Player2Leg)
 	for rows.Next() {
 		p2l := new(models.Player2Leg)
-		err := rows.Scan(&p2l.LegID, &p2l.PlayerID, &p2l.PlayerName, &p2l.Order, &p2l.Handicap, &p2l.IsCurrentPlayer, &p2l.CurrentScore)
+		bc := new(models.BotConfig)
+		err := rows.Scan(&p2l.LegID, &p2l.PlayerID, &p2l.PlayerName, &p2l.Order, &p2l.Handicap, &p2l.IsCurrentPlayer, &p2l.CurrentScore, &bc.PlayerID, &bc.Skill)
 		if err != nil {
 			return nil, err
+		}
+		if bc.Skill.Valid {
+			p2l.BotConfig = bc
 		}
 		p2l.Player = players[p2l.PlayerID]
 		scores[p2l.PlayerID] = p2l

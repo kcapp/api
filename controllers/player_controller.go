@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"database/sql"
 	"log"
 	"net/http"
 	"strconv"
@@ -366,6 +367,37 @@ func GetPlayerCalendar(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(b.String()))
+}
+
+// GetRandomLegForPlayer will return a random leg for a given player and starting score
+func GetRandomLegForPlayer(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	startingScore, err := strconv.Atoi(params["starting_score"])
+	if err != nil {
+		log.Println("Invalid starting score parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	visits, err := data.GetRandomLegForPlayer(id, startingScore)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Not enough data for player", http.StatusBadRequest)
+			return
+		}
+		log.Println("Unable to get official matches for player", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(visits)
 }
 
 func sliceAtoi(sa []string) ([]int, error) {

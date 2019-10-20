@@ -574,7 +574,7 @@ func GetLeg(id int) (*models.Leg, error) {
 	return leg, nil
 }
 
-// GetLegPlayers returns a information about current score for players in a leg
+// GetLegPlayers returns information about current score for players in a leg
 func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 	leg, err := GetLeg(id)
 	if err != nil {

@@ -374,3 +374,59 @@ func GetPlayerVisitCount(playerID int) ([]*models.Visit, error) {
 
 	return visits, nil
 }
+
+// GetRandomLegForPlayer will return a random leg for a given player and starting score
+func GetRandomLegForPlayer(playerID int, startingScore int) ([]*models.Visit, error) {
+	var legID int
+	err := models.DB.QueryRow(`
+		SELECT
+			l.id
+		FROM leg l
+			JOIN player2leg p2l ON p2l.leg_id = l.id
+		WHERE l.is_finished = 1 AND l.winner_id = ? AND l.starting_score = ? AND l.has_scores = 1
+		GROUP BY l.id
+			HAVING COUNT(DISTINCT p2l.player_id) = 2
+		ORDER BY RAND()
+		LIMIT 1`, playerID, startingScore).Scan(&legID)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := models.DB.Query(`
+		SELECT
+			id, leg_id, player_id,
+			first_dart, first_dart_multiplier,
+			second_dart, second_dart_multiplier,
+			third_dart, third_dart_multiplier,
+			is_bust,
+			created_at,
+			updated_at
+		FROM score s
+		WHERE leg_id = ? AND player_id = ?`, legID, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	visits := make([]*models.Visit, 0)
+	for rows.Next() {
+		v := new(models.Visit)
+		v.FirstDart = new(models.Dart)
+		v.SecondDart = new(models.Dart)
+		v.ThirdDart = new(models.Dart)
+		err := rows.Scan(&v.ID, &v.LegID, &v.PlayerID,
+			&v.FirstDart.Value, &v.FirstDart.Multiplier,
+			&v.SecondDart.Value, &v.SecondDart.Multiplier,
+			&v.ThirdDart.Value, &v.ThirdDart.Multiplier,
+			&v.IsBust, &v.CreatedAt, &v.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		visits = append(visits, v)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return visits, nil
+}

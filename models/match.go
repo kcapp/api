@@ -37,6 +37,7 @@ type Match struct {
 	Players         []int              `json:"players"`
 	Legs            []*Leg             `json:"legs,omitempty"`
 	PlayerHandicaps map[int]int        `json:"player_handicaps,omitempty"`
+	BotPlayerConfig map[int]*BotConfig `json:"bot_player_config,omitempty"`
 	FirstThrow      null.String        `json:"first_throw_time,omitempty"`
 	LastThrow       null.String        `json:"last_throw_time,omitempty"`
 	EloChange       map[int]*PlayerElo `json:"elo_change,omitempty"`
