@@ -499,7 +499,7 @@ func GetActiveLegs() ([]*models.Leg, error) {
 		FROM leg l
 			LEFT JOIN player2leg p2l ON p2l.leg_id = l.id
 			LEFT JOIN matches m ON m.id = l.match_id
-		WHERE l.is_finished <> 1 AND m.is_abandoned = 0
+		WHERE l.is_finished <> 1 AND m.is_abandoned = 0  and m.is_walkover <> 1
 		GROUP BY l.id
 		ORDER BY l.id ASC`)
 	if err != nil {
