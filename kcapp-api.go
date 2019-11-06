@@ -26,6 +26,8 @@ func main() {
 	models.InitDB(config.GetMysqlConnectionString())
 
 	router := mux.NewRouter()
+	router.HandleFunc("/health", controllers.Healthcheck).Methods("HEAD")
+
 	router.HandleFunc("/match", controllers.NewMatch).Methods("POST")
 	router.HandleFunc("/match/active", controllers.GetActiveMatches).Methods("GET")
 	router.HandleFunc("/match/types", controllers.GetMatchesTypes).Methods("GET")
