@@ -283,8 +283,8 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 		return nil, err
 	}
 	for _, val := range a {
-		statistics.BestPPD = append(statistics.BestPPD, val.BestPPD)
-		statistics.BestFirstNinePPD = append(statistics.BestFirstNinePPD, val.BestFirstNinePPD)
+		statistics.BestThreeDartAvg = append(statistics.BestThreeDartAvg, val.BestThreeDartAvg)
+		statistics.BestFirstNineAvg = append(statistics.BestFirstNineAvg, val.BestFirstNineAvg)
 		if val.Best301 != nil {
 			statistics.Best301DartsThrown = append(statistics.Best301DartsThrown, val.Best301)
 		}
@@ -387,8 +387,8 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 		SELECT
 			p.id AS 'player_id',
 			l.id AS 'leg_id',
-			s.ppd,
-			s.first_nine_ppd,
+			s.ppd_score * 3 / s.darts_thrown,
+			s.first_nine_ppd_score * 3 / 9,
 			s.checkout_percentage,
 			s.darts_thrown,
 			l.starting_score
@@ -405,7 +405,7 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 	stats := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.LegID, &s.PPD, &s.FirstNinePPD, &s.CheckoutPercentage, &s.DartsThrown, &s.StartingScore)
+		err := rows.Scan(&s.PlayerID, &s.LegID, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.CheckoutPercentage, &s.DartsThrown, &s.StartingScore)
 		if err != nil {
 			return nil, err
 		}
@@ -455,21 +455,21 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 				best.Best701.PlayerID = stat.PlayerID
 			}
 		}
-		if best.BestPPD == nil {
-			best.BestPPD = new(models.BestStatisticFloat)
+		if best.BestThreeDartAvg == nil {
+			best.BestThreeDartAvg = new(models.BestStatisticFloat)
 		}
-		if stat.PPD > best.BestPPD.Value {
-			best.BestPPD.Value = stat.PPD
-			best.BestPPD.LegID = stat.LegID
-			best.BestPPD.PlayerID = stat.PlayerID
+		if stat.ThreeDartAvg > best.BestThreeDartAvg.Value {
+			best.BestThreeDartAvg.Value = stat.ThreeDartAvg
+			best.BestThreeDartAvg.LegID = stat.LegID
+			best.BestThreeDartAvg.PlayerID = stat.PlayerID
 		}
-		if best.BestFirstNinePPD == nil {
-			best.BestFirstNinePPD = new(models.BestStatisticFloat)
+		if best.BestFirstNineAvg == nil {
+			best.BestFirstNineAvg = new(models.BestStatisticFloat)
 		}
-		if stat.FirstNinePPD > best.BestFirstNinePPD.Value {
-			best.BestFirstNinePPD.Value = stat.FirstNinePPD
-			best.BestFirstNinePPD.LegID = stat.LegID
-			best.BestFirstNinePPD.PlayerID = stat.PlayerID
+		if stat.FirstNineThreeDartAvg > best.BestFirstNineAvg.Value {
+			best.BestFirstNineAvg.Value = stat.FirstNineThreeDartAvg
+			best.BestFirstNineAvg.LegID = stat.LegID
+			best.BestFirstNineAvg.PlayerID = stat.PlayerID
 		}
 	}
 

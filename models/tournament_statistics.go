@@ -5,8 +5,8 @@ import "github.com/guregu/null"
 // TournamentStatistics struct for stroring tournament statistics
 type TournamentStatistics struct {
 	HighestCheckout    []*BestStatistic      `json:"checkout_highest,omitempty"`
-	BestPPD            []*BestStatisticFloat `json:"best_ppd,omitempty"`
-	BestFirstNinePPD   []*BestStatisticFloat `json:"best_first_nine_ppd,omitempty"`
+	BestThreeDartAvg   []*BestStatisticFloat `json:"best_three_dart_avg,omitempty"`
+	BestFirstNineAvg   []*BestStatisticFloat `json:"best_first_nine_avg,omitempty"`
 	Best301DartsThrown []*BestStatistic      `json:"best_301_darts_thrown,omitempty"`
 	Best501DartsThrown []*BestStatistic      `json:"best_501_darts_thrown,omitempty"`
 	Best701DartsThrown []*BestStatistic      `json:"best_701_darts_thrown,omitempty"`

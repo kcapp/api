@@ -410,8 +410,8 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 			p.id,
 			l.winner_id,
 			l.id,
-			s.ppd_score / s.darts_thrown,
-			s.first_nine_ppd,
+			(s.ppd_score * 3) / s.darts_thrown,
+			((s.first_nine_ppd_score) * 3 / 9),
 			s.checkout_percentage,
 			s.darts_thrown,
 			l.starting_score
@@ -432,7 +432,7 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 	rawStatistics := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.WinnerID, &s.LegID, &s.PPD, &s.FirstNinePPD, &s.CheckoutPercentage, &s.DartsThrown, &s.StartingScore)
+		err := rows.Scan(&s.PlayerID, &s.WinnerID, &s.LegID, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.CheckoutPercentage, &s.DartsThrown, &s.StartingScore)
 		if err != nil {
 			return err
 		}
@@ -474,19 +474,19 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 				}
 			}
 		}
-		if real.BestPPD == nil {
-			real.BestPPD = new(models.BestStatisticFloat)
+		if real.BestThreeDartAvg == nil {
+			real.BestThreeDartAvg = new(models.BestStatisticFloat)
 		}
-		if stat.PPD > real.BestPPD.Value {
-			real.BestPPD.Value = stat.PPD
-			real.BestPPD.LegID = stat.LegID
+		if stat.ThreeDartAvg > real.BestThreeDartAvg.Value {
+			real.BestThreeDartAvg.Value = stat.ThreeDartAvg
+			real.BestThreeDartAvg.LegID = stat.LegID
 		}
-		if real.BestFirstNinePPD == nil {
-			real.BestFirstNinePPD = new(models.BestStatisticFloat)
+		if real.BestFirstNineAvg == nil {
+			real.BestFirstNineAvg = new(models.BestStatisticFloat)
 		}
-		if stat.FirstNinePPD > real.BestFirstNinePPD.Value {
-			real.BestFirstNinePPD.Value = stat.FirstNinePPD
-			real.BestFirstNinePPD.LegID = stat.LegID
+		if stat.FirstNineThreeDartAvg > real.BestFirstNineAvg.Value {
+			real.BestFirstNineAvg.Value = stat.FirstNineThreeDartAvg
+			real.BestFirstNineAvg.LegID = stat.LegID
 		}
 	}
 	return nil
