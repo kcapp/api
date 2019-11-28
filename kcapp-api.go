@@ -96,10 +96,12 @@ func main() {
 	router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
 	router.HandleFunc("/tournament/standings", controllers.GetTournamentStandings).Methods("GET")
 	router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")
+	router.HandleFunc("/tournament/{id}/player/{player_id}", controllers.GetTournamentPlayerMatches).Methods("GET")
 	router.HandleFunc("/tournament/{id}/matches", controllers.GetTournamentMatches).Methods("GET")
 	router.HandleFunc("/tournament/{id}/metadata", controllers.GetMatchMetadataForTournament).Methods("GET")
 	router.HandleFunc("/tournament/{id}/overview", controllers.GetTournamentOverview).Methods("GET")
 	router.HandleFunc("/tournament/{id}/statistics", controllers.GetTournamentStatistics).Methods("GET")
+
 
 	log.Printf("Listening on port %d", config.APIConfig.Port)
 	log.Println(http.ListenAndServe(fmt.Sprintf(":%d", config.APIConfig.Port), router))

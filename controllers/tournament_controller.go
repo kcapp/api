@@ -173,3 +173,29 @@ func NewTournament(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(tournament)
 }
+
+// GetTournamentPlayerMatches will return all matches for the given tournament and player
+func GetTournamentPlayerMatches(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	playerID, err := strconv.Atoi(params["player_id"])
+	if err != nil {
+		log.Println("Invalid player id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	matches, err := data.GetTournamentMatchesForPlayer(id, playerID)
+	if err != nil {
+		log.Println("Unable to get official matches for player", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(matches)
+}
