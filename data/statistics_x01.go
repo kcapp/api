@@ -589,7 +589,7 @@ func GetOfficeStatistics(from string, to string) ([]*models.OfficeStatistics, er
 				SELECT MAX(id) FROM score
 				WHERE leg_id IN (
 					SELECT id FROM leg WHERE match_id IN (
-						SELECT m.id FROM matches m WHERE m.match_type_id = 1
+						SELECT m.id FROM matches m WHERE m.match_type_id = 1 AND m.is_practice = 0
 						AND m.is_finished = 1 AND m.updated_at >= ? AND m.updated_at < ?))
 				GROUP BY leg_id)
 			ORDER BY checkout DESC, leg_id
@@ -649,7 +649,7 @@ func GetOfficeStatisticsForOffice(officeID int, from string, to string) ([]*mode
 				WHERE leg_id IN (
 					SELECT id FROM leg WHERE match_id IN (
 						SELECT m.id FROM matches m WHERE m.office_id = ? AND m.match_type_id = 1
-						AND m.is_finished = 1 AND m.updated_at >= ? AND m.updated_at < ?))
+						AND m.is_practice = 0 AND m.is_finished = 1 AND m.updated_at >= ? AND m.updated_at < ?))
 				GROUP BY leg_id)
 			ORDER BY checkout DESC, leg_id
 		) checkouts

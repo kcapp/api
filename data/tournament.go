@@ -83,7 +83,7 @@ func GetTournament(id int) (*models.Tournament, error) {
 	if tournament.IsFinished {
 		rows, err := models.DB.Query(`
 			SELECT
-				t.id, t.name, p.id, p.first_name, ts.rank, ts.elo
+				t.id, t.name, p.id, CONCAT(p.first_name, ' ', p.last_name), ts.rank, ts.elo
 			FROM tournament_standings ts
 				JOIN player p ON p.id = ts.player_id
 				JOIN tournament t ON t.id = ts.tournament_id
