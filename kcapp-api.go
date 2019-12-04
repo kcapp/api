@@ -76,6 +76,7 @@ func main() {
 	router.HandleFunc("/statistics/global", controllers.GetGlobalStatistics).Methods("GET")
 	router.HandleFunc("/statistics/office/{from}/{to}", controllers.GetOfficeStatistics).Methods("GET")
 	router.HandleFunc("/statistics/office/{office_id}/{from}/{to}", controllers.GetOfficeStatistics).Methods("GET")
+	router.HandleFunc("/statistics/{dart}/hits", controllers.GetDartStatistics).Methods("GET")
 
 	router.HandleFunc("/owe", controllers.GetOwes).Methods("GET")
 	router.HandleFunc("/owe/payback", controllers.RegisterPayback).Methods("PUT")
@@ -101,7 +102,6 @@ func main() {
 	router.HandleFunc("/tournament/{id}/metadata", controllers.GetMatchMetadataForTournament).Methods("GET")
 	router.HandleFunc("/tournament/{id}/overview", controllers.GetTournamentOverview).Methods("GET")
 	router.HandleFunc("/tournament/{id}/statistics", controllers.GetTournamentStatistics).Methods("GET")
-
 
 	log.Printf("Listening on port %d", config.APIConfig.Port)
 	log.Println(http.ListenAndServe(fmt.Sprintf(":%d", config.APIConfig.Port), router))

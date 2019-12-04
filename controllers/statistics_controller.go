@@ -73,5 +73,25 @@ func GetOfficeStatistics(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewEncoder(w).Encode(statistics)
 	}
+}
+
+// GetDartStatistics will return dart statistics for all players
+func GetDartStatistics(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	SetHeaders(w)
+
+	dart, err := strconv.Atoi(params["dart"])
+	if err != nil {
+		log.Println("Unable to get dart", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	statistics, err := data.GetDartStatistics(dart)
+	if err != nil {
+		log.Println("Unable to get dart statistics", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(statistics)
 
 }

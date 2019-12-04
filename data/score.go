@@ -430,3 +430,45 @@ func GetRandomLegForPlayer(playerID int, startingScore int) ([]*models.Visit, er
 
 	return visits, nil
 }
+
+// GetDartStatistics will return statistics of times hit for a given dart
+func GetDartStatistics(dart int) (map[int]*models.Hits, error) {
+	rows, err := models.DB.Query(`
+		SELECT player_id, singles, doubles, triples
+		FROM (
+			SELECT s.player_id,
+				SUM(IF(s.first_dart = ? AND s.first_dart_multiplier = 1, 1, 0) +
+					IF(s.second_dart = ? AND s.second_dart_multiplier = 1, 1, 0) +
+					IF(s.third_dart = ? AND s.third_dart_multiplier = 1, 1, 0)) AS 'singles',
+				SUM(IF(s.first_dart = ? AND s.first_dart_multiplier = 2, 1, 0) +
+					IF(s.second_dart = ? AND s.second_dart_multiplier = 2, 1, 0) +
+					IF(s.third_dart = ? AND s.third_dart_multiplier = 2, 1, 0)) AS 'doubles',
+				SUM(IF(s.first_dart = ? AND s.first_dart_multiplier = 3, 1, 0) +
+					IF(s.second_dart = ? AND s.second_dart_multiplier = 3, 1, 0) +
+					IF(s.third_dart = ? AND s.third_dart_multiplier = 3, 1, 0)) AS 'triples'
+			FROM score s
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+			WHERE s.is_bust = 0
+			GROUP BY player_id
+		) scores`, dart, dart, dart, dart, dart, dart, dart, dart, dart)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	m := make(map[int]*models.Hits)
+	for rows.Next() {
+		h := new(models.Hits)
+		var playerID int
+		err := rows.Scan(&playerID, &h.Singles, &h.Doubles, &h.Triples)
+		if err != nil {
+			return nil, err
+		}
+		m[playerID] = h
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return m, nil
+}

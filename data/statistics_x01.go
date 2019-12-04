@@ -265,6 +265,7 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 		if err != nil {
 			return nil, err
 		}
+
 	}
 	statistics := make([]*models.StatisticsX01, 0)
 	for _, s := range statisticsMap {

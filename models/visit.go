@@ -146,6 +146,9 @@ func GetHitsMap(visits []*Visit) (map[int64]*Hits, int) {
 
 	var dartsThrown int
 	for _, visit := range visits {
+		if visit.IsBust {
+			continue
+		}
 		if visit.FirstDart.Value.Valid {
 			hit := hitsMap[visit.FirstDart.Value.Int64]
 			if visit.FirstDart.IsSingle() {
