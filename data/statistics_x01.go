@@ -164,14 +164,7 @@ func GetPlayerX01Statistics(id int) (*models.StatisticsX01, error) {
 		return nil, err
 	}
 	if len(statistics) > 0 {
-		stats := statistics[0]
-		visits, err := GetPlayerVisits(id)
-		if err != nil {
-			return nil, err
-		}
-		stats.Hits, stats.DartsThrown = models.GetHitsMap(visits)
-
-		return stats, nil
+		return statistics[0], nil
 	}
 	return new(models.StatisticsX01), nil
 }
@@ -266,6 +259,13 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 			return nil, err
 		}
 
+		for id, stats := range statisticsMap {
+			visits, err := GetPlayerVisits(id)
+			if err != nil {
+				return nil, err
+			}
+			stats.Hits, stats.DartsThrown = models.GetHitsMap(visits)
+		}
 	}
 	statistics := make([]*models.StatisticsX01, 0)
 	for _, s := range statisticsMap {
