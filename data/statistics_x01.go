@@ -412,7 +412,7 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 			l.winner_id,
 			l.id,
 			(s.ppd_score * 3) / s.darts_thrown,
-			((s.first_nine_ppd_score) * 3 / 9),
+			((s.first_nine_ppd_score) * 3 / if(s.darts_thrown < 9, s.darts_thrown, 9)),
 			s.checkout_percentage,
 			s.darts_thrown,
 			l.starting_score
