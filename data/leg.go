@@ -52,10 +52,10 @@ func NewLeg(matchID int, startingScore int, players []int) (*models.Leg, error) 
 			handicaps[player.PlayerID] = player.Handicap
 		}
 	}
-
 	for idx, playerID := range players {
 		order := idx + 1
-		res, err = tx.Exec("INSERT INTO player2leg (player_id, leg_id, `order`, match_id, handicap) VALUES (?, ?, ?, ?, ?)", playerID, legID, order, matchID, handicaps[playerID])
+		res, err = tx.Exec("INSERT INTO player2leg (player_id, leg_id, `order`, match_id, handicap) VALUES (?, ?, ?, ?, ?)",
+			playerID, legID, order, matchID, handicaps[playerID])
 		if err != nil {
 			tx.Rollback()
 			return nil, err
@@ -114,7 +114,7 @@ func FinishLeg(visit models.Visit) error {
 	log.Printf("[%d] Finished with player %d winning", visit.LegID, winnerID)
 
 	if match.MatchType.ID == models.SHOOTOUT {
-		statisticsMap, err := calculateShootoutStatistics(visit.LegID)
+		statisticsMap, err := CalculateShootoutStatistics(visit.LegID)
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_shootout(leg_id, player_id, ppd, 60s_plus, 100s_plus, 140s_plus, 180s)
@@ -127,7 +127,7 @@ func FinishLeg(visit models.Visit) error {
 			log.Printf("[%d] Inserting shootout statistics for player %d", visit.LegID, playerID)
 		}
 	} else {
-		statisticsMap, err := calculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
+		statisticsMap, err := CalculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_x01
@@ -256,7 +256,11 @@ func FinishLegNew(visit models.Visit) error {
 	log.Printf("[%d] Finished with player %d winning", visit.LegID, winnerID)
 
 	if match.MatchType.ID == models.SHOOTOUT {
-		statisticsMap, err := calculateShootoutStatistics(visit.LegID)
+		statisticsMap, err := CalculateShootoutStatistics(visit.LegID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_shootout(leg_id, player_id, ppd, 60s_plus, 100s_plus, 140s_plus, 180s)
@@ -268,8 +272,30 @@ func FinishLegNew(visit models.Visit) error {
 			}
 			log.Printf("[%d] Inserting shootout statistics for player %d", visit.LegID, playerID)
 		}
+	} else if match.MatchType.ID == models.CRICKET {
+		statisticsMap, err := CalculateCricketStatistics(visit.LegID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+				INSERT INTO statistics_cricket
+					(leg_id, player_id, total_marks, rounds, score, first_nine_marks, mpr, first_nine_mpr, marks5, marks6, marks7, marks8, marks9)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.TotalMarks, stats.Rounds, stats.Score, stats.FirstNineMarks,
+				stats.MPR, stats.FirstNineMPR, stats.Marks5, stats.Marks6, stats.Marks7, stats.Marks8, stats.Marks9)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("[%d] Inserting cricket statistics for player %d", visit.LegID, playerID)
+		}
 	} else {
-		statisticsMap, err := calculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
+		statisticsMap, err := CalculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_x01
@@ -414,6 +440,16 @@ func UndoLegFinish(legID int) error {
 	}
 	// Remove generated statistics for the leg
 	_, err = tx.Exec("DELETE FROM statistics_x01 WHERE leg_id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	_, err = tx.Exec("DELETE FROM statistics_shootout WHERE leg_id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	_, err = tx.Exec("DELETE FROM statistics_cricket WHERE leg_id = ?", legID)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -585,6 +621,7 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 	if err != nil {
 		return nil, err
 	}
+	hitsMap := make(map[int]map[int]int64)
 	lowestScore := leg.StartingScore
 	players := make([]*models.Player2Leg, 0)
 	for _, player := range scores {
@@ -592,6 +629,7 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 		if player.CurrentScore < lowestScore {
 			lowestScore = player.CurrentScore
 		}
+		hitsMap[player.PlayerID] = make(map[int]int64)
 		players = append(players, player)
 	}
 
@@ -605,6 +643,21 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 		return nil, err
 	}
 
+	// Get hits on each number for each player
+	darts := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25}
+	for _, visit := range leg.Visits {
+		for _, dart := range darts {
+			count := visit.GetHitCount(dart)
+			if count > 0 {
+				if _, ok := hitsMap[visit.PlayerID][dart]; !ok {
+					hitsMap[visit.PlayerID][dart] = count
+				} else {
+					hitsMap[visit.PlayerID][dart] += count
+				}
+			}
+		}
+	}
+
 	for _, player := range players {
 		player.Wins = winsMap[player.PlayerID]
 		if visit, ok := lastVisits[player.PlayerID]; ok {
@@ -615,6 +668,7 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 			player.Modifiers.IsBeerMatch = true
 		}
 		player.AddVisitStatistics(*leg)
+		player.Hits = hitsMap[player.PlayerID]
 	}
 
 	sort.Slice(players, func(i, j int) bool {
@@ -687,224 +741,6 @@ func DeleteLeg(legID int) error {
 		}
 		return nil
 	})
-}
-
-func calculateX01Statistics(legID int, winnerID int, startingScore int) (map[int]*models.StatisticsX01, error) {
-	visits, err := GetLegVisits(legID)
-	if err != nil {
-		return nil, err
-	}
-
-	players, err := GetPlayersScore(legID)
-	if err != nil {
-		return nil, err
-	}
-	statisticsMap := make(map[int]*models.StatisticsX01)
-	playersMap := make(map[int]*models.Player2Leg)
-	for _, player := range players {
-		stats := new(models.StatisticsX01)
-		stats.AccuracyStatistics = new(models.AccuracyStatistics)
-		statisticsMap[player.PlayerID] = stats
-
-		playersMap[player.PlayerID] = player
-		player.CurrentScore = startingScore
-		if player.Handicap.Valid {
-			player.CurrentScore += int(player.Handicap.Int64)
-		}
-	}
-
-	for _, visit := range visits {
-		player := playersMap[visit.PlayerID]
-		stats := statisticsMap[visit.PlayerID]
-
-		currentScore := player.CurrentScore
-		if visit.FirstDart.IsCheckoutAttempt(currentScore, 1) {
-			stats.CheckoutAttempts++
-		}
-		currentScore -= visit.FirstDart.GetScore()
-		if visit.SecondDart.IsCheckoutAttempt(currentScore, 2) {
-			stats.CheckoutAttempts++
-		}
-		currentScore -= visit.SecondDart.GetScore()
-		if visit.ThirdDart.IsCheckoutAttempt(currentScore, 3) {
-			stats.CheckoutAttempts++
-		}
-		currentScore -= visit.ThirdDart.GetScore()
-
-		stats.DartsThrown += 3
-		if visit.IsBust {
-			continue
-		}
-
-		visitScore := visit.GetScore()
-		if stats.DartsThrown <= 9 {
-			stats.FirstNinePPDScore += visitScore
-		}
-		stats.PPDScore += visitScore
-
-		if visitScore >= 60 && visitScore < 100 {
-			stats.Score60sPlus++
-		} else if visitScore >= 100 && visitScore < 140 {
-			stats.Score100sPlus++
-		} else if visitScore >= 140 && visitScore < 180 {
-			stats.Score140sPlus++
-		} else if visitScore == 180 {
-			stats.Score180s++
-		}
-
-		// Get accuracy stats
-		accuracyScore := player.CurrentScore
-		if visit.FirstDart.Value.Valid {
-			stats.AccuracyStatistics.GetAccuracyStats(accuracyScore, visit.FirstDart)
-			accuracyScore -= visit.FirstDart.GetScore()
-		}
-		if visit.SecondDart.Value.Valid {
-			stats.AccuracyStatistics.GetAccuracyStats(accuracyScore, visit.SecondDart)
-			accuracyScore -= visit.SecondDart.GetScore()
-		}
-		if visit.ThirdDart.Value.Valid {
-			stats.AccuracyStatistics.GetAccuracyStats(accuracyScore, visit.ThirdDart)
-			accuracyScore -= visit.ThirdDart.GetScore()
-		}
-		player.CurrentScore = currentScore
-	}
-
-	for playerID, stats := range statisticsMap {
-		if playerID == winnerID {
-			stats.CheckoutPercentage = null.FloatFrom(100 / float64(stats.CheckoutAttempts))
-
-			// When checking out, it might be done in 1, 2 or 3 darts, so make
-			// sure we set the correct number of darts thrown for the final visit
-			v := visits[len(visits)-1]
-			stats.DartsThrown = stats.DartsThrown - 3 + v.GetDartsThrown()
-		} else {
-			stats.CheckoutPercentage = null.FloatFromPtr(nil)
-		}
-		stats.AccuracyStatistics.SetAccuracy()
-
-		// Set PPD and First 9 PPD
-		stats.PPD = float32(stats.PPDScore) / float32(stats.DartsThrown)
-		stats.FirstNinePPD = float32(stats.FirstNinePPDScore) / float32(9)
-	}
-
-	return statisticsMap, nil
-}
-
-func calculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout, error) {
-	visits, err := GetLegVisits(legID)
-	if err != nil {
-		return nil, err
-	}
-
-	players, err := GetPlayersScore(legID)
-	if err != nil {
-		return nil, err
-	}
-	statisticsMap := make(map[int]*models.StatisticsShootout)
-	for _, player := range players {
-		stats := new(models.StatisticsShootout)
-		statisticsMap[player.PlayerID] = stats
-	}
-
-	for _, visit := range visits {
-		stats := statisticsMap[visit.PlayerID]
-
-		visitScore := visit.GetScore()
-		stats.PPD += float32(visitScore)
-
-		if visitScore >= 60 && visitScore < 100 {
-			stats.Score60sPlus++
-		} else if visitScore >= 100 && visitScore < 140 {
-			stats.Score100sPlus++
-		} else if visitScore >= 140 && visitScore < 180 {
-			stats.Score140sPlus++
-		} else if visitScore == 180 {
-			stats.Score180s++
-		}
-	}
-
-	for _, stats := range statisticsMap {
-		stats.PPD = stats.PPD / float32(9)
-	}
-	return statisticsMap, nil
-}
-
-// RecalculateX01Statistics will recalculate x01 statistics for all legs
-func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
-	rows, err := models.DB.Query(`
-		SELECT
-			l.id, l.end_time, l.starting_score, l.is_finished,
-			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
-			l.match_id, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
-		FROM leg l
-			JOIN matches m on m.id = l.match_id
-			JOIN player2leg p2l ON p2l.leg_id = l.id
-		WHERE
-			l.has_scores = 1
-			AND m.match_type_id = 1
-		GROUP BY l.id
-		ORDER BY l.id`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	legs := make([]*models.Leg, 0)
-	for rows.Next() {
-		m := new(models.Leg)
-		var players string
-		err := rows.Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
-			&m.MatchID, &players)
-		if err != nil {
-			return nil, err
-		}
-		m.Players = util.StringToIntArray(players)
-		legs = append(legs, m)
-	}
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	m := make(map[int]map[int]*models.StatisticsX01)
-	for _, leg := range legs {
-		stats, err := calculateX01Statistics(leg.ID, int(leg.WinnerPlayerID.Int64), leg.StartingScore)
-		if err != nil {
-			return nil, err
-		}
-		for playerID, stat := range stats {
-			if stat.CheckoutPercentage.Valid {
-				log.Printf("UPDATE statistics_x01 SET checkout_attempts = %d, checkout_percentage = %f WHERE leg_id = %d AND player_id = %d;",
-					stat.CheckoutAttempts, stat.CheckoutPercentage.Float64, leg.ID, playerID)
-			} else {
-				log.Printf("UPDATE statistics_x01 SET checkout_attempts = %d, checkout_percentage = NULL WHERE leg_id = %d AND player_id = %d;",
-					stat.CheckoutAttempts, leg.ID, playerID)
-			}
-
-		}
-		m[leg.ID] = stats
-	}
-
-	/*s := make([]*models.CheckoutStatistics, 0)
-	for _, leg := range legs {
-		log.Printf("Getting statistics for %d", leg.ID)
-		stats, err := getCheckoutStatistics(leg.ID, leg.StartingScore)
-		if err != nil {
-			return nil, err
-		}
-		s = append(s, stats)
-	}
-
-	all := make(map[int]int)
-	for _, stats := range s {
-		log.Printf("Checkout: %d, Total: %d, Attempts: %d", stats.Checkout, stats.Count, stats.CheckoutAttempts)
-
-		for checkout, count := range stats.CheckoutAttempts {
-			all[checkout] += count
-		}
-	}
-	log.Printf("All: %v", all)*/
-
-	return m, err
 }
 
 // getCheckoutStatistics will get all checkout attempts for the given leg

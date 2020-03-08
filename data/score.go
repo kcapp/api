@@ -2,6 +2,7 @@ package data
 
 import (
 	"log"
+	"math"
 
 	"github.com/kcapp/api/models"
 )
@@ -75,6 +76,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		tx.Rollback()
 		return nil, err
 	}
+
 	tx.Commit()
 
 	log.Printf("[%d] Added score for player %d, (%d-%d, %d-%d, %d-%d, %t)", visit.LegID, visit.PlayerID, visit.FirstDart.Value.Int64,
@@ -87,6 +89,47 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 			err = FinishLegNew(visit)
 			if err != nil {
 				return nil, err
+			}
+		}
+	} else if match.MatchType.ID == models.CRICKET {
+		players, err := GetLegPlayers(visit.LegID)
+		if err != nil {
+			return nil, err
+		}
+
+		// Did current player close all numbers?
+		closedPlayers := make(map[int]*models.Player2Leg, 0)
+		for _, player := range players {
+			if player.PlayerID != visit.PlayerID {
+				continue
+			}
+			closed := true
+			for _, dart := range []int{15, 16, 17, 18, 19, 20, 25} {
+				if player.Hits[dart] < 3 {
+					closed = false
+					break
+				}
+			}
+			if closed {
+				closedPlayers[player.PlayerID] = player
+			}
+		}
+
+		// What is the lowest score?
+		lowestScore := math.MaxInt32
+		for _, player := range players {
+			if player.CurrentScore < lowestScore {
+				lowestScore = player.CurrentScore
+			}
+		}
+
+		// If current player closed all numbers and has the lowest score, it's finished
+		if player, ok := closedPlayers[visit.PlayerID]; ok {
+			if player.CurrentScore == lowestScore {
+				err = FinishLegNew(visit)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 	} else {
@@ -171,6 +214,44 @@ func DeleteLastVisit(legID int) error {
 			return err
 		}
 	}
+
+	/*m, err := GetMatchForLeg(legID)
+	if err != nil {
+		return err
+	}
+	if m.MatchType.ID == models.CRICKET {
+		// Recalculate score for each player
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return err
+		}
+
+		playerScores := make(map[int]*models.Player2Leg)
+		for _, id := range m.Players {
+			p2l := new(models.Player2Leg)
+			p2l.Hits = make(map[int]int64)
+			playerScores[id] = p2l
+		}
+
+		for _, visit := range visits {
+			calculateCricketScore(visit.PlayerID, visit.FirstDart, playerScores)
+			calculateCricketScore(visit.PlayerID, visit.SecondDart, playerScores)
+			calculateCricketScore(visit.PlayerID, visit.ThirdDart, playerScores)
+		}
+
+		stmt, err := models.DB.Prepare(`UPDATE player2leg SET current_score = ? WHERE player_id = ?`)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		for id, p2l := range playerScores {
+			_, err := stmt.Exec(p2l.CurrentScore, id)
+			if err != nil {
+				return err
+			}
+		}
+	}*/
+
 	return nil
 }
 
@@ -471,4 +552,51 @@ func GetDartStatistics(dart int) (map[int]*models.Hits, error) {
 		return nil, err
 	}
 	return m, nil
+}
+
+// calculateCricketScore will calculate the score for each player for the given dart
+func calculateCricketScore(playerID int, dart *models.Dart, scores map[int]*models.Player2Leg) {
+	if !dart.Value.Valid {
+		return
+	}
+
+	score := int(dart.Value.Int64)
+	darts := []int{15, 16, 17, 18, 19, 20, 25}
+	found := false
+	for _, val := range darts {
+		if val == score {
+			found = true
+		}
+	}
+	if !found {
+		return
+	}
+
+	hitsMap := scores[playerID].Hits
+	hits := hitsMap[score]
+	if _, ok := hitsMap[score]; !ok {
+		hitsMap[score] = dart.Multiplier
+	} else {
+		hitsMap[score] += dart.Multiplier
+	}
+	multiplier := hitsMap[score] - hits
+	if hits < 3 {
+		multiplier = hitsMap[score] - 3
+	}
+	points := int(dart.Value.Int64 * multiplier)
+
+	if hitsMap[score] > 3 {
+		for id, p2l := range scores {
+			if id == playerID {
+				continue
+			}
+			if score, ok := p2l.Hits[score]; ok {
+				if score < 3 {
+					p2l.CurrentScore += points
+				}
+			} else {
+				p2l.CurrentScore += points
+			}
+		}
+	}
 }

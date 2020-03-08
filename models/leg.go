@@ -37,13 +37,14 @@ type Player2Leg struct {
 	Handicap        null.Int         `json:"handicap,omitempty"`
 	Modifiers       *PlayerModifiers `json:"modifiers,omitempty"`
 	Player          *Player          `json:"player,omitempty"`
-	BotConfig		*BotConfig		 `json:"bot_config,omitempty"`
+	BotConfig       *BotConfig       `json:"bot_config,omitempty"`
+	Hits            map[int]int64    `json:"hits"`
 }
 
 // BotConfig struct used for storing bot configuration
 type BotConfig struct {
-	PlayerID 	null.Int  `json:"player_id"`
-	Skill 		null.Int  `json:"skill_level"`
+	PlayerID null.Int `json:"player_id"`
+	Skill    null.Int `json:"skill_level"`
 }
 
 // VisitStatistics tells about the
@@ -71,5 +72,26 @@ func (p2l *Player2Leg) AddVisitStatistics(leg Leg) {
 				p2l.VisitStatistics.ViliusVisitCounter++
 			}
 		}
+	}
+}
+
+// AddVisitHits adds hits from the visit to the player
+func (p2l *Player2Leg) AddVisitHits(visit Visit) {
+	addInMap(p2l.Hits, int(visit.FirstDart.Value.Int64), visit.FirstDart.Multiplier)
+	if visit.SecondDart.Value.Valid {
+		addInMap(p2l.Hits, int(visit.SecondDart.Value.Int64), visit.SecondDart.Multiplier)
+	}
+	if visit.ThirdDart.Value.Valid {
+		addInMap(p2l.Hits, int(visit.ThirdDart.Value.Int64), visit.ThirdDart.Multiplier)
+	}
+
+}
+
+// addInMap will add the given value to the key if it doesn't exist, or add the value to the existing value
+func addInMap(m map[int]int64, k int, v int64) {
+	if _, ok := m[k]; !ok {
+		m[k] = v
+	} else {
+		m[k] += v
 	}
 }

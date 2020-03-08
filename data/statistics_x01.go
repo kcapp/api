@@ -1,8 +1,11 @@
 package data
 
 import (
+	"log"
+	"github.com/guregu/null"
 	"github.com/jmoiron/sqlx"
 	"github.com/kcapp/api/models"
+	"github.com/kcapp/api/util"
 )
 
 // GetX01Statistics will return statistics for all players active duing the given period
@@ -404,6 +407,108 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 	return statisticsMap, nil
 }
 
+// CalculateX01Statistics will calculate x01 statistics for the given leg
+func CalculateX01Statistics(legID int, winnerID int, startingScore int) (map[int]*models.StatisticsX01, error) {
+	visits, err := GetLegVisits(legID)
+	if err != nil {
+		return nil, err
+	}
+
+	players, err := GetPlayersScore(legID)
+	if err != nil {
+		return nil, err
+	}
+	statisticsMap := make(map[int]*models.StatisticsX01)
+	playersMap := make(map[int]*models.Player2Leg)
+	for _, player := range players {
+		stats := new(models.StatisticsX01)
+		stats.AccuracyStatistics = new(models.AccuracyStatistics)
+		statisticsMap[player.PlayerID] = stats
+
+		playersMap[player.PlayerID] = player
+		player.CurrentScore = startingScore
+		if player.Handicap.Valid {
+			player.CurrentScore += int(player.Handicap.Int64)
+		}
+	}
+
+	for _, visit := range visits {
+		player := playersMap[visit.PlayerID]
+		stats := statisticsMap[visit.PlayerID]
+
+		currentScore := player.CurrentScore
+		if visit.FirstDart.IsCheckoutAttempt(currentScore, 1) {
+			stats.CheckoutAttempts++
+		}
+		currentScore -= visit.FirstDart.GetScore()
+		if visit.SecondDart.IsCheckoutAttempt(currentScore, 2) {
+			stats.CheckoutAttempts++
+		}
+		currentScore -= visit.SecondDart.GetScore()
+		if visit.ThirdDart.IsCheckoutAttempt(currentScore, 3) {
+			stats.CheckoutAttempts++
+		}
+		currentScore -= visit.ThirdDart.GetScore()
+
+		stats.DartsThrown += 3
+		if visit.IsBust {
+			continue
+		}
+
+		visitScore := visit.GetScore()
+		if stats.DartsThrown <= 9 {
+			stats.FirstNinePPDScore += visitScore
+		}
+		stats.PPDScore += visitScore
+
+		if visitScore >= 60 && visitScore < 100 {
+			stats.Score60sPlus++
+		} else if visitScore >= 100 && visitScore < 140 {
+			stats.Score100sPlus++
+		} else if visitScore >= 140 && visitScore < 180 {
+			stats.Score140sPlus++
+		} else if visitScore == 180 {
+			stats.Score180s++
+		}
+
+		// Get accuracy stats
+		accuracyScore := player.CurrentScore
+		if visit.FirstDart.Value.Valid {
+			stats.AccuracyStatistics.GetAccuracyStats(accuracyScore, visit.FirstDart)
+			accuracyScore -= visit.FirstDart.GetScore()
+		}
+		if visit.SecondDart.Value.Valid {
+			stats.AccuracyStatistics.GetAccuracyStats(accuracyScore, visit.SecondDart)
+			accuracyScore -= visit.SecondDart.GetScore()
+		}
+		if visit.ThirdDart.Value.Valid {
+			stats.AccuracyStatistics.GetAccuracyStats(accuracyScore, visit.ThirdDart)
+			accuracyScore -= visit.ThirdDart.GetScore()
+		}
+		player.CurrentScore = currentScore
+	}
+
+	for playerID, stats := range statisticsMap {
+		if playerID == winnerID {
+			stats.CheckoutPercentage = null.FloatFrom(100 / float64(stats.CheckoutAttempts))
+
+			// When checking out, it might be done in 1, 2 or 3 darts, so make
+			// sure we set the correct number of darts thrown for the final visit
+			v := visits[len(visits)-1]
+			stats.DartsThrown = stats.DartsThrown - 3 + v.GetDartsThrown()
+		} else {
+			stats.CheckoutPercentage = null.FloatFromPtr(nil)
+		}
+		stats.AccuracyStatistics.SetAccuracy()
+
+		// Set PPD and First 9 PPD
+		stats.PPD = float32(stats.PPDScore) / float32(stats.DartsThrown)
+		stats.FirstNinePPD = float32(stats.FirstNinePPDScore) / float32(9)
+	}
+
+	return statisticsMap, nil
+}
+
 // getBestStatistics will calculate Best PPD, Best First 9, Best 301 and Best 501 for the given players
 func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, startingScores ...int) error {
 	q, args, err := sqlx.In(`
@@ -677,4 +782,82 @@ func GetOfficeStatisticsForOffice(officeID int, from string, to string) ([]*mode
 		stats = append(stats, s)
 	}
 	return stats, nil
+}
+
+// RecalculateX01Statistics will recalculate x01 statistics for all legs
+func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			l.id, l.end_time, l.starting_score, l.is_finished,
+			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
+			l.match_id, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
+		FROM leg l
+			JOIN matches m on m.id = l.match_id
+			JOIN player2leg p2l ON p2l.leg_id = l.id
+		WHERE
+			l.has_scores = 1
+			AND m.match_type_id = 1
+		GROUP BY l.id
+		ORDER BY l.id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	legs := make([]*models.Leg, 0)
+	for rows.Next() {
+		m := new(models.Leg)
+		var players string
+		err := rows.Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
+			&m.MatchID, &players)
+		if err != nil {
+			return nil, err
+		}
+		m.Players = util.StringToIntArray(players)
+		legs = append(legs, m)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	m := make(map[int]map[int]*models.StatisticsX01)
+	for _, leg := range legs {
+		stats, err := CalculateX01Statistics(leg.ID, int(leg.WinnerPlayerID.Int64), leg.StartingScore)
+		if err != nil {
+			return nil, err
+		}
+		for playerID, stat := range stats {
+			if stat.CheckoutPercentage.Valid {
+				log.Printf("UPDATE statistics_x01 SET checkout_attempts = %d, checkout_percentage = %f WHERE leg_id = %d AND player_id = %d;",
+					stat.CheckoutAttempts, stat.CheckoutPercentage.Float64, leg.ID, playerID)
+			} else {
+				log.Printf("UPDATE statistics_x01 SET checkout_attempts = %d, checkout_percentage = NULL WHERE leg_id = %d AND player_id = %d;",
+					stat.CheckoutAttempts, leg.ID, playerID)
+			}
+
+		}
+		m[leg.ID] = stats
+	}
+
+	/*s := make([]*models.CheckoutStatistics, 0)
+	for _, leg := range legs {
+		log.Printf("Getting statistics for %d", leg.ID)
+		stats, err := getCheckoutStatistics(leg.ID, leg.StartingScore)
+		if err != nil {
+			return nil, err
+		}
+		s = append(s, stats)
+	}
+
+	all := make(map[int]int)
+	for _, stats := range s {
+		log.Printf("Checkout: %d, Total: %d, Attempts: %d", stats.Checkout, stats.Count, stats.CheckoutAttempts)
+
+		for checkout, count := range stats.CheckoutAttempts {
+			all[checkout] += count
+		}
+	}
+	log.Printf("All: %v", all)*/
+
+	return m, err
 }

@@ -77,15 +77,15 @@ func GetLegPlayers(w http.ResponseWriter, r *http.Request) {
 
 	players, err := data.GetLegPlayers(legID)
 	if err != nil {
-		log.Println("Unable to get players for leg", err)
+		log.Printf("[%d] Unable to get players for leg: %s", legID, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	json.NewEncoder(w).Encode(players)
 }
 
-// GetX01StatisticsForLeg will return X01 statistics for all players in the given leg
-func GetX01StatisticsForLeg(w http.ResponseWriter, r *http.Request) {
+// GetStatisticsForLeg will return statistics for all players in the given leg
+func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
 	legID, err := strconv.Atoi(params["id"])
@@ -111,7 +111,15 @@ func GetX01StatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 	if match.MatchType.ID == models.SHOOTOUT {
 		stats, err := data.GetShootoutStatisticsForLeg(legID)
 		if err != nil {
-			log.Println("Unable to get statistics", err)
+			log.Println("Unable to get shootout statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.CRICKET {
+		stats, err := data.GetCricketStatisticsForLeg(legID)
+		if err != nil {
+			log.Println("Unable to get cricket statistics", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -119,7 +127,7 @@ func GetX01StatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 	} else {
 		stats, err := data.GetX01StatisticsForLeg(legID)
 		if err != nil {
-			log.Println("Unable to get statistics", err)
+			log.Println("Unable to get x01 statistics", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

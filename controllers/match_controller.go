@@ -184,8 +184,8 @@ func GetMatchMetadataForTournament(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(metadata)
 }
 
-// GetX01StatisticsForMatch will return X01 statistics for all players in the given leg
-func GetX01StatisticsForMatch(w http.ResponseWriter, r *http.Request) {
+// GetStatisticsForMatch will return statistics for all players in the given match
+func GetStatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
 	matchID, err := strconv.Atoi(params["id"])
@@ -195,13 +195,30 @@ func GetX01StatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats, err := data.GetX01StatisticsForMatch(matchID)
+	match, err := data.GetMatch(matchID)
 	if err != nil {
-		log.Println("Unable to get statistics", err)
+		log.Printf("Unable to get Match %d", matchID)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(stats)
+
+	if match.MatchType.ID == models.CRICKET {
+		stats, err := data.GetCricketStatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get cricket statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else {
+		stats, err := data.GetX01StatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get x01 statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	}
 }
 
 // GetMatchesModes will return all match modes

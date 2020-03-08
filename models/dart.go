@@ -103,3 +103,20 @@ func (dart Dart) IsDouble() bool {
 func (dart Dart) IsTriple() bool {
 	return dart.Multiplier == TRIPLE
 }
+
+// CountIf will return the multiplier of the dart, if the value of the dart matches the given value
+func (dart Dart) CountIf(value int) int64 {
+	count := int64(0)
+	if dart.Value.Valid && dart.Value.Int64 == int64(value) {
+		count = dart.Multiplier
+	}
+	return count
+}
+
+// ValueRaw will return the value of the dart or 0 if invalid
+func (dart Dart) ValueRaw() int {
+	if dart.Value.Valid {
+		return int(dart.Value.Int64)
+	}
+	return 0
+}

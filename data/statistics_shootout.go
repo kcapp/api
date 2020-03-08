@@ -74,7 +74,7 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 func GetShootoutStatisticsForLeg(id int) ([]*models.StatisticsShootout, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id,
+			l.id,
 			p.id,
 			SUM(s.ppd) / COUNT(p.id),
 			SUM(60s_plus),
@@ -84,7 +84,6 @@ func GetShootoutStatisticsForLeg(id int) ([]*models.StatisticsShootout, error) {
 		FROM statistics_shootout s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
-			JOIN matches m ON m.id = l.match_id
 		WHERE l.id = ? GROUP BY p.id`, id)
 	if err != nil {
 		return nil, err
@@ -101,4 +100,44 @@ func GetShootoutStatisticsForLeg(id int) ([]*models.StatisticsShootout, error) {
 		stats = append(stats, s)
 	}
 	return stats, nil
+}
+
+// CalculateShootoutStatistics will generate shootout statistics for the given leg
+func CalculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout, error) {
+	visits, err := GetLegVisits(legID)
+	if err != nil {
+		return nil, err
+	}
+
+	players, err := GetPlayersScore(legID)
+	if err != nil {
+		return nil, err
+	}
+	statisticsMap := make(map[int]*models.StatisticsShootout)
+	for _, player := range players {
+		stats := new(models.StatisticsShootout)
+		statisticsMap[player.PlayerID] = stats
+	}
+
+	for _, visit := range visits {
+		stats := statisticsMap[visit.PlayerID]
+
+		visitScore := visit.GetScore()
+		stats.PPD += float32(visitScore)
+
+		if visitScore >= 60 && visitScore < 100 {
+			stats.Score60sPlus++
+		} else if visitScore >= 100 && visitScore < 140 {
+			stats.Score100sPlus++
+		} else if visitScore >= 140 && visitScore < 180 {
+			stats.Score140sPlus++
+		} else if visitScore == 180 {
+			stats.Score180s++
+		}
+	}
+
+	for _, stats := range statisticsMap {
+		stats.PPD = stats.PPD / float32(9)
+	}
+	return statisticsMap, nil
 }

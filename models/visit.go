@@ -10,17 +10,18 @@ import (
 
 // Visit struct used for storing legs
 type Visit struct {
-	ID          int    `json:"id"`
-	LegID       int    `json:"leg_id"`
-	PlayerID    int    `json:"player_id"`
-	FirstDart   *Dart  `json:"first_dart"`
-	SecondDart  *Dart  `json:"second_dart"`
-	ThirdDart   *Dart  `json:"third_dart"`
-	IsBust      bool   `json:"is_bust"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
-	Count       int    `json:"count,omitempty"`
-	DartsThrown int    `json:"darts_thrown,omitempty"`
+	ID          int         `json:"id"`
+	LegID       int         `json:"leg_id"`
+	PlayerID    int         `json:"player_id"`
+	FirstDart   *Dart       `json:"first_dart"`
+	SecondDart  *Dart       `json:"second_dart"`
+	ThirdDart   *Dart       `json:"third_dart"`
+	IsBust      bool        `json:"is_bust"`
+	CreatedAt   string      `json:"created_at"`
+	UpdatedAt   string      `json:"updated_at"`
+	Count       int         `json:"count,omitempty"`
+	DartsThrown int         `json:"darts_thrown,omitempty"`
+	Scores      map[int]int `json:"scores,omitempty"`
 }
 
 type comparingMatrix [][]bool
@@ -209,6 +210,13 @@ func (visit Visit) GetDartsThrown() int {
 	return thrown
 }
 
+// GetHitCount will return the count of times the value has been hit in the visit
+func (visit Visit) GetHitCount(value int) int64 {
+	return visit.FirstDart.CountIf(value) +
+		visit.SecondDart.CountIf(value) +
+		visit.ThirdDart.CountIf(value)
+}
+
 // makeComparingMatrix will create a comparing matrix for the two visits
 func (visit Visit) makeComparingMatrix(comparingVisit Visit) comparingMatrix {
 	comparingMatrix := make([][]bool, 3)
@@ -246,4 +254,72 @@ func (matrix comparingMatrix) isMatrixEqual() bool {
 		}
 	}
 	return true
+}
+
+// GetMarksHit will return the number of marks for the given visit
+// It will only match against the slice of darts, and when other players have not closed it
+func (visit Visit) GetMarksHit(darts []int, hitsMap map[int]map[int]int64) int {
+	hits := hitsMap[visit.PlayerID]
+	marks := int64(0)
+
+	if isMarkOpen(visit.FirstDart, darts, hitsMap) {
+		val := visit.FirstDart.ValueRaw()
+		multiplier := visit.FirstDart.Multiplier
+		if _, ok := hits[val]; !ok {
+			hits[val] = multiplier
+		} else {
+			hits[val] += multiplier
+		}
+		marks += multiplier
+	}
+	if isMarkOpen(visit.SecondDart, darts, hitsMap) {
+		val := visit.SecondDart.ValueRaw()
+		multiplier := visit.SecondDart.Multiplier
+		if _, ok := hits[val]; !ok {
+			hits[val] = multiplier
+		} else {
+			hits[val] += multiplier
+		}
+		marks += multiplier
+	}
+	if isMarkOpen(visit.ThirdDart, darts, hitsMap) {
+		val := visit.ThirdDart.ValueRaw()
+		multiplier := visit.ThirdDart.Multiplier
+		if _, ok := hits[val]; !ok {
+			hits[val] = multiplier
+		} else {
+			hits[val] += multiplier
+		}
+		marks += multiplier
+	}
+	return int(marks)
+}
+
+// find takes a slice and looks for an element in it. If found it will
+// return it's key, otherwise it will return -1 and a bool of false.
+func find(slice []int, val int) (int, bool) {
+	for i, item := range slice {
+		if item == val {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
+func isMarkOpen(dart *Dart, darts []int, hitsMap map[int]map[int]int64) bool {
+	val := dart.ValueRaw()
+
+	_, found := find(darts, val)
+	if found {
+		// Check if number is closed by all players
+		open := false
+		for _, playerHits := range hitsMap {
+			if playerHits[val] < 3 {
+				open = true
+				break
+			}
+		}
+		return open
+	}
+	return false
 }

@@ -42,10 +42,12 @@ func NewMatch(match models.Match) (*models.Match, error) {
 		tx.Rollback()
 		return nil, err
 	}
+
 	tx.Exec("UPDATE matches SET current_leg_id = ? WHERE id = ?", legID, matchID)
 	for idx, playerID := range match.Players {
 		order := idx + 1
-		res, err = tx.Exec("INSERT INTO player2leg (player_id, leg_id, `order`, match_id, handicap) VALUES (?, ?, ?, ?, ?)", playerID, legID, order, matchID, match.PlayerHandicaps[playerID])
+		res, err = tx.Exec("INSERT INTO player2leg (player_id, leg_id, `order`, match_id, handicap) VALUES (?, ?, ?, ?, ?)",
+			playerID, legID, order, matchID, match.PlayerHandicaps[playerID])
 		if err != nil {
 			tx.Rollback()
 			return nil, err
@@ -310,6 +312,59 @@ func GetMatch(id int) (*models.Match, error) {
 	if err != nil {
 		return nil, err
 	}
+	return m, nil
+}
+
+// GetMatchForLeg returns a match for the given leg ID
+func GetMatchForLeg(legID int) (*models.Match, error) {
+	m := new(models.Match)
+	m.MatchType = new(models.MatchType)
+	m.MatchMode = new(models.MatchMode)
+	ot := new(models.OweType)
+	venue := new(models.Venue)
+	tournament := new(models.MatchTournament)
+	var players string
+	err := models.DB.QueryRow(`
+        SELECT
+			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.current_leg_id, m.winner_id, m.office_id, m.is_practice, m.created_at, m.updated_at,
+			m.owe_type_id, m.venue_id, mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name, mm.wins_required,
+			mm.legs_required, ot.id, ot.item, v.id, v.name, v.description,
+			MAX(l.updated_at) AS 'last_throw',
+			MIN(s.created_at) AS 'first_throw',
+			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
+			m.tournament_id, t.id, t.name, t.office_id, tg.id, tg.name
+		FROM matches m
+			JOIN match_type mt ON mt.id = m.match_type_id
+			JOIN match_mode mm ON mm.id = m.match_mode_id
+			LEFT JOIN leg l ON l.match_id = m.id
+			LEFT JOIN score s ON s.leg_id = l.id
+			LEFT JOIN owe_type ot ON ot.id = m.owe_type_id
+			LEFT JOIN venue v on v.id = m.venue_id
+			LEFT JOIN player2leg p2l ON p2l.match_id = m.id
+			LEFT JOIN player2tournament p2t ON p2t.tournament_id = m.tournament_id AND p2t.player_id = p2l.player_id
+			LEFT JOIN tournament t ON t.id = p2t.tournament_id
+			LEFT JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
+		WHERE l.id = ?`, legID).Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice,
+		&m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
+		&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
+		&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &m.FirstThrow, &players, &m.TournamentID, &tournament.TournamentID,
+		&tournament.TournamentName, &tournament.OfficeID, &tournament.TournamentGroupID, &tournament.TournamentGroupName)
+	if err != nil {
+		return nil, err
+	}
+	if m.OweTypeID.Valid {
+		m.OweType = ot
+	}
+	if m.VenueID.Valid {
+		m.Venue, err = GetVenue(int(m.VenueID.Int64))
+		if err != nil {
+			return nil, err
+		}
+	}
+	if m.TournamentID.Valid {
+		m.Tournament = tournament
+	}
+	m.Players = util.StringToIntArray(players)
 	return m, nil
 }
 

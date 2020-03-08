@@ -13,7 +13,8 @@ import (
 )
 
 // GetPlayers returns a map of all players
-func GetPlayers() (map[int]*models.Player, error) {played, err := GetMatchesPlayedPerPlayer()
+func GetPlayers() (map[int]*models.Player, error) {
+	played, err := GetMatchesPlayedPerPlayer()
 	if err != nil {
 		return nil, err
 	}
@@ -191,33 +192,37 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 	if err != nil {
 		return nil, err
 	}
+	m, err := GetMatchForLeg(legID)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := models.DB.Query(`
-		SELECT
-			p2l.leg_id,
-			p2l.player_id,
-			p.first_name,
-			p2l.order,
-			p2l.handicap,
-			p2l.player_id = l.current_player_id AS 'is_current_player',
-			(l.starting_score +
-				-- Add handicap for players if match_mode is handicap
-				IF(m.match_type_id = 3, IFNULL(p2l.handicap, 0), 0)) -
-				(IFNULL(SUM(first_dart * first_dart_multiplier), 0) +
-				IFNULL(SUM(second_dart * second_dart_multiplier), 0) +
-				IFNULL(SUM(third_dart * third_dart_multiplier), 0))
-				-- For X01 score goes down, while Shootout it counts up
-				* IF(m.match_type_id = 2, -1, 1) AS 'current_score',
-			b.player_id,
-			b.skill_level
-		FROM player2leg p2l
-			LEFT JOIN player p on p.id = p2l.player_id
-			LEFT JOIN leg l ON l.id = p2l.leg_id
-			LEFT JOIN score s ON s.leg_id = p2l.leg_id AND s.player_id = p2l.player_id
-			LEFT JOIN matches m on m.id = l.match_id
-			LEFT JOIN bot2player2leg b ON b.player2leg_id = p2l.id
-		WHERE p2l.leg_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
-		GROUP BY p2l.player_id
-		ORDER BY p2l.order ASC`, legID)
+			SELECT
+				p2l.leg_id,
+				p2l.player_id,
+				p.first_name,
+				p2l.order,
+				p2l.handicap,
+				p2l.player_id = l.current_player_id AS 'is_current_player',
+				(l.starting_score +
+					-- Add handicap for players if match_mode is handicap
+					IF(m.match_type_id = 3, IFNULL(p2l.handicap, 0), 0)) -
+					(IFNULL(SUM(first_dart * first_dart_multiplier), 0) +
+					IFNULL(SUM(second_dart * second_dart_multiplier), 0) +
+					IFNULL(SUM(third_dart * third_dart_multiplier), 0))
+					-- For X01 score goes down, while Shootout it counts up
+					* IF(m.match_type_id = 2, -1, 1) AS 'current_score',
+				b.player_id,
+				b.skill_level
+			FROM player2leg p2l
+				LEFT JOIN player p on p.id = p2l.player_id
+				LEFT JOIN leg l ON l.id = p2l.leg_id
+				LEFT JOIN score s ON s.leg_id = p2l.leg_id AND s.player_id = p2l.player_id
+				LEFT JOIN matches m on m.id = l.match_id
+				LEFT JOIN bot2player2leg b ON b.player2leg_id = p2l.id
+			WHERE p2l.leg_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
+			GROUP BY p2l.player_id
+			ORDER BY p2l.order ASC`, legID)
 	if err != nil {
 		return nil, err
 	}
@@ -240,6 +245,35 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
+
+	// Get score for other game modes
+	if m.MatchType.ID == models.CRICKET {
+		// Recalculate score for each player
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+
+		cricketScores := make(map[int]*models.Player2Leg)
+		for _, id := range m.Players {
+			p2l := new(models.Player2Leg)
+			p2l.Hits = make(map[int]int64)
+			cricketScores[id] = p2l
+		}
+
+		for _, visit := range visits {
+			calculateCricketScore(visit.PlayerID, visit.FirstDart, cricketScores)
+			calculateCricketScore(visit.PlayerID, visit.SecondDart, cricketScores)
+			calculateCricketScore(visit.PlayerID, visit.ThirdDart, cricketScores)
+		}
+
+		for _, player := range scores {
+			player.CurrentScore = cricketScores[player.PlayerID].CurrentScore
+		}
+
+		return scores, nil
+	}
+
 	return scores, nil
 }
 
