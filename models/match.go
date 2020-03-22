@@ -11,8 +11,10 @@ const (
 	SHOOTOUT = 2
 	// X01HANDICAP constant representing MatchType 3
 	X01HANDICAP = 3
-	// CRICKET constatn representing MatchType 4
+	// CRICKET constant representing MatchType 4
 	CRICKET = 4
+	// DARTSATX constant representing MatchType 5
+	DARTSATX = 5
 )
 
 // Match struct used for storing matches

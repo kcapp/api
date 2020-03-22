@@ -232,8 +232,8 @@ func FinishLegNew(visit models.Visit) error {
 
 	// Update leg with winner
 	winnerID := visit.PlayerID
-	if match.MatchType.ID == models.SHOOTOUT {
-		// For 9 Dart Shootout we need to check the scores of each player
+	if match.MatchType.ID == models.SHOOTOUT || match.MatchType.ID == models.DARTSATX {
+		// For "9 Dart Shootout" and "Darts at X" we need to check the scores of each player
 		// to determine which player won the leg with the highest score
 		scores, err := GetPlayersScore(visit.LegID)
 		if err != nil {
@@ -289,6 +289,23 @@ func FinishLegNew(visit models.Visit) error {
 				return err
 			}
 			log.Printf("[%d] Inserting cricket statistics for player %d", visit.LegID, playerID)
+		}
+	} else if match.MatchType.ID == models.DARTSATX {
+		statisticsMap, err := CalculateDartsAtXStatistics(visit.LegID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+				INSERT INTO statistics_darts_at_x
+					(leg_id, player_id, score, singles, doubles, triples, hit_rate)
+				VALUES (?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.Score, stats.Singles, stats.Doubles, stats.Triples, stats.HitRate)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("[%d] Inserting Darts At %d statistics for player %d", visit.LegID, leg.StartingScore, playerID)
 		}
 	} else {
 		statisticsMap, err := CalculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
@@ -566,14 +583,16 @@ func GetActiveLegs() ([]*models.Leg, error) {
 func GetLeg(id int) (*models.Leg, error) {
 	leg := new(models.Leg)
 	var players string
+	var matchType int
 	err := models.DB.QueryRow(`
 		SELECT
 			l.id, l.end_time, l.starting_score, l.is_finished, l.current_player_id, l.winner_id, l.created_at, l.updated_at,
-			l.board_stream_url, l.match_id, l.has_scores, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order ASC) AS 'players'
+			l.board_stream_url, l.match_id, l.has_scores, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order ASC) AS 'players', m.match_type_id
 		FROM leg l
 			LEFT JOIN player2leg p2l ON p2l.leg_id = l.id
+			LEFT JOIN matches m ON m.id = l.match_id
 		WHERE l.id = ?`, id).Scan(&leg.ID, &leg.Endtime, &leg.StartingScore, &leg.IsFinished, &leg.CurrentPlayerID, &leg.WinnerPlayerID, &leg.CreatedAt,
-		&leg.UpdatedAt, &leg.BoardStreamURL, &leg.MatchID, &leg.HasScores, &players)
+		&leg.UpdatedAt, &leg.BoardStreamURL, &leg.MatchID, &leg.HasScores, &players, &matchType)
 	if err != nil {
 		return nil, err
 	}
@@ -583,14 +602,62 @@ func GetLeg(id int) (*models.Leg, error) {
 	if err != nil {
 		return nil, err
 	}
+	scores := make(map[int]int)
+	for i := 0; i < len(leg.Players); i++ {
+		if matchType == models.DARTSATX {
+			scores[leg.Players[i]] = 0
+		} else {
+			scores[leg.Players[i]] = leg.StartingScore
+		}
+	}
+
 	dartsThrown := 0
 	visitCount := 0
-	for _, visit := range visits {
+	for i, visit := range visits {
 		if visitCount%len(leg.Players) == 0 {
 			dartsThrown += 3
 		}
 		visit.DartsThrown = dartsThrown
 		visitCount++
+
+		if !visit.IsBust {
+			score := visit.GetScore()
+			if matchType == models.DARTSATX {
+				score = 0
+				if visit.FirstDart.ValueRaw() == leg.StartingScore {
+					score += int(visit.FirstDart.Multiplier)
+				}
+				if visit.SecondDart.ValueRaw() == leg.StartingScore {
+					score += int(visit.SecondDart.Multiplier)
+				}
+				if visit.ThirdDart.ValueRaw() == leg.StartingScore {
+					score += int(visit.ThirdDart.Multiplier)
+				}
+			}
+
+			if matchType == models.DARTSATX || matchType == models.SHOOTOUT {
+				scores[visit.PlayerID] += score
+			} else {
+				scores[visit.PlayerID] -= score
+			}
+			visit.Score = score
+		}
+
+		visit.Scores = make(map[int]int)
+		visit.Scores[visit.PlayerID] = scores[visit.PlayerID]
+		for j := 1; j < len(leg.Players); j++ {
+			var next *models.Visit
+			if i+j >= len(visits) && i-(len(leg.Players)-j) > 0 {
+				// There is no next visit, so look at previous instead
+				// Need to look in reverese order to keep the order of scores the same
+				next = visits[i-(len(leg.Players)-j)]
+			} else {
+				next = visits[i+j]
+			}
+			if next != nil {
+				visit.Scores[next.PlayerID] = scores[next.PlayerID]
+			}
+		}
 	}
 
 	// When checking out, it might be done in 1, 2 or 3 darts, so make
@@ -621,7 +688,7 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 	if err != nil {
 		return nil, err
 	}
-	hitsMap := make(map[int]map[int]int64)
+	hitsMap := make(map[int]map[int]*models.Hits)
 	lowestScore := leg.StartingScore
 	players := make([]*models.Player2Leg, 0)
 	for _, player := range scores {
@@ -629,7 +696,7 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 		if player.CurrentScore < lowestScore {
 			lowestScore = player.CurrentScore
 		}
-		hitsMap[player.PlayerID] = make(map[int]int64)
+		hitsMap[player.PlayerID] = make(map[int]*models.Hits)
 		players = append(players, player)
 	}
 
@@ -644,18 +711,26 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 	}
 
 	// Get hits on each number for each player
-	darts := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25}
 	for _, visit := range leg.Visits {
-		for _, dart := range darts {
-			count := visit.GetHitCount(dart)
-			if count > 0 {
-				if _, ok := hitsMap[visit.PlayerID][dart]; !ok {
-					hitsMap[visit.PlayerID][dart] = count
-				} else {
-					hitsMap[visit.PlayerID][dart] += count
-				}
-			}
+		m := hitsMap[visit.PlayerID]
+
+		v := visit.FirstDart.ValueRaw()
+		if _, ok := m[v]; !ok {
+			m[v] = new(models.Hits)
 		}
+		m[v].Add(visit.FirstDart)
+
+		v = visit.SecondDart.ValueRaw()
+		if _, ok := m[v]; !ok {
+			m[v] = new(models.Hits)
+		}
+		m[v].Add(visit.SecondDart)
+
+		v = visit.ThirdDart.ValueRaw()
+		if _, ok := m[v]; !ok {
+			m[v] = new(models.Hits)
+		}
+		m[v].Add(visit.ThirdDart)
 	}
 
 	for _, player := range players {

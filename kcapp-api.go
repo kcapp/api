@@ -73,6 +73,8 @@ func main() {
 
 	router.HandleFunc("/statistics/x01/{from}/{to}", controllers.GetX01Statistics).Methods("GET")
 	router.HandleFunc("/statistics/shootout/{from}/{to}", controllers.GetShootoutStatistics).Methods("GET")
+	router.HandleFunc("/statistics/cricket/{from}/{to}", controllers.GetCricketStatistics).Methods("GET")
+	router.HandleFunc("/statistics/dartsatx/{from}/{to}", controllers.GetDartsAtXStatistics).Methods("GET")
 	router.HandleFunc("/statistics/global", controllers.GetGlobalStatistics).Methods("GET")
 	router.HandleFunc("/statistics/office/{from}/{to}", controllers.GetOfficeStatistics).Methods("GET")
 	router.HandleFunc("/statistics/office/{office_id}/{from}/{to}", controllers.GetOfficeStatistics).Methods("GET")

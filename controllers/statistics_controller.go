@@ -37,6 +37,32 @@ func GetShootoutStatistics(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
+// GetCricketStatistics will return Cricket statistics for a given period
+func GetCricketStatistics(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	SetHeaders(w)
+	stats, err := data.GetCricketStatistics(params["from"], params["to"])
+	if err != nil {
+		log.Println("Unable to get Cricket statistics", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(stats)
+}
+
+// GetDartsAtXStatistics will return Cricket statistics for a given period
+func GetDartsAtXStatistics(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	SetHeaders(w)
+	stats, err := data.GetDartsAtXStatistics(params["from"], params["to"])
+	if err != nil {
+		log.Println("Unable to get Darts At X statistics", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(stats)
+}
+
 // GetGlobalStatistics will return some global statistics for all legs played
 func GetGlobalStatistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

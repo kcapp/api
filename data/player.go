@@ -204,14 +204,14 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 				p2l.order,
 				p2l.handicap,
 				p2l.player_id = l.current_player_id AS 'is_current_player',
-				(l.starting_score +
+				IF(m.match_type_id = 5, 0, (l.starting_score +
 					-- Add handicap for players if match_mode is handicap
 					IF(m.match_type_id = 3, IFNULL(p2l.handicap, 0), 0)) -
 					(IFNULL(SUM(first_dart * first_dart_multiplier), 0) +
 					IFNULL(SUM(second_dart * second_dart_multiplier), 0) +
 					IFNULL(SUM(third_dart * third_dart_multiplier), 0))
 					-- For X01 score goes down, while Shootout it counts up
-					* IF(m.match_type_id = 2, -1, 1) AS 'current_score',
+					* IF(m.match_type_id = 2, -1, 1)) AS 'current_score',
 				b.player_id,
 				b.skill_level
 			FROM player2leg p2l
@@ -257,7 +257,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		cricketScores := make(map[int]*models.Player2Leg)
 		for _, id := range m.Players {
 			p2l := new(models.Player2Leg)
-			p2l.Hits = make(map[int]int64)
+			p2l.Hits = make(map[int]*models.Hits)
 			cricketScores[id] = p2l
 		}
 
@@ -272,6 +272,34 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		}
 
 		return scores, nil
+	} else if m.MatchType.ID == models.DARTSATX {
+		rows, err := models.DB.Query(`
+			SELECT
+				player_id,
+				SUM(case when first_dart = l.starting_score then first_dart_multiplier else 0 end) +
+				SUM(case when second_dart = l.starting_score then second_dart_multiplier else 0 end) +
+				SUM(case when third_dart = l.starting_score then third_dart_multiplier else 0 end) as 'current_score'
+			FROM score s
+			JOIN leg l on l.id = s.leg_id
+			WHERE leg_id = ?
+			GROUP BY player_id`, legID)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var playerID int
+			var score int
+			err := rows.Scan(&playerID, &score)
+			if err != nil {
+				return nil, err
+			}
+			scores[playerID].CurrentScore = score
+		}
+		if err = rows.Err(); err != nil {
+			return nil, err
+		}
 	}
 
 	return scores, nil

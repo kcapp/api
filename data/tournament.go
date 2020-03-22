@@ -387,16 +387,16 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 		SELECT
 			p.id AS 'player_id',
 			l.id AS 'leg_id',
-			s.ppd_score * 3 / s.darts_thrown,
-			s.first_nine_ppd_score * 3 / 9,
+			l.winner_id,
+			s.ppd_score * 3 / s.darts_thrown as 'three_dart_avg',
+			s.first_nine_ppd_score * 3 / 9 as 'first_nine_avg',
 			s.checkout_percentage,
 			s.darts_thrown,
 			l.starting_score
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
-		WHERE s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))
-		AND p.id = l.winner_id`, tournamentID)
+		WHERE s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))`, tournamentID)
 	if err != nil {
 		return nil, err
 	}
@@ -405,7 +405,7 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 	stats := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.LegID, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.CheckoutPercentage, &s.DartsThrown, &s.StartingScore)
+		err := rows.Scan(&s.PlayerID, &s.LegID, &s.WinnerID, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.CheckoutPercentage, &s.DartsThrown, &s.StartingScore)
 		if err != nil {
 			return nil, err
 		}
@@ -424,35 +424,36 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 			bestStatistics[stat.PlayerID] = best
 		}
 
-		// Only count best statistics when the player actually won the leg
-		if stat.StartingScore.Int64 == 301 {
-			if best.Best301 == nil {
-				best.Best301 = new(models.BestStatistic)
+		if stat.PlayerID == stat.WinnerID {
+			if stat.StartingScore.Int64 == 301 {
+				if best.Best301 == nil {
+					best.Best301 = new(models.BestStatistic)
+				}
+				if stat.DartsThrown < best.Best301.Value || best.Best301.Value == 0 {
+					best.Best301.Value = stat.DartsThrown
+					best.Best301.LegID = stat.LegID
+					best.Best301.PlayerID = stat.PlayerID
+				}
 			}
-			if stat.DartsThrown < best.Best301.Value || best.Best301.Value == 0 {
-				best.Best301.Value = stat.DartsThrown
-				best.Best301.LegID = stat.LegID
-				best.Best301.PlayerID = stat.PlayerID
+			if stat.StartingScore.Int64 == 501 {
+				if best.Best501 == nil {
+					best.Best501 = new(models.BestStatistic)
+				}
+				if stat.DartsThrown < best.Best501.Value || best.Best501.Value == 0 {
+					best.Best501.Value = stat.DartsThrown
+					best.Best501.LegID = stat.LegID
+					best.Best501.PlayerID = stat.PlayerID
+				}
 			}
-		}
-		if stat.StartingScore.Int64 == 501 {
-			if best.Best501 == nil {
-				best.Best501 = new(models.BestStatistic)
-			}
-			if stat.DartsThrown < best.Best501.Value || best.Best501.Value == 0 {
-				best.Best501.Value = stat.DartsThrown
-				best.Best501.LegID = stat.LegID
-				best.Best501.PlayerID = stat.PlayerID
-			}
-		}
-		if stat.StartingScore.Int64 == 701 {
-			if best.Best701 == nil {
-				best.Best701 = new(models.BestStatistic)
-			}
-			if stat.DartsThrown < best.Best701.Value || best.Best701.Value == 0 {
-				best.Best701.Value = stat.DartsThrown
-				best.Best701.LegID = stat.LegID
-				best.Best701.PlayerID = stat.PlayerID
+			if stat.StartingScore.Int64 == 701 {
+				if best.Best701 == nil {
+					best.Best701 = new(models.BestStatistic)
+				}
+				if stat.DartsThrown < best.Best701.Value || best.Best701.Value == 0 {
+					best.Best701.Value = stat.DartsThrown
+					best.Best701.LegID = stat.LegID
+					best.Best701.PlayerID = stat.PlayerID
+				}
 			}
 		}
 		if best.BestThreeDartAvg == nil {
@@ -517,7 +518,6 @@ func NewTournament(tournament models.Tournament) (*models.Tournament, error) {
 	log.Printf("Created new tournament %d", tournamentID)
 	return GetTournament(int(tournamentID))
 }
-
 
 // GetTournamentMatchesForPlayer will return all tournament matches for the given player and tournament
 func GetTournamentMatchesForPlayer(tournamentID int, playerID int) ([]*models.Match, error) {

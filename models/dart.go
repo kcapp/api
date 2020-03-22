@@ -104,19 +104,31 @@ func (dart Dart) IsTriple() bool {
 	return dart.Multiplier == TRIPLE
 }
 
-// CountIf will return the multiplier of the dart, if the value of the dart matches the given value
-func (dart Dart) CountIf(value int) int64 {
-	count := int64(0)
-	if dart.Value.Valid && dart.Value.Int64 == int64(value) {
-		count = dart.Multiplier
-	}
-	return count
-}
-
 // ValueRaw will return the value of the dart or 0 if invalid
 func (dart Dart) ValueRaw() int {
 	if dart.Value.Valid {
 		return int(dart.Value.Int64)
 	}
 	return 0
+}
+
+// GetMarksHit will return the number of marks hit by the given darts, accounting for numbers requiring less than 3 hits to close
+// If the number is still open by other players hits = multiplier, otherwise hits = multiplier - prev_hits
+func (dart *Dart) GetMarksHit(hits map[int]int64, open bool) int64 {
+	marks := int64(0)
+
+	val := dart.ValueRaw()
+	multiplier := dart.Multiplier
+	if _, ok := hits[val]; !ok {
+		hits[val] = multiplier
+		marks += multiplier
+	} else {
+		if !open && hits[val]+multiplier > 3 {
+			marks += multiplier - hits[val]
+		} else {
+			marks += multiplier
+		}
+		hits[val] += multiplier
+	}
+	return marks
 }

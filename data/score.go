@@ -85,7 +85,13 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 
 	if match.MatchType.ID == models.SHOOTOUT {
 		if ((len(leg.Visits)+1)*3)%(9*len(leg.Players)) == 0 {
-			// Finalize leg, since leg is finished!
+			err = FinishLegNew(visit)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else if match.MatchType.ID == models.DARTSATX {
+		if ((len(leg.Visits)+1)*3)%(99*len(leg.Players)) == 0 {
 			err = FinishLegNew(visit)
 			if err != nil {
 				return nil, err
@@ -105,7 +111,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 			}
 			closed := true
 			for _, dart := range []int{15, 16, 17, 18, 19, 20, 25} {
-				if player.Hits[dart] < 3 {
+				if player.Hits[dart] == nil || player.Hits[dart].Total < 3 {
 					closed = false
 					break
 				}
@@ -214,44 +220,6 @@ func DeleteLastVisit(legID int) error {
 			return err
 		}
 	}
-
-	/*m, err := GetMatchForLeg(legID)
-	if err != nil {
-		return err
-	}
-	if m.MatchType.ID == models.CRICKET {
-		// Recalculate score for each player
-		visits, err := GetLegVisits(legID)
-		if err != nil {
-			return err
-		}
-
-		playerScores := make(map[int]*models.Player2Leg)
-		for _, id := range m.Players {
-			p2l := new(models.Player2Leg)
-			p2l.Hits = make(map[int]int64)
-			playerScores[id] = p2l
-		}
-
-		for _, visit := range visits {
-			calculateCricketScore(visit.PlayerID, visit.FirstDart, playerScores)
-			calculateCricketScore(visit.PlayerID, visit.SecondDart, playerScores)
-			calculateCricketScore(visit.PlayerID, visit.ThirdDart, playerScores)
-		}
-
-		stmt, err := models.DB.Prepare(`UPDATE player2leg SET current_score = ? WHERE player_id = ?`)
-		if err != nil {
-			return err
-		}
-		defer stmt.Close()
-		for id, p2l := range playerScores {
-			_, err := stmt.Exec(p2l.CurrentScore, id)
-			if err != nil {
-				return err
-			}
-		}
-	}*/
-
 	return nil
 }
 
@@ -573,25 +541,24 @@ func calculateCricketScore(playerID int, dart *models.Dart, scores map[int]*mode
 	}
 
 	hitsMap := scores[playerID].Hits
-	hits := hitsMap[score]
 	if _, ok := hitsMap[score]; !ok {
-		hitsMap[score] = dart.Multiplier
-	} else {
-		hitsMap[score] += dart.Multiplier
+		hitsMap[score] = new(models.Hits)
 	}
-	multiplier := hitsMap[score] - hits
+	hits := hitsMap[score].Total
+	hitsMap[score].Total += int(dart.Multiplier)
+	multiplier := hitsMap[score].Total - hits
 	if hits < 3 {
-		multiplier = hitsMap[score] - 3
+		multiplier = hitsMap[score].Total - 3
 	}
-	points := int(dart.Value.Int64 * multiplier)
+	points := int(dart.Value.Int64) * multiplier
 
-	if hitsMap[score] > 3 {
+	if hitsMap[score].Total > 3 {
 		for id, p2l := range scores {
 			if id == playerID {
 				continue
 			}
-			if score, ok := p2l.Hits[score]; ok {
-				if score < 3 {
+			if val, ok := p2l.Hits[score]; ok {
+				if val.Total < 3 {
 					p2l.CurrentScore += points
 				}
 			} else {

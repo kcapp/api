@@ -71,11 +71,25 @@ type CheckoutStatistics struct {
 	CheckoutAttempts map[int]int `json:"checkout_attempts,omitempty"`
 }
 
-// Hits sturct used to store summary of hits for players/legs
+// Hits struct used to store summary of hits for players/legs
 type Hits struct {
 	Singles int `json:"1,omitempty"`
 	Doubles int `json:"2,omitempty"`
 	Triples int `json:"3,omitempty"`
+	Total   int `json:"total,omitempty"`
+}
+
+// Add will add the given dart to the hits map
+func (h *Hits) Add(dart *Dart) {
+	if dart.IsTriple() {
+		h.Triples++
+	} else if dart.IsDouble() {
+		h.Doubles++
+	} else {
+		h.Singles++
+	}
+	h.Total += int(dart.Multiplier)
+
 }
 
 // OfficeStatistics struct used for storing statistics for a office

@@ -1,8 +1,60 @@
 package data
 
 import (
+	"log"
+
+	"github.com/guregu/null"
+
 	"github.com/kcapp/api/models"
+	"github.com/kcapp/api/util"
 )
+
+// GetCricketStatistics will return statistics for all players active during the given period
+func GetCricketStatistics(from string, to string, startingScores ...int) ([]*models.StatisticsCricket, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			p.id AS 'player_id',
+			COUNT(DISTINCT m.id) AS 'matches_played',
+			COUNT(DISTINCT m2.id) AS 'matches_won',
+			COUNT(DISTINCT m.id) AS 'legs_played',
+			COUNT(DISTINCT l2.id) AS 'legs_won',
+			SUM(s.total_marks),
+			SUM(s.first_nine_marks),
+			SUM(s.total_marks) / SUM(s.rounds) as 'mpr',
+			SUM(s.first_nine_marks) / (COUNT(l.id) * 3) as 'first_nine_mpr',
+			SUM(s.marks5) as 'marks5',
+			SUM(s.marks6) as 'marks6',
+			SUM(s.marks7) as 'marks7',
+			SUM(s.marks8) as 'marks8',
+			SUM(s.marks9) as 'marks9'
+		FROM statistics_cricket s
+			JOIN player p ON p.id = s.player_id
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
+			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
+		WHERE m.updated_at >= ? AND m.updated_at < ?
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
+			AND m.match_type_id = 4
+		GROUP BY p.id
+		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	stats := make([]*models.StatisticsCricket, 0)
+	for rows.Next() {
+		s := new(models.StatisticsCricket)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.TotalMarks, &s.FirstNineMarks,
+			&s.MPR, &s.FirstNineMPR, &s.Marks5, &s.Marks6, &s.Marks7, &s.Marks8, &s.Marks9)
+		if err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	return stats, nil
+}
 
 // GetCricketStatisticsForLeg will return statistics for all players in the given leg
 func GetCricketStatisticsForLeg(id int) ([]*models.StatisticsCricket, error) {
@@ -100,7 +152,7 @@ func CalculateCricketStatistics(legID int) (map[int]*models.StatisticsCricket, e
 	for _, player := range players {
 		stats := new(models.StatisticsCricket)
 		stats.PlayerID = player.PlayerID
-		stats.Score = player.CurrentScore
+		stats.Score = null.IntFrom(int64(player.CurrentScore))
 		statisticsMap[player.PlayerID] = stats
 		playerHitsMap[player.PlayerID] = make(map[int]int64)
 	}
@@ -141,4 +193,55 @@ func CalculateCricketStatistics(legID int) (map[int]*models.StatisticsCricket, e
 		stat.Rounds = round
 	}
 	return statisticsMap, nil
+}
+
+// RecalculateCricketStatistics will recalculate x01 statistics for all legs
+func RecalculateCricketStatistics() (map[int]map[int]*models.StatisticsCricket, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			l.id, l.end_time, l.starting_score, l.is_finished,
+			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
+			l.match_id, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
+		FROM leg l
+			JOIN matches m on m.id = l.match_id
+			JOIN player2leg p2l ON p2l.leg_id = l.id
+		WHERE
+			l.id = 20366
+		GROUP BY l.id
+		ORDER BY l.id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	legs := make([]*models.Leg, 0)
+	for rows.Next() {
+		m := new(models.Leg)
+		var players string
+		err := rows.Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
+			&m.MatchID, &players)
+		if err != nil {
+			return nil, err
+		}
+		m.Players = util.StringToIntArray(players)
+		legs = append(legs, m)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	m := make(map[int]map[int]*models.StatisticsCricket)
+	for _, leg := range legs {
+		stats, err := CalculateCricketStatistics(leg.ID)
+		if err != nil {
+			return nil, err
+		}
+		for playerID, stat := range stats {
+			log.Printf(`UPDATE statistics_cricket SET total_marks = %d, rounds = %d, score = %d, first_nine_marks = %d, mpr = %f, first_nine_mpr = %f, marks5 = %d,
+			marks6 = %d, marks7 = %d, marks8 = %d, marks9 = %d WHERE played_id = %d AND leg_id = %d;`, stat.TotalMarks, stat.Rounds, stat.Score, stat.FirstNineMarks, stat.MPR, stat.FirstNineMPR, stat.Marks5,
+				stat.Marks6, stat.Marks7, stat.Marks8, stat.Marks9, playerID, leg.ID)
+		}
+		m[leg.ID] = stats
+	}
+	return m, err
 }
