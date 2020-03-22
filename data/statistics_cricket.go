@@ -195,6 +195,55 @@ func CalculateCricketStatistics(legID int) (map[int]*models.StatisticsCricket, e
 	return statisticsMap, nil
 }
 
+// GetPlayerCricketStatistics will return statistics for the given player
+func GetPlayerCricketStatistics(id int) (*models.StatisticsCricket, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			p.id AS 'player_id',
+			COUNT(DISTINCT m.id) AS 'matches_played',
+			COUNT(DISTINCT m2.id) AS 'matches_won',
+			COUNT(DISTINCT m.id) AS 'legs_played',
+			COUNT(DISTINCT l2.id) AS 'legs_won',
+			SUM(s.total_marks),
+			SUM(s.first_nine_marks),
+			SUM(s.total_marks) / SUM(s.rounds) as 'mpr',
+			SUM(s.first_nine_marks) / (COUNT(l.id) * 3) as 'first_nine_mpr',
+			SUM(s.marks5) as 'marks5',
+			SUM(s.marks6) as 'marks6',
+			SUM(s.marks7) as 'marks7',
+			SUM(s.marks8) as 'marks8',
+			SUM(s.marks9) as 'marks9'
+		FROM statistics_cricket s
+			JOIN player p ON p.id = s.player_id
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
+			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
+		WHERE s.player_id = ?
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
+			AND m.match_type_id = 4
+		GROUP BY s.player_id`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	stats := make([]*models.StatisticsCricket, 0)
+	for rows.Next() {
+		s := new(models.StatisticsCricket)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.TotalMarks, &s.FirstNineMarks,
+			&s.MPR, &s.FirstNineMPR, &s.Marks5, &s.Marks6, &s.Marks7, &s.Marks8, &s.Marks9)
+		if err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	if len(stats) > 0 {
+		return stats[0], nil
+	}
+	return new(models.StatisticsCricket), nil
+}
+
 // RecalculateCricketStatistics will recalculate x01 statistics for all legs
 func RecalculateCricketStatistics() (map[int]map[int]*models.StatisticsCricket, error) {
 	rows, err := models.DB.Query(`

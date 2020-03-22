@@ -115,6 +115,50 @@ func GetDartsAtXStatisticsForMatch(id int) ([]*models.StatisticsDartsAtX, error)
 	return stats, nil
 }
 
+// GetPlayerDartsAtXStatistics will return statistics for the given player
+func GetPlayerDartsAtXStatistics(id int) (*models.StatisticsDartsAtX, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			p.id AS 'player_id',
+			COUNT(DISTINCT m.id) AS 'matches_played',
+			COUNT(DISTINCT m2.id) AS 'matches_won',
+			COUNT(DISTINCT m.id) AS 'legs_played',
+			COUNT(DISTINCT l2.id) AS 'legs_won',
+			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
+			SUM(s.singles) as 'singles',
+			SUM(s.doubles) as 'doubles',
+			SUM(s.triples) as 'triples',
+			SUM(s.singles + s.doubles + s.triples) / (99 * COUNT(DISTINCT l.id)) as 'hit_rate'
+		FROM statistics_darts_at_x s
+			JOIN player p ON p.id = s.player_id
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
+			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
+		WHERE s.player_id = ?
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
+			AND m.match_type_id = 5
+		GROUP BY s.player_id`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	stats := make([]*models.StatisticsDartsAtX, 0)
+	for rows.Next() {
+		s := new(models.StatisticsDartsAtX)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.AvgScore, &s.Singles, &s.Doubles, &s.Triples, &s.HitRate)
+		if err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	if len(stats) > 0 {
+		return stats[0], nil
+	}
+	return new(models.StatisticsDartsAtX), nil
+}
+
 // CalculateDartsAtXStatistics will generate cricket statistics for the given leg
 func CalculateDartsAtXStatistics(legID int) (map[int]*models.StatisticsDartsAtX, error) {
 	visits, err := GetLegVisits(legID)

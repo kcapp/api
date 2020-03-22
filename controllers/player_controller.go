@@ -1,13 +1,13 @@
 package controllers
 
 import (
-	"encoding/json"
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
-	"bytes"
 
 	"github.com/kcapp/api/data"
 	"github.com/kcapp/api/models"
@@ -89,6 +89,64 @@ func GetPlayerX01Statistics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(stats)
+}
+
+// GetPlayerStatistics will return statistics for the given player
+func GetPlayerStatistics(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	statistics := new(models.PlayerStatistics)
+
+	x01, err := data.GetPlayerX01Statistics(id)
+	if err != nil {
+		log.Println("Unable to get player x01 statistics")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	visits, err := data.GetPlayerVisitCount(id)
+	if err != nil {
+		log.Println("Unable to get visits for player", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	x01.Visits = visits
+	for _, v := range visits {
+		x01.TotalVisits += v.Count
+	}
+	statistics.X01 = x01
+
+	shootout, err := data.GetPlayerShootoutStatistics(id)
+	if err != nil {
+		log.Println("Unable to get player shootout statistics")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	statistics.Shootout = shootout
+
+	cricket, err := data.GetPlayerCricketStatistics(id)
+	if err != nil {
+		log.Println("Unable to get player cricket statistics")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	statistics.Cricket = cricket
+
+	dartsAtX, err := data.GetPlayerDartsAtXStatistics(id)
+	if err != nil {
+		log.Println("Unable to get player darts at X statistics")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	statistics.DartsAt = dartsAtX
+
+	json.NewEncoder(w).Encode(statistics)
 }
 
 // GetPlayerX01PreviousStatistics will return statistics for the given player
@@ -335,7 +393,7 @@ func GetPlayerCalendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	result := models.Entries{}
-    for _, match := range matches {
+	for _, match := range matches {
 		if match.IsFinished {
 			continue
 		}
@@ -358,7 +416,7 @@ func GetPlayerCalendar(w http.ResponseWriter, r *http.Request) {
 			location = match.Venue.Name.String
 		}
 		entry.Location = location
-		entry.Description =  "Official Darts Match (" + strconv.Itoa(match.ID) + ") - " + home.FirstName + " vs. " + away.FirstName + " at " + location
+		entry.Description = "Official Darts Match (" + strconv.Itoa(match.ID) + ") - " + home.FirstName + " vs. " + away.FirstName + " at " + location
 		result = append(result, entry)
 	}
 
