@@ -304,3 +304,11 @@ func isMarkOpen(playerID int, dart *Dart, darts []int, hitsMap map[int]map[int]i
 	}
 	return false, false
 }
+
+// CalculateCricketScore will calculate the score for each player for the given visit
+func (visit *Visit) CalculateCricketScore(scores map[int]*Player2Leg) int {
+	points := visit.FirstDart.CalculateCricketScore(visit.PlayerID, scores)
+	points += visit.SecondDart.CalculateCricketScore(visit.PlayerID, scores)
+	points += visit.ThirdDart.CalculateCricketScore(visit.PlayerID, scores)
+	return points
+}

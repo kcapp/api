@@ -132,3 +132,53 @@ func (dart *Dart) GetMarksHit(hits map[int]int64, open bool) int64 {
 	}
 	return marks
 }
+
+// CalculateCricketScore will calculate the score for each player for the given dart
+func (dart *Dart) CalculateCricketScore(playerID int, scores map[int]*Player2Leg) int {
+	if !dart.Value.Valid {
+		return 0
+	}
+
+	score := int(dart.Value.Int64)
+	darts := []int{15, 16, 17, 18, 19, 20, 25}
+	found := false
+	for _, val := range darts {
+		if val == score {
+			found = true
+		}
+	}
+	if !found {
+		return 0
+	}
+
+	hitsMap := scores[playerID].Hits
+	if _, ok := hitsMap[score]; !ok {
+		hitsMap[score] = new(Hits)
+	}
+	hits := hitsMap[score].Total
+	hitsMap[score].Total += int(dart.Multiplier)
+	multiplier := hitsMap[score].Total - hits
+	if hits < 3 {
+		multiplier = hitsMap[score].Total - 3
+	}
+	points := int(dart.Value.Int64) * multiplier
+
+	if hitsMap[score].Total > 3 {
+		for id, p2l := range scores {
+			if id == playerID {
+				continue
+			}
+			if val, ok := p2l.Hits[score]; ok {
+				if val.Total < 3 {
+					p2l.CurrentScore += points
+				}
+			} else {
+				p2l.CurrentScore += points
+			}
+		}
+	}
+	if points < 0 {
+		points = 0
+	}
+	return points
+}

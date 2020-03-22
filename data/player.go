@@ -262,9 +262,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		}
 
 		for _, visit := range visits {
-			calculateCricketScore(visit.PlayerID, visit.FirstDart, cricketScores)
-			calculateCricketScore(visit.PlayerID, visit.SecondDart, cricketScores)
-			calculateCricketScore(visit.PlayerID, visit.ThirdDart, cricketScores)
+			visit.CalculateCricketScore(cricketScores)
 		}
 
 		for _, player := range scores {

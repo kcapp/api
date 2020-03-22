@@ -602,13 +602,18 @@ func GetLeg(id int) (*models.Leg, error) {
 	if err != nil {
 		return nil, err
 	}
-	scores := make(map[int]int)
+	scores := make(map[int]*models.Player2Leg)
 	for i := 0; i < len(leg.Players); i++ {
+		p2l := new(models.Player2Leg)
+		p2l.Hits = make(map[int]*models.Hits)
 		if matchType == models.DARTSATX {
-			scores[leg.Players[i]] = 0
+			p2l.CurrentScore = 0
+		} else if matchType == models.X01HANDICAP {
+			// TODO
 		} else {
-			scores[leg.Players[i]] = leg.StartingScore
+			p2l.CurrentScore = leg.StartingScore
 		}
+		scores[leg.Players[i]] = p2l
 	}
 
 	dartsThrown := 0
@@ -636,15 +641,17 @@ func GetLeg(id int) (*models.Leg, error) {
 			}
 
 			if matchType == models.DARTSATX || matchType == models.SHOOTOUT {
-				scores[visit.PlayerID] += score
+				scores[visit.PlayerID].CurrentScore += score
+			} else if matchType == models.CRICKET {
+				score = visit.CalculateCricketScore(scores)
 			} else {
-				scores[visit.PlayerID] -= score
+				scores[visit.PlayerID].CurrentScore -= score
 			}
 			visit.Score = score
 		}
 
 		visit.Scores = make(map[int]int)
-		visit.Scores[visit.PlayerID] = scores[visit.PlayerID]
+		visit.Scores[visit.PlayerID] = scores[visit.PlayerID].CurrentScore
 		for j := 1; j < len(leg.Players); j++ {
 			var next *models.Visit
 			if len(visits) > len(leg.Players) {
@@ -657,7 +664,7 @@ func GetLeg(id int) (*models.Leg, error) {
 				}
 			}
 			if next != nil {
-				visit.Scores[next.PlayerID] = scores[next.PlayerID]
+				visit.Scores[next.PlayerID] = scores[next.PlayerID].CurrentScore
 			}
 		}
 	}
