@@ -647,12 +647,14 @@ func GetLeg(id int) (*models.Leg, error) {
 		visit.Scores[visit.PlayerID] = scores[visit.PlayerID]
 		for j := 1; j < len(leg.Players); j++ {
 			var next *models.Visit
-			if i+j >= len(visits) && i-(len(leg.Players)-j) > 0 {
-				// There is no next visit, so look at previous instead
-				// Need to look in reverese order to keep the order of scores the same
-				next = visits[i-(len(leg.Players)-j)]
-			} else {
-				next = visits[i+j]
+			if len(visits) > len(leg.Players) {
+				if i+j >= len(visits) && i-(len(leg.Players)-j) > 0 {
+					// There is no next visit, so look at previous instead
+					// Need to look in reverese order to keep the order of scores the same
+					next = visits[i-(len(leg.Players)-j)]
+				} else {
+					next = visits[i+j]
+				}
 			}
 			if next != nil {
 				visit.Scores[next.PlayerID] = scores[next.PlayerID]
