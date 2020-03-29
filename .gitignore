@@ -20,6 +20,7 @@ debug
 
 # Once pushed, ignore config directory
 config/config.yaml
+config/config.prod.yaml
 
 # Ignore logs folder
 log/

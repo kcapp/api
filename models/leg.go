@@ -1,6 +1,9 @@
 package models
 
 import (
+	"encoding/json"
+	"math"
+
 	"github.com/guregu/null"
 )
 
@@ -22,6 +25,51 @@ type Leg struct {
 	Visits             []*Visit            `json:"visits"`
 	Hits               map[int64]*Hits     `json:"hits,omitempty"`
 	CheckoutStatistics *CheckoutStatistics `json:"checkout_statistics,omitempty"`
+}
+
+// MarshalJSON will marshall the given object to JSON
+func (leg Leg) MarshalJSON() ([]byte, error) {
+	// Use a type to get consistnt order of JSON key-value pairs.
+	type legJSON struct {
+		ID                 int                 `json:"id"`
+		Endtime            null.String         `json:"end_time"`
+		StartingScore      int                 `json:"starting_score"`
+		IsFinished         bool                `json:"is_finished"`
+		CurrentPlayerID    int                 `json:"current_player_id"`
+		WinnerPlayerID     null.Int            `json:"winner_player_id"`
+		CreatedAt          string              `json:"created_at"`
+		UpdatedAt          string              `json:"updated_at"`
+		BoardStreamURL     null.String         `json:"board_stream_url,omitempty"`
+		MatchID            int                 `json:"match_id"`
+		HasScores          bool                `json:"has_scores"`
+		Round              int                 `json:"round"`
+		Players            []int               `json:"players,omitempty"`
+		DartsThrown        int                 `json:"darts_thrown,omitempty"`
+		Visits             []*Visit            `json:"visits"`
+		Hits               map[int64]*Hits     `json:"hits,omitempty"`
+		CheckoutStatistics *CheckoutStatistics `json:"checkout_statistics,omitempty"`
+	}
+	round := int(math.Floor(float64(len(leg.Visits))/float64(len(leg.Players))) + 1)
+
+	return json.Marshal(legJSON{
+		ID:                 leg.ID,
+		Endtime:            leg.Endtime,
+		StartingScore:      leg.StartingScore,
+		IsFinished:         leg.IsFinished,
+		CurrentPlayerID:    leg.CurrentPlayerID,
+		WinnerPlayerID:     leg.WinnerPlayerID,
+		CreatedAt:          leg.CreatedAt,
+		UpdatedAt:          leg.UpdatedAt,
+		BoardStreamURL:     leg.BoardStreamURL,
+		MatchID:            leg.MatchID,
+		HasScores:          leg.HasScores,
+		Round:              round,
+		Players:            leg.Players,
+		DartsThrown:        leg.DartsThrown,
+		Visits:             leg.Visits,
+		Hits:               leg.Hits,
+		CheckoutStatistics: leg.CheckoutStatistics,
+	})
 }
 
 // Player2Leg struct used for stroring players in a leg
