@@ -198,8 +198,14 @@ func GetPlayersX01Statistics(w http.ResponseWriter, r *http.Request) {
 // AddPlayer will create a new player
 func AddPlayer(w http.ResponseWriter, r *http.Request) {
 	var player models.Player
-	_ = json.NewDecoder(r.Body).Decode(&player)
-	err := data.AddPlayer(player)
+	err := json.NewDecoder(r.Body).Decode(&player)
+	if err != nil {
+		log.Println("Unable to deserialize player json", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = data.AddPlayer(player)
 	if err != nil {
 		log.Println("Unable to add player", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -218,7 +224,13 @@ func UpdatePlayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var player models.Player
-	_ = json.NewDecoder(r.Body).Decode(&player)
+	err = json.NewDecoder(r.Body).Decode(&player)
+	if err != nil {
+		log.Println("Unable to deserialize player json", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	err = data.UpdatePlayer(id, player)
 	if err != nil {
 		log.Println("Unable to update player", err)

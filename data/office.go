@@ -1,6 +1,49 @@
 package data
 
-import "github.com/kcapp/api/models"
+import (
+	"log"
+
+	"github.com/kcapp/api/models"
+)
+
+// AddOffice will add a new office
+func AddOffice(office models.Office) error {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Prepare statement for inserting data
+	res, err := tx.Exec("INSERT INTO office (name, is_active) VALUES (?, ?)", office.Name, office.IsActive)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	officeID, err := res.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	log.Printf("Created new office (%d) %s", officeID, office.Name)
+	tx.Commit()
+	return nil
+}
+
+// UpdateOffice will update the given player
+func UpdateOffice(officeID int, office models.Office) error {
+	stmt, err := models.DB.Prepare(`UPDATE office SET name = ?, is_active = ? WHERE id = ?`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(office.Name, office.IsActive, officeID)
+	if err != nil {
+		return err
+	}
+	log.Printf("Updated office (%d) (%s)", officeID, office.Name)
+	return nil
+}
 
 // GetOffices will return all offices
 func GetOffices() (map[int]*models.Office, error) {

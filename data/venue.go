@@ -7,6 +7,63 @@ import (
 	"github.com/kcapp/api/util"
 )
 
+// AddVenue will add a new venue
+func AddVenue(venue models.Venue) error {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	res, err := tx.Exec("INSERT INTO venue (name, office_id, description) VALUES (?, ?, ?)", venue.Name, venue.OfficeID, venue.Description)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	venueID, err := res.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	_, err = tx.Exec(`INSERT INTO venue_configuration (venue_id, has_dual_monitor, has_led_lights, has_smartboard, smartboard_uuid, smartboard_button_number)
+		VALUES (?, ?, ?, ?, ?, ?)`, venueID, venue.Config.HasDualMonitor, venue.Config.HasLEDLights, venue.Config.HasSmartboard,
+		venue.Config.SmartboardUUID, venue.Config.SmartboardButtonNumber)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	log.Printf("Created new venue (%d) %s", venueID, venue.Name.String)
+	tx.Commit()
+	return nil
+}
+
+// UpdateVenue will update the given venue
+func UpdateVenue(venueID int, venue models.Venue) error {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`UPDATE venue SET name = ?, office_id = ?, description = ? WHERE id = ?`, venue.Name, venue.OfficeID, venue.Description, venueID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	_, err = tx.Exec(`UPDATE venue_configuration SET has_dual_monitor = ?, has_led_lights = ?, has_smartboard = ?, smartboard_uuid = ?, smartboard_button_number = ? WHERE venue_id = ?`,
+		venue.Config.HasDualMonitor, venue.Config.HasLEDLights, venue.Config.HasSmartboard,
+		venue.Config.SmartboardUUID, venue.Config.SmartboardButtonNumber, venueID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	log.Printf("Updated venue (%d) (%s)", venueID, venue.Name.String)
+	tx.Commit()
+	return nil
+}
+
 // GetVenues will return all venues
 func GetVenues() ([]*models.Venue, error) {
 	rows, err := models.DB.Query("SELECT id, name, office_id, description FROM venue")
@@ -26,6 +83,24 @@ func GetVenues() ([]*models.Venue, error) {
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
+	}
+
+	rows, err = models.DB.Query("SELECT venue_id, has_dual_monitor, has_led_lights, has_smartboard, smartboard_uuid, smartboard_button_number FROM venue_configuration")
+	if err != nil {
+		return nil, err
+	}
+	configs := make(map[int]*models.VenueConfig)
+	for rows.Next() {
+		config := new(models.VenueConfig)
+		err := rows.Scan(&config.VenueID, &config.HasDualMonitor, &config.HasLEDLights, &config.HasSmartboard, &config.SmartboardUUID, &config.SmartboardButtonNumber)
+		if err != nil {
+			return nil, err
+		}
+		configs[config.VenueID] = config
+	}
+
+	for _, venue := range venues {
+		venue.Config = configs[int(venue.ID.Int64)]
 	}
 
 	return venues, nil
@@ -48,7 +123,7 @@ func GetVenue(id int) (*models.Venue, error) {
 // GetVenueConfiguration will return the configuration for a venue with the given id
 func GetVenueConfiguration(id int) (*models.VenueConfig, error) {
 	config := new(models.VenueConfig)
-	err := models.DB.QueryRow("SELECT venue_id, has_dual_monitor, has_leg_lights, has_smartboard, smartboard_uuid, smartboard_button_number FROM venue_configuration WHERE venue_id = ?",
+	err := models.DB.QueryRow("SELECT venue_id, has_dual_monitor, has_led_lights, has_smartboard, smartboard_uuid, smartboard_button_number FROM venue_configuration WHERE venue_id = ?",
 		id).Scan(&config.VenueID, &config.HasDualMonitor, &config.HasLEDLights, &config.HasSmartboard, &config.SmartboardUUID, &config.SmartboardButtonNumber)
 	if err != nil {
 		return nil, err

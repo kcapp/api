@@ -8,7 +8,52 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/kcapp/api/data"
+	"github.com/kcapp/api/models"
 )
+
+// AddVenue will create a new venue
+func AddVenue(w http.ResponseWriter, r *http.Request) {
+	var venue models.Venue
+	err := json.NewDecoder(r.Body).Decode(&venue)
+	if err != nil {
+		log.Println("Unable to deserialize venue json", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = data.AddVenue(venue)
+	if err != nil {
+		log.Println("Unable to add venue", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// UpdateVenue will update the given venue
+func UpdateVenue(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var venue models.Venue
+	err = json.NewDecoder(r.Body).Decode(&venue)
+	if err != nil {
+		log.Println("Unable to deserialize venue json", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = data.UpdateVenue(id, venue)
+	if err != nil {
+		log.Println("Unable to update venue", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
 
 // GetVenues will return all venues
 func GetVenues(w http.ResponseWriter, r *http.Request) {

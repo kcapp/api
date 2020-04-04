@@ -85,8 +85,12 @@ func main() {
 
 	router.HandleFunc("/owetype", controllers.GetOweTypes).Methods("GET")
 
+	router.HandleFunc("/office", controllers.AddOffice).Methods("POST")
+	router.HandleFunc("/office/{id}", controllers.UpdateOffice).Methods("PUT")
 	router.HandleFunc("/office", controllers.GetOffices).Methods("GET")
 
+	router.HandleFunc("/venue", controllers.AddVenue).Methods("POST")
+	router.HandleFunc("/venue/{id}", controllers.UpdateVenue).Methods("PUT")
 	router.HandleFunc("/venue", controllers.GetVenues).Methods("GET")
 	router.HandleFunc("/venue/{id}", controllers.GetVenue).Methods("GET")
 	router.HandleFunc("/venue/{id}/config", controllers.GetVenueConfiguration).Methods("GET")
@@ -106,5 +110,5 @@ func main() {
 	router.HandleFunc("/tournament/{id}/statistics", controllers.GetTournamentStatistics).Methods("GET")
 
 	log.Printf("Listening on port %d", config.APIConfig.Port)
-	log.Println(http.ListenAndServe(fmt.Sprintf(":%d", config.APIConfig.Port), router))
+	log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.APIConfig.Port), router))
 }
