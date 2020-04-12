@@ -26,5 +26,8 @@ config/config.prod.yaml
 log/
 logs/
 
+# Ignore wait-for-it
+wait-for-it.sh
+
 api
 kcapp-api

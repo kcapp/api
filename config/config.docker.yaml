@@ -1,0 +1,8 @@
+db:
+  address: db
+  port: 3306
+  username: kcapp
+  password: abcd1234
+  schema: kcapp
+api:
+  port: 8001

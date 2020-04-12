@@ -1,24 +1,50 @@
-# Start from a Debian image with the latest version of Go installed
-# and a workspace (GOPATH) configured at /go.
-FROM golang
+# Create our build image
+FROM golang:alpine AS BUILD_IMAGE
 
-# Copy the local package files to the container's workspace.
-ADD . /go/src/github.com/kcapp/api
+# Add git, required to install dependencies
+RUN apk update && apk add --no-cache git gcc
 
-# Build the outyet command inside the container.
-# (You may fetch or manage dependencies here,
-# either manually or with a tool like "godep".)
-RUN go get github.com/kcapp/api
-RUN go install github.com/kcapp/api
+# Install goose to run database migrations
+WORKDIR $GOPATH/src/github.com/pressly/goose
+RUN git clone https://github.com/pressly/goose .
+RUN go get -d -v
+RUN CGO_ENABLED=0 go build -tags='no_postgres no_mysql no_sqlite3' -i -o $GOPATH/bin/goose -a -ldflags '-extldflags "-static"' ./cmd/goose
+
+# Add script to run migrations
+RUN mkdir -p /usr/local/scripts
+RUN git clone https://github.com/kcapp/database /usr/local/kcapp/database
+RUN cp /usr/local/kcapp/database/run_migrations.sh /usr/local/scripts/run_migrations.sh
+RUN chmod +x /usr/local/scripts//run_migrations.sh
 
 # Add wait-for-it
-COPY wait-for-it.sh wait-for-it.sh
-RUN chmod +x wait-for-it.sh
+COPY wait-for-it.sh /usr/local/scripts/wait-for-it.sh
+RUN chmod +x /usr/local/scripts/wait-for-it.sh
 
-COPY config/config.yaml config/config.yaml
+WORKDIR $GOPATH/src/github.com/kcapp/api
 
-# Run the outyet command by default when the container starts.
-ENTRYPOINT /go/bin/api
+# Bundle app source
+COPY . .
 
-# Document that the service listens on port 8001.
+# Install dependencies and build executable
+RUN go get -d -v
+RUN CGO_ENABLED=0 go build -o $GOPATH/bin/api -a -ldflags '-extldflags "-static"' .
+
+# Create our actual image
+FROM alpine
+
+RUN apk add --no-cache bash
+
+# Add configuration file
+COPY config/config.docker.yaml config/config.yaml
+
+# Add binaries and scripts
+COPY --from=BUILD_IMAGE /usr/local/scripts/* ./
+COPY --from=BUILD_IMAGE /go/bin/goose /go/bin/goose
+COPY --from=BUILD_IMAGE /usr/local/kcapp/database/migrations /usr/local/kcapp/database/migrations
+COPY --from=BUILD_IMAGE /go/bin/api /go/bin/api
+
+# Add go binaries to path
+ENV PATH="/go/bin:${PATH}"
+
+CMD [ "/go/bin/api" ]
 EXPOSE 8001
