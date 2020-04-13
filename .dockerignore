@@ -1,3 +1,4 @@
 config/config.yaml
+config/config.local.yaml
 config/config.prod.yaml
 api
