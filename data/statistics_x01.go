@@ -2,6 +2,7 @@ package data
 
 import (
 	"log"
+
 	"github.com/guregu/null"
 	"github.com/jmoiron/sqlx"
 	"github.com/kcapp/api/models"
@@ -169,7 +170,9 @@ func GetPlayerX01Statistics(id int) (*models.StatisticsX01, error) {
 	if len(statistics) > 0 {
 		return statistics[0], nil
 	}
-	return new(models.StatisticsX01), nil
+	s := new(models.StatisticsX01)
+	s.PlayerID = id
+	return s, nil
 }
 
 // GetPlayerX01PreviousStatistics will get statistics about the given player id

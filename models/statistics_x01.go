@@ -44,10 +44,10 @@ type StatisticsX01 struct {
 	AccuracyStatistics    *AccuracyStatistics `json:"accuracy,omitempty"`
 	Visits                []*Visit            `json:"visits,omitempty"`
 	Hits                  map[int64]*Hits     `json:"hits,omitempty"`
-	MatchesPlayed         int                 `json:"matches_played,omitempty"`
-	MatchesWon            int                 `json:"matches_won,omitempty"`
-	LegsPlayed            int                 `json:"legs_played,omitempty"`
-	LegsWon               int                 `json:"legs_won,omitempty"`
+	MatchesPlayed         int                 `json:"matches_played"`
+	MatchesWon            int                 `json:"matches_won"`
+	LegsPlayed            int                 `json:"legs_played"`
+	LegsWon               int                 `json:"legs_won"`
 	BestThreeDartAvg      *BestStatisticFloat `json:"best_three_dart_avg,omitempty"`
 	BestFirstNineAvg      *BestStatisticFloat `json:"best_first_nine_avg,omitempty"`
 	Best301               *BestStatistic      `json:"best_301,omitempty"`
