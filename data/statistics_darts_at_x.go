@@ -10,15 +10,20 @@ func GetDartsAtXStatistics(from string, to string, startingScores ...int) ([]*mo
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id AS 'player_id',
-			COUNT(DISTINCT m.id) AS 'matches_played',
-			COUNT(DISTINCT m2.id) AS 'matches_won',
-			COUNT(DISTINCT m.id) AS 'legs_played',
-			COUNT(DISTINCT l2.id) AS 'legs_won',
+			COUNT(DISTINCT m.id) as 'matches_played',
+			COUNT(DISTINCT m2.id) as 'matches_won',
+			COUNT(DISTINCT m.id) as 'legs_played',
+			COUNT(DISTINCT l2.id) as 'legs_won',
 			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 			SUM(s.singles) as 'singles',
 			SUM(s.doubles) as 'doubles',
 			SUM(s.triples) as 'triples',
-			SUM(s.singles + s.doubles + s.triples) / (99 * COUNT(DISTINCT l.id)) as 'hit_rate'
+			SUM(s.singles + s.doubles + s.triples) / (99 * COUNT(DISTINCT l.id)) as 'hit_rate',
+			SUM(s.hits5) as 'hits5',
+			SUM(s.hits6) as 'hits6',
+			SUM(s.hits7) as 'hits7',
+			SUM(s.hits8) as 'hits8',
+			SUM(s.hits9) as 'hits9'
 		FROM statistics_darts_at_x s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -38,7 +43,8 @@ func GetDartsAtXStatistics(from string, to string, startingScores ...int) ([]*mo
 	stats := make([]*models.StatisticsDartsAtX, 0)
 	for rows.Next() {
 		s := new(models.StatisticsDartsAtX)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.AvgScore, &s.Singles, &s.Doubles, &s.Triples, &s.HitRate)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.AvgScore, &s.Singles, &s.Doubles, &s.Triples, &s.HitRate,
+			&s.Hits5, &s.Hits6, &s.Hits7, &s.Hits8, &s.Hits9)
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +63,12 @@ func GetDartsAtXStatisticsForLeg(id int) ([]*models.StatisticsDartsAtX, error) {
 			s.singles,
 			s.doubles,
 			s.triples,
-			s.hit_rate
+			s.hit_rate,
+			s.hits5,
+			s.hits6,
+			s.hits7,
+			s.hits8,
+			s.hits9
 		FROM statistics_darts_at_x s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -71,7 +82,7 @@ func GetDartsAtXStatisticsForLeg(id int) ([]*models.StatisticsDartsAtX, error) {
 	stats := make([]*models.StatisticsDartsAtX, 0)
 	for rows.Next() {
 		s := new(models.StatisticsDartsAtX)
-		err := rows.Scan(&s.LegID, &s.PlayerID, &s.Score, &s.Singles, &s.Doubles, &s.Triples, &s.HitRate)
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.Score, &s.Singles, &s.Doubles, &s.Triples, &s.HitRate, &s.Hits5, &s.Hits6, &s.Hits7, &s.Hits8, &s.Hits9)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +100,12 @@ func GetDartsAtXStatisticsForMatch(id int) ([]*models.StatisticsDartsAtX, error)
 			SUM(s.singles) as 'singles',
 			SUM(s.doubles) as 'doubles',
 			SUM(s.triples) as 'triples',
-			SUM(s.singles + s.doubles + s.triples) / 99 * COUNT(DISTINCT l.id) as 'hit_rate'
+			SUM(s.singles + s.doubles + s.triples) / 99 * COUNT(DISTINCT l.id) as 'hit_rate',
+			SUM(s.hits5) as 'hits5',
+			SUM(s.hits6) as 'hits6',
+			SUM(s.hits7) as 'hits7',
+			SUM(s.hits8) as 'hits8',
+			SUM(s.hits9) as 'hits9'
 		FROM statistics_darts_at_x s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -106,7 +122,7 @@ func GetDartsAtXStatisticsForMatch(id int) ([]*models.StatisticsDartsAtX, error)
 	stats := make([]*models.StatisticsDartsAtX, 0)
 	for rows.Next() {
 		s := new(models.StatisticsDartsAtX)
-		err := rows.Scan(&s.PlayerID, &s.AvgScore, &s.Singles, &s.Doubles, &s.Triples, &s.HitRate)
+		err := rows.Scan(&s.PlayerID, &s.AvgScore, &s.Singles, &s.Doubles, &s.Triples, &s.HitRate, &s.Hits5, &s.Hits6, &s.Hits7, &s.Hits8, &s.Hits9)
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +144,12 @@ func GetPlayerDartsAtXStatistics(id int) (*models.StatisticsDartsAtX, error) {
 			SUM(s.singles) as 'singles',
 			SUM(s.doubles) as 'doubles',
 			SUM(s.triples) as 'triples',
-			SUM(s.singles + s.doubles + s.triples) / (99 * COUNT(DISTINCT l.id)) as 'hit_rate'
+			SUM(s.singles + s.doubles + s.triples) / (99 * COUNT(DISTINCT l.id)) as 'hit_rate',
+			SUM(s.hits5) as 'hits5',
+			SUM(s.hits6) as 'hits6',
+			SUM(s.hits7) as 'hits7',
+			SUM(s.hits8) as 'hits8',
+			SUM(s.hits9) as 'hits9'
 		FROM statistics_darts_at_x s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -147,7 +168,8 @@ func GetPlayerDartsAtXStatistics(id int) (*models.StatisticsDartsAtX, error) {
 	stats := make([]*models.StatisticsDartsAtX, 0)
 	for rows.Next() {
 		s := new(models.StatisticsDartsAtX)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.AvgScore, &s.Singles, &s.Doubles, &s.Triples, &s.HitRate)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.AvgScore, &s.Singles, &s.Doubles, &s.Triples, &s.HitRate,
+			&s.Hits5, &s.Hits6, &s.Hits7, &s.Hits8, &s.Hits9)
 		if err != nil {
 			return nil, err
 		}
@@ -190,9 +212,21 @@ func CalculateDartsAtXStatistics(legID int) (map[int]*models.StatisticsDartsAtX,
 		visit := visits[i]
 		stats := statisticsMap[visit.PlayerID]
 
-		addDart(number, visit.FirstDart, stats)
-		addDart(number, visit.SecondDart, stats)
-		addDart(number, visit.ThirdDart, stats)
+		hits := addDart(number, visit.FirstDart, stats)
+		hits += addDart(number, visit.SecondDart, stats)
+		hits += addDart(number, visit.ThirdDart, stats)
+		switch hits {
+		case 5:
+			stats.Hits5++
+		case 6:
+			stats.Hits6++
+		case 7:
+			stats.Hits7++
+		case 8:
+			stats.Hits8++
+		case 9:
+			stats.Hits9++
+		}
 	}
 	for _, stat := range statisticsMap {
 		stat.HitRate = float32(stat.Singles+stat.Doubles+stat.Triples) / 99
@@ -200,7 +234,7 @@ func CalculateDartsAtXStatistics(legID int) (map[int]*models.StatisticsDartsAtX,
 	return statisticsMap, nil
 }
 
-func addDart(number int, dart *models.Dart, stats *models.StatisticsDartsAtX) {
+func addDart(number int, dart *models.Dart, stats *models.StatisticsDartsAtX) int {
 	if dart.ValueRaw() == number {
 		if dart.IsTriple() {
 			stats.Triples++
@@ -209,5 +243,7 @@ func addDart(number int, dart *models.Dart, stats *models.StatisticsDartsAtX) {
 		} else {
 			stats.Singles++
 		}
+		return int(dart.Multiplier)
 	}
+	return 0
 }

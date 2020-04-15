@@ -17,4 +17,9 @@ type StatisticsDartsAtX struct {
 	Doubles       int      `json:"doubles"`
 	Triples       int      `json:"triples"`
 	HitRate       float32  `json:"hit_rate"`
+	Hits5         int      `json:"hits_5"`
+	Hits6         int      `json:"hits_6"`
+	Hits7         int      `json:"hits_7"`
+	Hits8         int      `json:"hits_8"`
+	Hits9         int      `json:"hits_9"`
 }

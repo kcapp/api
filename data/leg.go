@@ -299,8 +299,9 @@ func FinishLegNew(visit models.Visit) error {
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_darts_at_x
-					(leg_id, player_id, score, singles, doubles, triples, hit_rate)
-				VALUES (?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.Score, stats.Singles, stats.Doubles, stats.Triples, stats.HitRate)
+					(leg_id, player_id, score, singles, doubles, triples, hit_rate, hits5, hits6, hits7, hits8, hits9)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.Score, stats.Singles, stats.Doubles, stats.Triples, stats.HitRate,
+				stats.Hits5, stats.Hits6, stats.Hits7, stats.Hits8, stats.Hits9)
 			if err != nil {
 				tx.Rollback()
 				return err
@@ -467,6 +468,11 @@ func UndoLegFinish(legID int) error {
 		return err
 	}
 	_, err = tx.Exec("DELETE FROM statistics_cricket WHERE leg_id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	_, err = tx.Exec("DELETE FROM statistics_darts_at_x WHERE leg_id = ?", legID)
 	if err != nil {
 		tx.Rollback()
 		return err
