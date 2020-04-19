@@ -14,7 +14,7 @@ RUN CGO_ENABLED=0 go build -tags='no_postgres no_mysql no_sqlite3' -i -o $GOPATH
 RUN mkdir -p /usr/local/scripts
 RUN git clone https://github.com/kcapp/database /usr/local/kcapp/database
 RUN cp /usr/local/kcapp/database/run_migrations.sh /usr/local/scripts/run_migrations.sh
-RUN chmod +x /usr/local/scripts//run_migrations.sh
+RUN chmod +x /usr/local/scripts/run_migrations.sh
 
 # Add wait-for-it
 COPY wait-for-it.sh /usr/local/scripts/wait-for-it.sh

@@ -38,7 +38,7 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 1
 		GROUP BY p.id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC,

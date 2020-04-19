@@ -6,7 +6,7 @@ import (
 )
 
 // GetDartsAtXStatistics will return statistics for all players active during the given period
-func GetDartsAtXStatistics(from string, to string, startingScores ...int) ([]*models.StatisticsDartsAtX, error) {
+func GetDartsAtXStatistics(from string, to string) ([]*models.StatisticsDartsAtX, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id AS 'player_id',

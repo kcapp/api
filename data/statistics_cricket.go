@@ -31,7 +31,7 @@ func GetCricketStatistics(from string, to string, startingScores ...int) ([]*mod
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 4
 		GROUP BY p.id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
