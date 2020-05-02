@@ -22,7 +22,7 @@ debug
 config/config.yaml
 config/config.prod.yaml
 config/config.docker.yaml
-config/config.local.yaml
+config/config*.yaml
 
 # Ignore logs folder
 log/
