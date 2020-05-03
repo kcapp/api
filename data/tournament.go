@@ -1,6 +1,7 @@
 package data
 
 import (
+	"database/sql"
 	"log"
 
 	"github.com/guregu/null"
@@ -116,6 +117,9 @@ func GetCurrentTournament() (*models.Tournament, error) {
 	var tournamentID int
 	err := models.DB.QueryRow("SELECT id FROM tournament t WHERE t.is_finished = 0 ORDER BY start_time LIMIT 1").Scan(&tournamentID)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return GetTournament(tournamentID)
@@ -127,6 +131,9 @@ func GetCurrentTournamentForOffice(officeID int) (*models.Tournament, error) {
 	err := models.DB.QueryRow("SELECT id FROM tournament t WHERE t.office_id = ? AND t.is_finished = 0 ORDER BY start_time LIMIT 1",
 		officeID).Scan(&tournamentID)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return GetTournament(tournamentID)

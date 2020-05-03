@@ -63,6 +63,10 @@ func GetCurrentTournament(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if tournament == nil {
+		http.Error(w, "No current tournament for office", http.StatusNotFound)
+		return
+	}
 	json.NewEncoder(w).Encode(tournament)
 }
 
@@ -80,6 +84,10 @@ func GetCurrentTournamentForOffice(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Unable to get tournament for office", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tournament == nil {
+		http.Error(w, "No current tournament for office", http.StatusNotFound)
 		return
 	}
 	json.NewEncoder(w).Encode(tournament)
