@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0] - 2020-05-01
+## [1.0.0] - 2020-05-03
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
