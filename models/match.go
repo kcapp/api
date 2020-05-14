@@ -8,16 +8,22 @@ import (
 )
 
 const (
-	// X01 constant representing MatchType 1
+	// X01 constant representing type 1
 	X01 = 1
-	// SHOOTOUT constant representing MatchType 2
+	// SHOOTOUT constant representing type 2
 	SHOOTOUT = 2
-	// X01HANDICAP constant representing MatchType 3
+	// X01HANDICAP constant representing type 3
 	X01HANDICAP = 3
-	// CRICKET constant representing MatchType 4
+	// CRICKET constant representing type 4
 	CRICKET = 4
-	// DARTSATX constant representing MatchType 5
+	// DARTSATX constant representing type 5
 	DARTSATX = 5
+	// AROUNDTHEWORLD constant representing type 6
+	AROUNDTHEWORLD = 6
+	// SHANGHAI constant representing type 7
+	SHANGHAI = 7
+	// AROUNDTHECLOCK constant representing type 9
+	AROUNDTHECLOCK = 8
 )
 
 // Match struct used for storing matches

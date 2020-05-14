@@ -7,7 +7,7 @@ import (
 )
 
 // GetCricketStatistics will return statistics for all players active during the given period
-func GetCricketStatistics(from string, to string, startingScores ...int) ([]*models.StatisticsCricket, error) {
+func GetCricketStatistics(from string, to string) ([]*models.StatisticsCricket, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id AS 'player_id',
@@ -169,7 +169,7 @@ func CalculateCricketStatistics(legID int) (map[int]*models.StatisticsCricket, e
 		if round <= 3 {
 			stats.FirstNineMarks += marks
 		}
-		//
+
 		switch mpr := marks; mpr {
 		case 5:
 			stats.Marks5++

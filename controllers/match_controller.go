@@ -218,6 +218,30 @@ func GetStatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.AROUNDTHECLOCK {
+		stats, err := data.GetAroundTheClockStatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get around the clock statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.AROUNDTHEWORLD {
+		stats, err := data.GetAroundTheWorldStatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get around the world statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.SHANGHAI {
+		stats, err := data.GetShanghaiStatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get shanghai statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
 	} else {
 		stats, err := data.GetX01StatisticsForMatch(matchID)
 		if err != nil {

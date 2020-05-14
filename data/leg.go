@@ -232,8 +232,9 @@ func FinishLegNew(visit models.Visit) error {
 
 	// Update leg with winner
 	winnerID := visit.PlayerID
-	if match.MatchType.ID == models.SHOOTOUT || match.MatchType.ID == models.DARTSATX {
-		// For "9 Dart Shootout" and "Darts at X" we need to check the scores of each player
+	if match.MatchType.ID == models.SHOOTOUT || match.MatchType.ID == models.DARTSATX || match.MatchType.ID == models.AROUNDTHEWORLD ||
+		(match.MatchType.ID == models.SHANGHAI && !visit.IsShanghai()) {
+		// For "9 Dart Shootout", "Darts at X", "Around the World" or "Shanghai (normal finish)" we need to check the scores of each player
 		// to determine which player won the leg with the highest score
 		scores, err := GetPlayersScore(visit.LegID)
 		if err != nil {
@@ -307,6 +308,48 @@ func FinishLegNew(visit models.Visit) error {
 				return err
 			}
 			log.Printf("[%d] Inserting Darts At %d statistics for player %d", visit.LegID, leg.StartingScore, playerID)
+		}
+	} else if match.MatchType.ID == models.AROUNDTHECLOCK {
+		statisticsMap, err := CalculateAroundTheClockStatistics(visit.LegID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+			INSERT INTO statistics_around_the
+				(leg_id, player_id, darts_thrown, score, longest_streak, total_hit_rate, hit_rate_1, hit_rate_2, hit_rate_3, hit_rate_4, hit_rate_5, hit_rate_6, hit_rate_7, hit_rate_8,
+					hit_rate_9, hit_rate_10, hit_rate_11, hit_rate_12, hit_rate_13, hit_rate_14, hit_rate_15, hit_rate_16, hit_rate_17, hit_rate_18, hit_rate_19, hit_rate_20, hit_rate_bull)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, visit.LegID, playerID, stats.DartsThrown, stats.Score, stats.LongestStreak, stats.TotalHitRate, stats.Hitrates[1],
+				stats.Hitrates[2], stats.Hitrates[3], stats.Hitrates[4], stats.Hitrates[5], stats.Hitrates[6], stats.Hitrates[7], stats.Hitrates[8], stats.Hitrates[9], stats.Hitrates[10],
+				stats.Hitrates[11], stats.Hitrates[12], stats.Hitrates[13], stats.Hitrates[14], stats.Hitrates[15], stats.Hitrates[16], stats.Hitrates[17], stats.Hitrates[18], stats.Hitrates[19],
+				stats.Hitrates[20], stats.Hitrates[25])
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("[%d] Inserting Around the Clock %d statistics for player %d", visit.LegID, leg.StartingScore, playerID)
+		}
+	} else if match.MatchType.ID == models.AROUNDTHEWORLD || match.MatchType.ID == models.SHANGHAI {
+		statisticsMap, err := CalculateAroundTheWorldStatistics(visit.LegID, match.MatchType.ID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+				INSERT INTO statistics_around_the
+					(leg_id, player_id, darts_thrown, score, shanghai, mpr, total_hit_rate, hit_rate_1, hit_rate_2, hit_rate_3, hit_rate_4, hit_rate_5, hit_rate_6, hit_rate_7, hit_rate_8, hit_rate_9, hit_rate_10,
+						hit_rate_11, hit_rate_12, hit_rate_13, hit_rate_14, hit_rate_15, hit_rate_16, hit_rate_17, hit_rate_18, hit_rate_19, hit_rate_20, hit_rate_bull)
+				VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, visit.LegID, playerID, stats.DartsThrown, stats.Score, stats.Shanghai, stats.MPR, stats.TotalHitRate, stats.Hitrates[1],
+				stats.Hitrates[2], stats.Hitrates[3], stats.Hitrates[4], stats.Hitrates[5], stats.Hitrates[6], stats.Hitrates[7], stats.Hitrates[8], stats.Hitrates[9], stats.Hitrates[10],
+				stats.Hitrates[11], stats.Hitrates[12], stats.Hitrates[13], stats.Hitrates[14], stats.Hitrates[15], stats.Hitrates[16], stats.Hitrates[17], stats.Hitrates[18], stats.Hitrates[19],
+				stats.Hitrates[20], stats.Hitrates[25])
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("[%d] Inserting Around the World %d statistics for player %d", visit.LegID, leg.StartingScore, playerID)
 		}
 	} else {
 		statisticsMap, err := CalculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
@@ -477,6 +520,11 @@ func UndoLegFinish(legID int) error {
 		tx.Rollback()
 		return err
 	}
+	_, err = tx.Exec("DELETE FROM statistics_around_the WHERE leg_id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 	// Remove the last score
 	_, err = tx.Exec("DELETE FROM score WHERE leg_id = ? ORDER BY id DESC LIMIT 1", legID)
 	if err != nil {
@@ -624,7 +672,11 @@ func GetLeg(id int) (*models.Leg, error) {
 
 	dartsThrown := 0
 	visitCount := 0
+	round := 1
 	for i, visit := range visits {
+		if i > 0 && i%len(leg.Players) == 0 {
+			round++
+		}
 		if visitCount%len(leg.Players) == 0 {
 			dartsThrown += 3
 		}
@@ -645,11 +697,17 @@ func GetLeg(id int) (*models.Leg, error) {
 					score += int(visit.ThirdDart.Multiplier)
 				}
 			}
-
 			if matchType == models.DARTSATX || matchType == models.SHOOTOUT {
 				scores[visit.PlayerID].CurrentScore += score
 			} else if matchType == models.CRICKET {
 				score = visit.CalculateCricketScore(scores)
+				scores[visit.PlayerID].CurrentScore += score
+			} else if matchType == models.AROUNDTHECLOCK {
+				score = visit.CalculateAroundTheClockScore(scores[visit.PlayerID].CurrentScore)
+				scores[visit.PlayerID].CurrentScore += score
+			} else if matchType == models.AROUNDTHEWORLD || matchType == models.SHANGHAI {
+				score = visit.CalculateAroundTheWorldScore(round)
+				scores[visit.PlayerID].CurrentScore += score
 			} else {
 				scores[visit.PlayerID].CurrentScore -= score
 			}

@@ -97,6 +97,29 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 				return nil, err
 			}
 		}
+	} else if match.MatchType.ID == models.AROUNDTHECLOCK {
+		players[visit.PlayerID].CurrentScore += visit.CalculateAroundTheClockScore(players[visit.PlayerID].CurrentScore)
+		if players[visit.PlayerID].CurrentScore == 21 && (visit.FirstDart.IsBull() || visit.SecondDart.IsBull() || visit.ThirdDart.IsBull()) {
+			err = FinishLegNew(visit)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else if match.MatchType.ID == models.AROUNDTHEWORLD {
+		if (len(leg.Visits)+1)%(21*len(leg.Players)) == 0 {
+			err = FinishLegNew(visit)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else if match.MatchType.ID == models.SHANGHAI {
+		round := int(math.Floor(float64(len(leg.Visits))/float64(len(leg.Players))) + 1)
+		if (len(leg.Visits)+1)%(20	*len(leg.Players)) == 0 || (visit.IsShanghai() && visit.FirstDart.ValueRaw() == round) {
+			err = FinishLegNew(visit)
+			if err != nil {
+				return nil, err
+			}
+		}
 	} else if match.MatchType.ID == models.CRICKET {
 		players, err := GetLegPlayers(visit.LegID)
 		if err != nil {

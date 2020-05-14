@@ -312,3 +312,54 @@ func (visit *Visit) CalculateCricketScore(scores map[int]*Player2Leg) int {
 	points += visit.ThirdDart.CalculateCricketScore(visit.PlayerID, scores)
 	return points
 }
+
+// CalculateAroundTheClockScore will calculate the score for the given visit
+func (visit *Visit) CalculateAroundTheClockScore(currentScore int) int {
+	score := 0
+	if visit.FirstDart.ValueRaw() == currentScore && visit.FirstDart.IsSingle() {
+		score++
+		currentScore++
+	}
+	if visit.SecondDart.ValueRaw() == currentScore && visit.SecondDart.IsSingle() {
+		score++
+		currentScore++
+	}
+	if visit.ThirdDart.ValueRaw() == currentScore && visit.ThirdDart.IsSingle() {
+		score++
+		currentScore++
+	}
+	return score
+}
+
+// CalculateAroundTheWorldScore will calculate the score for the given visit
+func (visit *Visit) CalculateAroundTheWorldScore(round int) int {
+	score := 0
+	if round == visit.FirstDart.ValueRaw() || (round == 21 && visit.FirstDart.IsBull()) {
+		score += visit.FirstDart.GetScore()
+	}
+	if round == visit.SecondDart.ValueRaw() || (round == 21 && visit.SecondDart.IsBull()) {
+		score += visit.SecondDart.GetScore()
+	}
+	if round == visit.ThirdDart.ValueRaw() || (round == 21 && visit.ThirdDart.IsBull()) {
+		score += visit.ThirdDart.GetScore()
+	}
+	return score
+}
+
+// IsShanghai will check if the given visit is a "Shanghai". A Shanghai visit is one where a single, double and triple multipler is hit with each dart
+func (visit *Visit) IsShanghai() bool {
+	first := visit.FirstDart
+	second := visit.SecondDart
+	third := visit.ThirdDart
+
+	if first.ValueRaw() == second.ValueRaw() && first.ValueRaw() == third.ValueRaw() && first.ValueRaw() != 0 &&
+		(first.Multiplier == 1 && second.Multiplier == 2 && third.Multiplier == 3) ||
+		(first.Multiplier == 2 && second.Multiplier == 3 && third.Multiplier == 1) ||
+		(first.Multiplier == 3 && second.Multiplier == 1 && third.Multiplier == 2) ||
+		(first.Multiplier == 3 && second.Multiplier == 2 && third.Multiplier == 1) ||
+		(first.Multiplier == 1 && second.Multiplier == 3 && third.Multiplier == 2) ||
+		(first.Multiplier == 2 && second.Multiplier == 1 && third.Multiplier == 3) {
+		return true
+	}
+	return false
+}

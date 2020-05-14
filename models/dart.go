@@ -104,6 +104,14 @@ func (dart Dart) IsTriple() bool {
 	return dart.Multiplier == TRIPLE
 }
 
+// IsBull will check if this dart was a bullseye (single or double)
+func (dart Dart) IsBull() bool {
+	if dart.ValueRaw() == 25 {
+		return true
+	}
+	return false
+}
+
 // ValueRaw will return the value of the dart or 0 if invalid
 func (dart Dart) ValueRaw() int {
 	if dart.Value.Valid {
