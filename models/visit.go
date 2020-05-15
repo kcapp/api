@@ -316,15 +316,15 @@ func (visit *Visit) CalculateCricketScore(scores map[int]*Player2Leg) int {
 // CalculateAroundTheClockScore will calculate the score for the given visit
 func (visit *Visit) CalculateAroundTheClockScore(currentScore int) int {
 	score := 0
-	if visit.FirstDart.ValueRaw() == currentScore && visit.FirstDart.IsSingle() {
+	if visit.FirstDart.ValueRaw() == currentScore+1 && visit.FirstDart.IsSingle() {
 		score++
 		currentScore++
 	}
-	if visit.SecondDart.ValueRaw() == currentScore && visit.SecondDart.IsSingle() {
+	if visit.SecondDart.ValueRaw() == currentScore+1 && visit.SecondDart.IsSingle() {
 		score++
 		currentScore++
 	}
-	if visit.ThirdDart.ValueRaw() == currentScore && visit.ThirdDart.IsSingle() {
+	if visit.ThirdDart.ValueRaw() == currentScore+1 && visit.ThirdDart.IsSingle() {
 		score++
 		currentScore++
 	}

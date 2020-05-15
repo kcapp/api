@@ -303,7 +303,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			return nil, err
 		}
 		for _, player := range scores {
-			player.CurrentScore = 1
+			player.CurrentScore = 0
 		}
 
 		for _, visit := range visits {
@@ -316,7 +316,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			return nil, err
 		}
 		for _, player := range scores {
-			player.CurrentScore = 1
+			player.CurrentScore = 0
 		}
 
 		round := 1

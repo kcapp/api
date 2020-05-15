@@ -258,16 +258,17 @@ func CalculateAroundTheClockStatistics(legID int) (map[int]*models.StatisticsAro
 }
 
 func isHit(stats *models.StatisticsAroundThe, currentScore int, dart *models.Dart) int {
-	if (dart.ValueRaw() == currentScore && dart.IsSingle()) || (currentScore == 21 && dart.IsBull()) {
-		stats.Hitrates[currentScore] = 1 / (1 + stats.Hitrates[currentScore])
-		currentScore++
+	target := currentScore + 1
+	if (dart.ValueRaw() == target && dart.IsSingle()) || (target == 21 && dart.IsBull()) {
+		stats.Hitrates[target] = 1 / (1 + stats.Hitrates[target])
+		target++
 		stats.CurrentStreak++
 	} else {
-		stats.Hitrates[currentScore]++
+		stats.Hitrates[target]++
 		if stats.CurrentStreak > stats.LongestStreak.ValueOrZero() {
 			stats.LongestStreak = null.IntFrom(stats.CurrentStreak)
 		}
 		stats.CurrentStreak = 0
 	}
-	return currentScore
+	return target
 }

@@ -328,7 +328,7 @@ func FinishLegNew(visit models.Visit) error {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting Around the Clock %d statistics for player %d", visit.LegID, leg.StartingScore, playerID)
+			log.Printf("[%d] Inserting Around the Clock statistics for player %d", visit.LegID, playerID)
 		}
 	} else if match.MatchType.ID == models.AROUNDTHEWORLD || match.MatchType.ID == models.SHANGHAI {
 		statisticsMap, err := CalculateAroundTheWorldStatistics(visit.LegID, match.MatchType.ID)
@@ -349,7 +349,7 @@ func FinishLegNew(visit models.Visit) error {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting Around the World %d statistics for player %d", visit.LegID, leg.StartingScore, playerID)
+			log.Printf("[%d] Inserting Around the World/Shanghai statistics for player %d", visit.LegID, playerID)
 		}
 	} else {
 		statisticsMap, err := CalculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
