@@ -742,7 +742,9 @@ func GetLeg(id int) (*models.Leg, error) {
 
 	leg.Visits = visits
 	leg.Hits, leg.DartsThrown = models.GetHitsMap(visits)
-	leg.CheckoutStatistics, err = getCheckoutStatistics(leg.ID, leg.StartingScore)
+	if matchType == models.X01 || matchType == models.X01HANDICAP {
+		leg.CheckoutStatistics, err = getCheckoutStatistics(leg.ID, leg.StartingScore)
+	}
 	if err != nil {
 		return nil, err
 	}
