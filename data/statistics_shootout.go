@@ -70,6 +70,42 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 	return stats, nil
 }
 
+// GetShootoutStatisticsForMatch will return statistics for the given match
+func GetShootoutStatisticsForMatch(matchID int) ([]*models.StatisticsShootout, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			p.id AS 'player_id',
+			COUNT(DISTINCT m.id),
+			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
+			SUM(s.60s_plus),
+			SUM(s.100s_plus),
+			SUM(s.140s_plus),
+			SUM(s.180s) AS '180s'
+		FROM statistics_shootout s
+			JOIN player p ON p.id = s.player_id
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+		WHERE m.id = ?
+			AND m.is_finished = 1 AND m.is_abandoned = 0
+			AND m.match_type_id = 2
+		GROUP BY p.id`, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	stats := make([]*models.StatisticsShootout, 0)
+	for rows.Next() {
+		s := new(models.StatisticsShootout)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+		if err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	return stats, nil
+}
+
 // GetShootoutStatisticsForLeg will return statistics for all players in the given leg
 func GetShootoutStatisticsForLeg(id int) ([]*models.StatisticsShootout, error) {
 	rows, err := models.DB.Query(`

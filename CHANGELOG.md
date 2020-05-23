@@ -3,6 +3,7 @@
 ## [unreleased] - TBD
 #### Feature
 - Support for new game types `Around The World`, `Around The Clock` and `Shanghai`
+- Added match statistics for `9 Dart Shootout`
 
 ## [1.0.0] - 2020-05-03
 #### Feature
