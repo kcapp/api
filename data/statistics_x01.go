@@ -16,7 +16,7 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 			p.id AS 'player_id',
 			COUNT(DISTINCT m.id) AS 'matches_played',
 			COUNT(DISTINCT m2.id) AS 'matches_won',
-			COUNT(DISTINCT m.id) AS 'legs_played',
+			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
 			SUM(s.ppd_score) / SUM(s.darts_thrown) AS 'ppd',
 			SUM(s.first_nine_ppd) / (COUNT(p.id)) AS 'first_nine_ppd',

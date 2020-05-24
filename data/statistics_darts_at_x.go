@@ -12,7 +12,7 @@ func GetDartsAtXStatistics(from string, to string) ([]*models.StatisticsDartsAtX
 			p.id AS 'player_id',
 			COUNT(DISTINCT m.id) as 'matches_played',
 			COUNT(DISTINCT m2.id) as 'matches_won',
-			COUNT(DISTINCT m.id) as 'legs_played',
+			COUNT(DISTINCT l.id) as 'legs_played',
 			COUNT(DISTINCT l2.id) as 'legs_won',
 			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 			SUM(s.singles) as 'singles',
@@ -34,7 +34,7 @@ func GetDartsAtXStatistics(from string, to string) ([]*models.StatisticsDartsAtX
 			AND l.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 5
 		GROUP BY p.id
-		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
+		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC, avg_score DESC`, from, to)
 	if err != nil {
 		return nil, err
 	}
