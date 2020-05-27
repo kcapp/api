@@ -649,26 +649,6 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, 
 	return err
 }
 
-// GetGlobalStatistics will return global statistics for all legs played
-func GetGlobalStatistics() (*models.GlobalStatistics, error) {
-	global := new(models.GlobalStatistics)
-	err := models.DB.QueryRow(`
-		SELECT
-			COUNT(s.id) AS 'Fish-n-Chips'
-		FROM score s
-		WHERE
-			first_dart IN (1,20,5) AND first_dart_multiplier = 1 AND
-			second_dart IN (1,20,5) AND second_dart_multiplier = 1 AND
-			third_dart IN (1,20,5) AND third_dart_multiplier = 1  AND
-			((first_dart * first_dart_multiplier) + (second_dart * second_dart_multiplier) +
-			(third_dart * third_dart_multiplier) = 26)`).Scan(&global.FishNChips)
-	if err != nil {
-		return nil, err
-	}
-
-	return global, nil
-}
-
 // GetOfficeStatistics will return office statistics for the given period
 func GetOfficeStatistics(from string, to string) ([]*models.OfficeStatistics, error) {
 	rows, err := models.DB.Query(`

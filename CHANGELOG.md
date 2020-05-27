@@ -5,6 +5,7 @@
 - Support for new game types `Around The World`, `Around The Clock` and `Shanghai`
 - Added match statistics for `9 Dart Shootout`
 - New convenience endpoints`/statistics/<type_id>/<from>/<to>`
+- More statistics to global statistics endpoint
 
 #### Fixed
 - Correctly calculate legs played and won for different statistics
