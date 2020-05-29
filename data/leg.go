@@ -596,6 +596,48 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 	return legs, nil
 }
 
+// GetLegsOfType returns all legs with scores for the given match type
+func GetLegsOfType(matchType int) ([]*models.Leg, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			l.id, l.end_time, l.starting_score, l.is_finished,
+			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
+			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
+		FROM leg l
+			JOIN matches m on m.id = l.match_id
+			JOIN player2leg p2l ON p2l.leg_id = l.id
+		WHERE l.has_scores = 1 AND m.match_type_id = ?
+		GROUP BY l.id
+		ORDER BY l.id`, matchType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	legs := make([]*models.Leg, 0)
+	for rows.Next() {
+		leg := new(models.Leg)
+		var players string
+		err := rows.Scan(&leg.ID, &leg.Endtime, &leg.StartingScore, &leg.IsFinished, &leg.CurrentPlayerID,
+			&leg.WinnerPlayerID, &leg.CreatedAt, &leg.UpdatedAt, &leg.MatchID, &leg.HasScores, &players)
+		if err != nil {
+			return nil, err
+		}
+		leg.Players = util.StringToIntArray(players)
+		visits, err := GetLegVisits(leg.ID)
+		if err != nil {
+			return nil, err
+		}
+		leg.Visits = visits
+		legs = append(legs, leg)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return legs, nil
+}
+
 // GetActiveLegs returns all legs which are currently live
 func GetActiveLegs() ([]*models.Leg, error) {
 	rows, err := models.DB.Query(`
