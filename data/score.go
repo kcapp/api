@@ -99,7 +99,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		}
 	} else if match.MatchType.ID == models.AROUNDTHECLOCK {
 		players[visit.PlayerID].CurrentScore += visit.CalculateAroundTheClockScore(players[visit.PlayerID].CurrentScore)
-		if players[visit.PlayerID].CurrentScore+1 == 21 && (visit.FirstDart.IsBull() || visit.SecondDart.IsBull() || visit.ThirdDart.IsBull()) {
+		if players[visit.PlayerID].CurrentScore == 21 && (visit.FirstDart.IsBull() || visit.SecondDart.IsBull() || visit.ThirdDart.IsBull()) {
 			err = FinishLegNew(visit)
 			if err != nil {
 				return nil, err

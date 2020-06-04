@@ -353,12 +353,12 @@ func (visit *Visit) IsShanghai() bool {
 	third := visit.ThirdDart
 
 	if first.ValueRaw() == second.ValueRaw() && first.ValueRaw() == third.ValueRaw() && first.ValueRaw() != 0 &&
-		(first.Multiplier == 1 && second.Multiplier == 2 && third.Multiplier == 3) ||
-		(first.Multiplier == 2 && second.Multiplier == 3 && third.Multiplier == 1) ||
-		(first.Multiplier == 3 && second.Multiplier == 1 && third.Multiplier == 2) ||
-		(first.Multiplier == 3 && second.Multiplier == 2 && third.Multiplier == 1) ||
-		(first.Multiplier == 1 && second.Multiplier == 3 && third.Multiplier == 2) ||
-		(first.Multiplier == 2 && second.Multiplier == 1 && third.Multiplier == 3) {
+		((first.Multiplier == 1 && second.Multiplier == 2 && third.Multiplier == 3) ||
+			(first.Multiplier == 2 && second.Multiplier == 3 && third.Multiplier == 1) ||
+			(first.Multiplier == 3 && second.Multiplier == 1 && third.Multiplier == 2) ||
+			(first.Multiplier == 3 && second.Multiplier == 2 && third.Multiplier == 1) ||
+			(first.Multiplier == 1 && second.Multiplier == 3 && third.Multiplier == 2) ||
+			(first.Multiplier == 2 && second.Multiplier == 1 && third.Multiplier == 3)) {
 		return true
 	}
 	return false

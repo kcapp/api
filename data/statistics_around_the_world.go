@@ -413,7 +413,7 @@ func CalculateAroundTheWorldStatistics(legID int, matchType int) (map[int]*model
 	for _, player := range players {
 		stats := new(models.StatisticsAroundThe)
 		stats.PlayerID = player.PlayerID
-		stats.Score = 1
+		stats.Score = 0
 		statisticsMap[player.PlayerID] = stats
 		stats.Hitrates = make(map[int]float32)
 		for i := 1; i <= 21; i++ {
@@ -466,7 +466,7 @@ func CalculateAroundTheWorldStatistics(legID int, matchType int) (map[int]*model
 		delete(stats.Hitrates, 21)
 
 		if shanghai > 0 {
-			stats.TotalHitRate = totalHitRate / float32(shanghai)
+			stats.TotalHitRate = totalHitRate / float32(shanghai*3)
 		} else {
 			stats.TotalHitRate = totalHitRate / float32(round*3)
 		}
