@@ -410,6 +410,105 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 	return statisticsMap, nil
 }
 
+// GetX01StatisticsForPlayer will return X01 statistics for the given player
+func GetX01StatisticsForPlayer(id int) (*models.StatisticsX01, error) {
+	s := new(models.StatisticsX01)
+	err := models.DB.QueryRow(`
+		SELECT
+			p.id AS 'player_id',
+			COUNT(DISTINCT m.id) AS 'matches_played',
+			COUNT(DISTINCT m2.id) AS 'matches_won',
+			COUNT(DISTINCT l.id) AS 'legs_played',
+			COUNT(DISTINCT l2.id) AS 'legs_won',
+			SUM(s.ppd_score) / SUM(s.darts_thrown) AS 'ppd',
+			SUM(s.first_nine_ppd) / (COUNT(p.id)) AS 'first_nine_ppd',
+			(SUM(s.ppd_score) / SUM(s.darts_thrown)) * 3 AS 'three_dart_avg',
+			SUM(s.first_nine_ppd) / COUNT(p.id) * 3 AS 'first_nine_three_dart_avg',
+			SUM(60s_plus) AS '60s_plus',
+			SUM(100s_plus) AS '100s_plus',
+			SUM(140s_plus) AS '140s_plus',
+			SUM(180s) AS '180s',
+			SUM(accuracy_20) / COUNT(accuracy_20) AS 'accuracy_20s',
+			SUM(accuracy_19) / COUNT(accuracy_19) AS 'accuracy_19s',
+			SUM(overall_accuracy) / COUNT(overall_accuracy) AS 'accuracy_overall',
+			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
+		FROM statistics_x01 s
+			JOIN player p ON p.id = s.player_id
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
+			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
+		WHERE s.player_id = ?
+			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND m.match_type_id = 1
+		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg,
+		&s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19,
+		&s.AccuracyOverall, &s.CheckoutPercentage)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// GetX01HistoryForPlayer will return history of X01 statistics for the given player
+func GetX01HistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.X01, false)
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[int]*models.Leg)
+	for _, leg := range legs {
+		m[leg.ID] = leg
+	}
+
+	rows, err := models.DB.Query(`
+		SELECT
+			l.id AS 'leg_id',
+			p.id AS 'player_id',
+			s.ppd_score / s.darts_thrown,
+			s.first_nine_ppd,
+			s.ppd_score / s.darts_thrown * 3,
+			s.first_nine_ppd * 3,
+			s.60s_plus,
+			s.100s_plus,
+			s.140s_plus,
+			s.180s,
+			s.accuracy_20,
+			s.accuracy_19,
+			s.overall_accuracy,
+			s.darts_thrown,
+			s.checkout_attempts,
+			IFNULL(s.checkout_percentage, 0) AS 'checkout_percentage'
+		FROM statistics_x01 s
+			LEFT JOIN player p ON p.id = s.player_id
+			LEFT JOIN leg l ON l.id = s.leg_id
+			LEFT JOIN matches m ON m.id = l.match_id
+		WHERE s.player_id = ?
+			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND m.match_type_id = 1
+		ORDER BY l.id DESC
+		LIMIT ?`, id, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	legs = make([]*models.Leg, 0)
+	for rows.Next() {
+		s := new(models.StatisticsX01)
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus,
+			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.DartsThrown,
+			&s.CheckoutAttempts, &s.CheckoutPercentage)
+		if err != nil {
+			return nil, err
+		}
+		leg := m[s.LegID]
+		leg.Statistics = s
+		legs = append(legs, leg)
+	}
+	return legs, nil
+}
+
 // CalculateX01Statistics will calculate x01 statistics for the given leg
 func CalculateX01Statistics(legID int, winnerID int, startingScore int) (map[int]*models.StatisticsX01, error) {
 	visits, err := GetLegVisits(legID)

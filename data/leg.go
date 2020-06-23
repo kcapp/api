@@ -597,7 +597,7 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 }
 
 // GetLegsOfType returns all legs with scores for the given match type
-func GetLegsOfType(matchType int) ([]*models.Leg, error) {
+func GetLegsOfType(matchType int, loadVisits bool) ([]*models.Leg, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			l.id, l.end_time, l.starting_score, l.is_finished,
@@ -608,7 +608,7 @@ func GetLegsOfType(matchType int) ([]*models.Leg, error) {
 			JOIN player2leg p2l ON p2l.leg_id = l.id
 		WHERE l.has_scores = 1 AND m.match_type_id = ?
 		GROUP BY l.id
-		ORDER BY l.id`, matchType)
+		ORDER BY l.id DESC`, matchType)
 	if err != nil {
 		return nil, err
 	}
@@ -624,11 +624,13 @@ func GetLegsOfType(matchType int) ([]*models.Leg, error) {
 			return nil, err
 		}
 		leg.Players = util.StringToIntArray(players)
-		visits, err := GetLegVisits(leg.ID)
-		if err != nil {
-			return nil, err
+		if loadVisits {
+			visits, err := GetLegVisits(leg.ID)
+			if err != nil {
+				return nil, err
+			}
+			leg.Visits = visits
 		}
-		leg.Visits = visits
 		legs = append(legs, leg)
 	}
 	if err = rows.Err(); err != nil {

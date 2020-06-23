@@ -110,7 +110,7 @@ func GetPlayerStatistics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	visits, err := data.GetPlayerVisitCount(id)
+	/*visits, err := data.GetPlayerVisitCount(id)
 	if err != nil {
 		log.Println("Unable to get visits for player", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -119,34 +119,206 @@ func GetPlayerStatistics(w http.ResponseWriter, r *http.Request) {
 	x01.Visits = visits
 	for _, v := range visits {
 		x01.TotalVisits += v.Count
-	}
+	}*/
 	statistics.X01 = x01
 
-	shootout, err := data.GetPlayerShootoutStatistics(id)
-	if err != nil {
-		log.Println("Unable to get player shootout statistics")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	statistics.Shootout = shootout
-
-	cricket, err := data.GetPlayerCricketStatistics(id)
-	if err != nil {
-		log.Println("Unable to get player cricket statistics")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	statistics.Cricket = cricket
-
-	dartsAtX, err := data.GetPlayerDartsAtXStatistics(id)
-	if err != nil {
-		log.Println("Unable to get player darts at X statistics")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	statistics.DartsAt = dartsAtX
-
 	json.NewEncoder(w).Encode(statistics)
+}
+
+// GetPlayerMatchTypeStatistics will return statistics for the given player
+func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	matchType, err := strconv.Atoi(params["match_type"])
+	if err != nil {
+		log.Println("Invalid match type parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch matchType {
+	case models.X01:
+		stats, err := data.GetX01StatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get X01 statistics for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.SHOOTOUT:
+		stats, err := data.GetShootoutStatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get Cricket statistics for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.CRICKET:
+		stats, err := data.GetCricketStatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get Cricket statistics for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.DARTSATX:
+		stats, err := data.GetDartsAtXStatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get Darts at X statistics for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.AROUNDTHEWORLD:
+		stats, err := data.GetAroundTheWorldStatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get Around The World Statistics for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.SHANGHAI:
+		stats, err := data.GetShanghaiStatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get Shanghai Statistics for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.AROUNDTHECLOCK:
+		stats, err := data.GetAroundTheClockStatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get Around the Clock Statistics for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	default:
+		log.Println("Unknown match type parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+}
+
+// GetPlayerMatchTypeHistory will return history of match statistics for the given player
+func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	matchType, err := strconv.Atoi(params["match_type"])
+	if err != nil {
+		log.Println("Invalid match type parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	limit, err := strconv.Atoi(params["limit"])
+	if err != nil {
+		log.Println("Invalid limit parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch matchType {
+	case models.X01:
+		legs, err := data.GetX01HistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get X01 history for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	case models.SHOOTOUT:
+		legs, err := data.GetShootoutHistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get Shootout history for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	case models.CRICKET:
+		legs, err := data.GetCricketHistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get Cricket history for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	case models.DARTSATX:
+		legs, err := data.GetDartsAtXHistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get Darts at X history for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	case models.AROUNDTHEWORLD:
+		legs, err := data.GetAroundTheWorldHistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get Around The World history for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	case models.SHANGHAI:
+		legs, err := data.GetShanghaiHistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get Shanghai history for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	case models.AROUNDTHECLOCK:
+		legs, err := data.GetAroundTheClockHistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get Around the Clock history for player")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	default:
+		log.Println("Unknown match type parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 }
 
 // GetPlayerX01PreviousStatistics will return statistics for the given player
@@ -175,7 +347,6 @@ func GetPlayersX01Statistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := r.URL.Query()["id"]
 	if params == nil {
-		log.Println("No players specified to compare")
 		http.Error(w, "No players specified to compare", http.StatusBadRequest)
 		return
 	}

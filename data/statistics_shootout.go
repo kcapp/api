@@ -88,11 +88,11 @@ func GetShootoutStatisticsForLeg(id int) ([]*models.StatisticsShootout, error) {
 		SELECT
 			l.id,
 			p.id,
-			SUM(s.ppd) / COUNT(p.id),
-			SUM(60s_plus),
-			SUM(100s_plus),
-			SUM(140s_plus),
-			SUM(180s) AS '180s'
+			ppd,
+			60s_plus,
+			100s_plus,
+			140s_plus,
+			180s
 		FROM statistics_shootout s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -114,12 +114,16 @@ func GetShootoutStatisticsForLeg(id int) ([]*models.StatisticsShootout, error) {
 	return stats, nil
 }
 
-// GetPlayerShootoutStatistics will get statistics about all the the given player IDs
-func GetPlayerShootoutStatistics(id int) (*models.StatisticsShootout, error) {
-	rows, err := models.DB.Query(`
+// GetShootoutStatisticsForPlayer will return Shootout statistics for the given player
+func GetShootoutStatisticsForPlayer(id int) (*models.StatisticsShootout, error) {
+	s := new(models.StatisticsShootout)
+	err := models.DB.QueryRow(`
 		SELECT
 			p.id AS 'player_id',
-			COUNT(DISTINCT m.id),
+			COUNT(DISTINCT m.id) AS 'matches_played',
+			COUNT(DISTINCT m2.id) AS 'matches_won',
+			COUNT(DISTINCT l.id) AS 'legs_played',
+			COUNT(DISTINCT l2.id) AS 'legs_won',
 			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
 			SUM(s.60s_plus),
 			SUM(s.100s_plus),
@@ -129,57 +133,64 @@ func GetPlayerShootoutStatistics(id int) (*models.StatisticsShootout, error) {
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
+			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
+			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE s.player_id = ?
-			AND m.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 2
-		GROUP BY p.id`, id)
+		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// GetShootoutHistoryForPlayer will return history of Shootout statistics for the given player
+func GetShootoutHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.SHOOTOUT, false)
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[int]*models.Leg)
+	for _, leg := range legs {
+		m[leg.ID] = leg
+	}
+
+	rows, err := models.DB.Query(`
+		SELECT
+			l.id,
+			p.id,
+			ppd,
+			60s_plus,
+			100s_plus,
+			140s_plus,
+			180s
+		FROM statistics_shootout s
+			LEFT JOIN player p ON p.id = s.player_id
+			LEFT JOIN leg l ON l.id = s.leg_id
+			LEFT JOIN matches m ON m.id = l.match_id
+		WHERE s.player_id = ?
+			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND m.match_type_id = 2
+		ORDER BY l.id DESC
+		LIMIT ?`, id, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	statsMap := make(map[int]*models.StatisticsShootout, 0)
+	legs = make([]*models.Leg, 0)
 	for rows.Next() {
 		s := new(models.StatisticsShootout)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
 		if err != nil {
 			return nil, err
 		}
-		statsMap[s.PlayerID] = s
+		leg := m[s.LegID]
+		leg.Statistics = s
+		legs = append(legs, leg)
 	}
-
-	rows, err = models.DB.Query(`
-		SELECT
-			p.id AS 'player_id',
-			COUNT(m.winner_id) AS 'matches_won'
-		FROM matches m
-			JOIN player p ON p.id = m.winner_id
-		WHERE p.id = ? AND m.match_type_id = 2
-		GROUP BY m.winner_id`, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var playerID int
-		var matchesWon int
-		err := rows.Scan(&playerID, &matchesWon)
-		if err != nil {
-			return nil, err
-		}
-		statsMap[playerID].MatchesWon = matchesWon
-	}
-
-	stats := make([]*models.StatisticsShootout, 0)
-	for _, s := range statsMap {
-		stats = append(stats, s)
-	}
-
-	if len(stats) > 0 {
-		return stats[0], nil
-	}
-	return new(models.StatisticsShootout), nil
+	return legs, nil
 }
 
 // CalculateShootoutStatistics will generate shootout statistics for the given leg
