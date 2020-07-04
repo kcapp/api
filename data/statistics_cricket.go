@@ -1,6 +1,8 @@
 package data
 
 import (
+	"database/sql"
+
 	"github.com/guregu/null"
 
 	"github.com/kcapp/api/models"
@@ -164,6 +166,9 @@ func GetCricketStatisticsForPlayer(id int) (*models.StatisticsCricket, error) {
 		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.TotalMarks, &s.FirstNineMarks,
 		&s.MPR, &s.FirstNineMPR, &s.Marks5, &s.Marks6, &s.Marks7, &s.Marks8, &s.Marks9)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return new(models.StatisticsCricket), nil
+		}
 		return nil, err
 	}
 	return s, nil

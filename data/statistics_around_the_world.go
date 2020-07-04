@@ -1,6 +1,7 @@
 package data
 
 import (
+	"database/sql"
 	"log"
 
 	"github.com/guregu/null"
@@ -253,6 +254,9 @@ func GetAroundTheWorldStatisticsForPlayer(id int) (*models.StatisticsAroundThe, 
 		&s.Score, &s.MPR, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10],
 		&h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20], &h[25])
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return new(models.StatisticsAroundThe), nil
+		}
 		return nil, err
 	}
 	hitrates := make(map[int]float32)
@@ -355,26 +359,26 @@ func GetShanghaiStatistics(from string, to string) ([]*models.StatisticsAroundTh
 			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 			SUM(s.mpr) / COUNT(DISTINCT l.id) as 'mpr',
 			SUM(s.total_hit_rate) / COUNT(l.id) as 'total_hit_rate',
-			SUM(s.hit_rate_1) / SUM(IF(shanghai < 1, 0, 1)) as 'hit_rate_1',
-			SUM(s.hit_rate_2) / SUM(IF(shanghai < 2, 0, 1)) as 'hit_rate_2',
-			SUM(s.hit_rate_3) / SUM(IF(shanghai < 3, 0, 1)) as 'hit_rate_3',
-			SUM(s.hit_rate_4) / SUM(IF(shanghai < 4, 0, 1)) as 'hit_rate_4',
-			SUM(s.hit_rate_5) / SUM(IF(shanghai < 5, 0, 1)) as 'hit_rate_5',
-			SUM(s.hit_rate_6) / SUM(IF(shanghai < 6, 0, 1)) as 'hit_rate_6',
-			SUM(s.hit_rate_7) / SUM(IF(shanghai < 7, 0, 1)) as 'hit_rate_7',
-			SUM(s.hit_rate_8) / SUM(IF(shanghai < 8, 0, 1)) as 'hit_rate_8',
-			SUM(s.hit_rate_9) / SUM(IF(shanghai < 9, 0, 1)) as 'hit_rate_9',
-			SUM(s.hit_rate_10) / SUM(IF(shanghai < 10, 0, 1)) as 'hit_rate_10',
-			SUM(s.hit_rate_11) / SUM(IF(shanghai < 11, 0, 1)) as 'hit_rate_11',
-			SUM(s.hit_rate_12) / SUM(IF(shanghai < 12, 0, 1)) as 'hit_rate_12',
-			SUM(s.hit_rate_13) / SUM(IF(shanghai < 13, 0, 1)) as 'hit_rate_13',
-			SUM(s.hit_rate_14) / SUM(IF(shanghai < 14, 0, 1)) as 'hit_rate_14',
-			SUM(s.hit_rate_15) / SUM(IF(shanghai < 15, 0, 1)) as 'hit_rate_15',
-			SUM(s.hit_rate_16) / SUM(IF(shanghai < 16, 0, 1)) as 'hit_rate_16',
-			SUM(s.hit_rate_17) / SUM(IF(shanghai < 17, 0, 1)) as 'hit_rate_17',
-			SUM(s.hit_rate_18) / SUM(IF(shanghai < 18, 0, 1)) as 'hit_rate_18',
-			SUM(s.hit_rate_19) / SUM(IF(shanghai < 19, 0, 1)) as 'hit_rate_19',
-			SUM(s.hit_rate_20) / SUM(IF(shanghai < 20, 0, 1)) as 'hit_rate_20'
+			IFNULL(SUM(s.hit_rate_1) / SUM(IF(shanghai < 1, 0, 1)), 0) as 'hit_rate_1',
+			IFNULL(SUM(s.hit_rate_2) / SUM(IF(shanghai < 2, 0, 1)), 0) as 'hit_rate_2',
+			IFNULL(SUM(s.hit_rate_3) / SUM(IF(shanghai < 3, 0, 1)), 0) as 'hit_rate_3',
+			IFNULL(SUM(s.hit_rate_4) / SUM(IF(shanghai < 4, 0, 1)), 0) as 'hit_rate_4',
+			IFNULL(SUM(s.hit_rate_5) / SUM(IF(shanghai < 5, 0, 1)), 0) as 'hit_rate_5',
+			IFNULL(SUM(s.hit_rate_6) / SUM(IF(shanghai < 6, 0, 1)), 0) as 'hit_rate_6',
+			IFNULL(SUM(s.hit_rate_7) / SUM(IF(shanghai < 7, 0, 1)), 0) as 'hit_rate_7',
+			IFNULL(SUM(s.hit_rate_8) / SUM(IF(shanghai < 8, 0, 1)), 0) as 'hit_rate_8',
+			IFNULL(SUM(s.hit_rate_9) / SUM(IF(shanghai < 9, 0, 1)), 0) as 'hit_rate_9',
+			IFNULL(SUM(s.hit_rate_10) / SUM(IF(shanghai < 10, 0, 1)), 0) as 'hit_rate_10',
+			IFNULL(SUM(s.hit_rate_11) / SUM(IF(shanghai < 11, 0, 1)), 0) as 'hit_rate_11',
+			IFNULL(SUM(s.hit_rate_12) / SUM(IF(shanghai < 12, 0, 1)), 0) as 'hit_rate_12',
+			IFNULL(SUM(s.hit_rate_13) / SUM(IF(shanghai < 13, 0, 1)), 0) as 'hit_rate_13',
+			IFNULL(SUM(s.hit_rate_14) / SUM(IF(shanghai < 14, 0, 1)), 0) as 'hit_rate_14',
+			IFNULL(SUM(s.hit_rate_15) / SUM(IF(shanghai < 15, 0, 1)), 0) as 'hit_rate_15',
+			IFNULL(SUM(s.hit_rate_16) / SUM(IF(shanghai < 16, 0, 1)), 0) as 'hit_rate_16',
+			IFNULL(SUM(s.hit_rate_17) / SUM(IF(shanghai < 17, 0, 1)), 0) as 'hit_rate_17',
+			IFNULL(SUM(s.hit_rate_18) / SUM(IF(shanghai < 18, 0, 1)), 0) as 'hit_rate_18',
+			IFNULL(SUM(s.hit_rate_19) / SUM(IF(shanghai < 19, 0, 1)), 0) as 'hit_rate_19',
+			IFNULL(SUM(s.hit_rate_20) / SUM(IF(shanghai < 20, 0, 1)), 0) as 'hit_rate_20'
 		FROM statistics_around_the s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -482,26 +486,26 @@ func GetShanghaiStatisticsForMatch(id int) ([]*models.StatisticsAroundThe, error
 			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 			SUM(s.mpr) / COUNT(DISTINCT l.id) as 'mpr',
 			SUM(s.total_hit_rate) / COUNT(l.id) as 'total_hit_rate',
-			SUM(s.hit_rate_1) / SUM(IF(shanghai < 1, 0, 1)) as 'hit_rate_1',
-			SUM(s.hit_rate_2) / SUM(IF(shanghai < 2, 0, 1)) as 'hit_rate_2',
-			SUM(s.hit_rate_3) / SUM(IF(shanghai < 3, 0, 1)) as 'hit_rate_3',
-			SUM(s.hit_rate_4) / SUM(IF(shanghai < 4, 0, 1)) as 'hit_rate_4',
-			SUM(s.hit_rate_5) / SUM(IF(shanghai < 5, 0, 1)) as 'hit_rate_5',
-			SUM(s.hit_rate_6) / SUM(IF(shanghai < 6, 0, 1)) as 'hit_rate_6',
-			SUM(s.hit_rate_7) / SUM(IF(shanghai < 7, 0, 1)) as 'hit_rate_7',
-			SUM(s.hit_rate_8) / SUM(IF(shanghai < 8, 0, 1)) as 'hit_rate_8',
-			SUM(s.hit_rate_9) / SUM(IF(shanghai < 9, 0, 1)) as 'hit_rate_9',
-			SUM(s.hit_rate_10) / SUM(IF(shanghai < 10, 0, 1)) as 'hit_rate_10',
-			SUM(s.hit_rate_11) / SUM(IF(shanghai < 11, 0, 1)) as 'hit_rate_11',
-			SUM(s.hit_rate_12) / SUM(IF(shanghai < 12, 0, 1)) as 'hit_rate_12',
-			SUM(s.hit_rate_13) / SUM(IF(shanghai < 13, 0, 1)) as 'hit_rate_13',
-			SUM(s.hit_rate_14) / SUM(IF(shanghai < 14, 0, 1)) as 'hit_rate_14',
-			SUM(s.hit_rate_15) / SUM(IF(shanghai < 15, 0, 1)) as 'hit_rate_15',
-			SUM(s.hit_rate_16) / SUM(IF(shanghai < 16, 0, 1)) as 'hit_rate_16',
-			SUM(s.hit_rate_17) / SUM(IF(shanghai < 17, 0, 1)) as 'hit_rate_17',
-			SUM(s.hit_rate_18) / SUM(IF(shanghai < 18, 0, 1)) as 'hit_rate_18',
-			SUM(s.hit_rate_19) / SUM(IF(shanghai < 19, 0, 1)) as 'hit_rate_19',
-			SUM(s.hit_rate_20) / SUM(IF(shanghai < 20, 0, 1)) as 'hit_rate_20'
+			IFNULL(SUM(s.hit_rate_1) / SUM(IF(shanghai < 1, 0, 1)), 0) as 'hit_rate_1',
+			IFNULL(SUM(s.hit_rate_2) / SUM(IF(shanghai < 2, 0, 1)), 0) as 'hit_rate_2',
+			IFNULL(SUM(s.hit_rate_3) / SUM(IF(shanghai < 3, 0, 1)), 0) as 'hit_rate_3',
+			IFNULL(SUM(s.hit_rate_4) / SUM(IF(shanghai < 4, 0, 1)), 0) as 'hit_rate_4',
+			IFNULL(SUM(s.hit_rate_5) / SUM(IF(shanghai < 5, 0, 1)), 0) as 'hit_rate_5',
+			IFNULL(SUM(s.hit_rate_6) / SUM(IF(shanghai < 6, 0, 1)), 0) as 'hit_rate_6',
+			IFNULL(SUM(s.hit_rate_7) / SUM(IF(shanghai < 7, 0, 1)), 0) as 'hit_rate_7',
+			IFNULL(SUM(s.hit_rate_8) / SUM(IF(shanghai < 8, 0, 1)), 0) as 'hit_rate_8',
+			IFNULL(SUM(s.hit_rate_9) / SUM(IF(shanghai < 9, 0, 1)), 0) as 'hit_rate_9',
+			IFNULL(SUM(s.hit_rate_10) / SUM(IF(shanghai < 10, 0, 1)), 0) as 'hit_rate_10',
+			IFNULL(SUM(s.hit_rate_11) / SUM(IF(shanghai < 11, 0, 1)), 0) as 'hit_rate_11',
+			IFNULL(SUM(s.hit_rate_12) / SUM(IF(shanghai < 12, 0, 1)), 0) as 'hit_rate_12',
+			IFNULL(SUM(s.hit_rate_13) / SUM(IF(shanghai < 13, 0, 1)), 0) as 'hit_rate_13',
+			IFNULL(SUM(s.hit_rate_14) / SUM(IF(shanghai < 14, 0, 1)), 0) as 'hit_rate_14',
+			IFNULL(SUM(s.hit_rate_15) / SUM(IF(shanghai < 15, 0, 1)), 0) as 'hit_rate_15',
+			IFNULL(SUM(s.hit_rate_16) / SUM(IF(shanghai < 16, 0, 1)), 0) as 'hit_rate_16',
+			IFNULL(SUM(s.hit_rate_17) / SUM(IF(shanghai < 17, 0, 1)), 0) as 'hit_rate_17',
+			IFNULL(SUM(s.hit_rate_18) / SUM(IF(shanghai < 18, 0, 1)), 0) as 'hit_rate_18',
+			IFNULL(SUM(s.hit_rate_19) / SUM(IF(shanghai < 19, 0, 1)), 0) as 'hit_rate_19',
+			IFNULL(SUM(s.hit_rate_20) / SUM(IF(shanghai < 20, 0, 1)), 0) as 'hit_rate_20'
 		FROM statistics_around_the s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -583,6 +587,9 @@ func GetShanghaiStatisticsForPlayer(id int) (*models.StatisticsAroundThe, error)
 		&s.Score, &s.MPR, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10],
 		&h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20])
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return new(models.StatisticsAroundThe), nil
+		}
 		return nil, err
 	}
 	hitrates := make(map[int]float32)

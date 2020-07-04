@@ -1,6 +1,8 @@
 package data
 
 import (
+	"database/sql"
+
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
 )
@@ -163,7 +165,42 @@ func GetDartsAtXStatisticsForPlayer(id int) (*models.StatisticsDartsAtX, error) 
 		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.AvgScore,
 		&s.Singles, &s.Doubles, &s.Triples, &s.HitRate, &s.Hits5, &s.Hits6, &s.Hits7, &s.Hits8, &s.Hits9)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return new(models.StatisticsDartsAtX), nil
+		}
 		return nil, err
+	}
+
+	rows, err := models.DB.Query(`
+		SELECT
+			l.starting_score,
+			SUM(s.hit_rate) / COUNT(l.id) AS 'hit_rate'
+		FROM statistics_darts_at_x s
+			LEFT JOIN leg l ON l.id = s.leg_id
+			LEFT JOIN matches m ON m.id = l.match_id
+		WHERE s.player_id = ?
+			AND l.is_finished = 1 AND m.is_abandoned = 0
+		GROUP BY l.starting_score`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	hitrates := make(map[int]float32)
+	for i := 1; i <= 20; i++ {
+		hitrates[i] = 0
+	}
+	hitrates[25] = 0
+	s.Hitrates = hitrates
+
+	for rows.Next() {
+		var target int
+		var hitrate float32
+		err := rows.Scan(&target, &hitrate)
+		if err != nil {
+			return nil, err
+		}
+		s.Hitrates[target] = hitrate
 	}
 	return s, nil
 }

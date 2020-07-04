@@ -146,7 +146,7 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 	case models.X01:
 		stats, err := data.GetX01StatisticsForPlayer(id)
 		if err != nil {
-			log.Println("Unable to get X01 statistics for player")
+			log.Println("Unable to get X01 statistics for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -156,7 +156,7 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 	case models.SHOOTOUT:
 		stats, err := data.GetShootoutStatisticsForPlayer(id)
 		if err != nil {
-			log.Println("Unable to get Cricket statistics for player")
+			log.Println("Unable to get Cricket statistics for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -166,7 +166,7 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 	case models.CRICKET:
 		stats, err := data.GetCricketStatisticsForPlayer(id)
 		if err != nil {
-			log.Println("Unable to get Cricket statistics for player")
+			log.Println("Unable to get Cricket statistics for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -176,7 +176,7 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 	case models.DARTSATX:
 		stats, err := data.GetDartsAtXStatisticsForPlayer(id)
 		if err != nil {
-			log.Println("Unable to get Darts at X statistics for player")
+			log.Println("Unable to get Darts at X statistics for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -186,7 +186,7 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 	case models.AROUNDTHEWORLD:
 		stats, err := data.GetAroundTheWorldStatisticsForPlayer(id)
 		if err != nil {
-			log.Println("Unable to get Around The World Statistics for player")
+			log.Println("Unable to get Around The World Statistics for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -196,7 +196,7 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 	case models.SHANGHAI:
 		stats, err := data.GetShanghaiStatisticsForPlayer(id)
 		if err != nil {
-			log.Println("Unable to get Shanghai Statistics for player")
+			log.Println("Unable to get Shanghai Statistics for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -206,7 +206,7 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 	case models.AROUNDTHECLOCK:
 		stats, err := data.GetAroundTheClockStatisticsForPlayer(id)
 		if err != nil {
-			log.Println("Unable to get Around the Clock Statistics for player")
+			log.Println("Unable to get Around the Clock Statistics for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -247,7 +247,7 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 	case models.X01:
 		legs, err := data.GetX01HistoryForPlayer(id, limit)
 		if err != nil {
-			log.Println("Unable to get X01 history for player")
+			log.Println("Unable to get X01 history for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -257,7 +257,7 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 	case models.SHOOTOUT:
 		legs, err := data.GetShootoutHistoryForPlayer(id, limit)
 		if err != nil {
-			log.Println("Unable to get Shootout history for player")
+			log.Println("Unable to get Shootout history for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -267,7 +267,7 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 	case models.CRICKET:
 		legs, err := data.GetCricketHistoryForPlayer(id, limit)
 		if err != nil {
-			log.Println("Unable to get Cricket history for player")
+			log.Println("Unable to get Cricket history for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -277,7 +277,7 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 	case models.DARTSATX:
 		legs, err := data.GetDartsAtXHistoryForPlayer(id, limit)
 		if err != nil {
-			log.Println("Unable to get Darts at X history for player")
+			log.Println("Unable to get Darts at X history for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -287,7 +287,7 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 	case models.AROUNDTHEWORLD:
 		legs, err := data.GetAroundTheWorldHistoryForPlayer(id, limit)
 		if err != nil {
-			log.Println("Unable to get Around The World history for player")
+			log.Println("Unable to get Around The World history for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -297,7 +297,7 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 	case models.SHANGHAI:
 		legs, err := data.GetShanghaiHistoryForPlayer(id, limit)
 		if err != nil {
-			log.Println("Unable to get Shanghai history for player")
+			log.Println("Unable to get Shanghai history for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -307,7 +307,7 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 	case models.AROUNDTHECLOCK:
 		legs, err := data.GetAroundTheClockHistoryForPlayer(id, limit)
 		if err != nil {
-			log.Println("Unable to get Around the Clock history for player")
+			log.Println("Unable to get Around the Clock history for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

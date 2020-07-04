@@ -1,6 +1,7 @@
 package data
 
 import (
+	"database/sql"
 	"log"
 
 	"github.com/guregu/null"
@@ -256,6 +257,9 @@ func GetAroundTheClockStatisticsForPlayer(id int) (*models.StatisticsAroundThe, 
 		&h[10], &h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17],
 		&h[18], &h[19], &h[20], &h[25])
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return new(models.StatisticsAroundThe), nil
+		}
 		return nil, err
 	}
 	hitrates := make(map[int]float32)

@@ -1,6 +1,8 @@
 package data
 
 import (
+	"database/sql"
+
 	"github.com/kcapp/api/models"
 )
 
@@ -140,6 +142,9 @@ func GetShootoutStatisticsForPlayer(id int) (*models.StatisticsShootout, error) 
 			AND m.match_type_id = 2
 		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return new(models.StatisticsShootout), nil
+		}
 		return nil, err
 	}
 	return s, nil

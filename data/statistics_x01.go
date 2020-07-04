@@ -1,6 +1,7 @@
 package data
 
 import (
+	"database/sql"
 	"log"
 
 	"github.com/guregu/null"
@@ -445,6 +446,9 @@ func GetX01StatisticsForPlayer(id int) (*models.StatisticsX01, error) {
 		&s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19,
 		&s.AccuracyOverall, &s.CheckoutPercentage)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return new(models.StatisticsX01), nil
+		}
 		return nil, err
 	}
 	return s, nil
