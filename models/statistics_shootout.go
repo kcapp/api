@@ -9,6 +9,7 @@ type StatisticsShootout struct {
 	MatchesWon    int             `json:"matches_won,omitempty"`
 	LegsPlayed    int             `json:"legs_played,omitempty"`
 	LegsWon       int             `json:"legs_won,omitempty"`
+	Score         int             `json:"score"`
 	PPD           float32         `json:"ppd"`
 	Score60sPlus  int             `json:"scores_60s_plus"`
 	Score100sPlus int             `json:"scores_100s_plus"`

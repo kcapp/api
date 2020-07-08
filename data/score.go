@@ -1,45 +1,60 @@
 package data
 
 import (
+	"errors"
 	"log"
 	"math"
+	"sync"
 
+	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
 )
 
+var addVisitLock sync.Mutex
+
 // AddVisit will write thegiven visit to database
 func AddVisit(visit models.Visit) (*models.Visit, error) {
-	currentScore, err := GetPlayerScore(visit.PlayerID, visit.LegID)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO Don't allow to save score for same player twice in a row
-	// Only allow saving score for leg.current_player_id ?
+	addVisitLock.Lock()
+	defer addVisitLock.Unlock()
 
 	leg, err := GetLeg(visit.LegID)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO Don't allow to insert if leg is finished?
+	if leg.CurrentPlayerID != visit.PlayerID {
+		return nil, errors.New("Cannot insert score for non-current player")
+	}
+	if leg.IsFinished {
+		return nil, errors.New("Leg already finished")
+	}
 
 	match, err := GetMatch(leg.MatchID)
 	if err != nil {
 		return nil, err
 	}
 
-	if match.MatchType.ID == models.X01 || match.MatchType.ID == models.X01HANDICAP {
-		// Only set busts for x01 match modes
-		visit.SetIsBust(currentScore)
-	}
-
-	// Determine who the next player will be
 	players, err := GetPlayersScore(visit.LegID)
 	if err != nil {
 		return nil, err
 	}
 
+	// Invalidate extra darts not thrown
+	if match.MatchType.ID == models.X01 || match.MatchType.ID == models.X01HANDICAP {
+		visit.SetIsBust(players[visit.PlayerID].CurrentScore)
+	} else if match.MatchType.ID == models.AROUNDTHECLOCK {
+		players[visit.PlayerID].CurrentScore += visit.CalculateAroundTheClockScore(players[visit.PlayerID].CurrentScore)
+		if players[visit.PlayerID].CurrentScore == 21 {
+			if visit.FirstDart.IsBull() {
+				visit.SecondDart.Value = null.IntFromPtr(nil)
+				visit.ThirdDart.Value = null.IntFromPtr(nil)
+			} else if visit.SecondDart.IsBull() {
+				visit.ThirdDart.Value = null.IntFromPtr(nil)
+			}
+		}
+	}
+
+	// Determine who the next player will be
 	currentPlayerOrder := 1
 	order := make(map[int]int)
 	for _, player := range players {
@@ -98,7 +113,6 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 			}
 		}
 	} else if match.MatchType.ID == models.AROUNDTHECLOCK {
-		players[visit.PlayerID].CurrentScore += visit.CalculateAroundTheClockScore(players[visit.PlayerID].CurrentScore)
 		if players[visit.PlayerID].CurrentScore == 21 && (visit.FirstDart.IsBull() || visit.SecondDart.IsBull() || visit.ThirdDart.IsBull()) {
 			err = FinishLegNew(visit)
 			if err != nil {
@@ -162,7 +176,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 			}
 		}
 	} else {
-		if !visit.IsBust && visit.IsCheckout(currentScore) {
+		if !visit.IsBust && visit.IsCheckout(players[visit.PlayerID].CurrentScore) {
 			// Finalize leg, since leg is finished!
 			err = FinishLegNew(visit)
 			if err != nil {

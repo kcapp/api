@@ -30,7 +30,7 @@ func AddVisit(w http.ResponseWriter, r *http.Request) {
 
 	insertedVisit, err := data.AddVisit(visit)
 	if err != nil {
-		log.Println("Unable to add visit", err)
+		log.Printf(`[%d] Unable to add visit (%s)`, visit.LegID, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -355,7 +355,7 @@ func GetMatchForLeg(legID int) (*models.Match, error) {
 	if m.OweTypeID.Valid {
 		m.OweType = ot
 	}
-	if m.VenueID.Valid {
+	if m.VenueID.Valid && m.VenueID.Int64 != 0 {
 		m.Venue, err = GetVenue(int(m.VenueID.Int64))
 		if err != nil {
 			return nil, err

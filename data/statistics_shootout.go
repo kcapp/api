@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"log"
 
 	"github.com/kcapp/api/models"
 )
@@ -15,6 +16,7 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
+			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
 			SUM(s.60s_plus),
 			SUM(s.100s_plus),
@@ -39,7 +41,7 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 	stats := make([]*models.StatisticsShootout, 0)
 	for rows.Next() {
 		s := new(models.StatisticsShootout)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.Score, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
 		if err != nil {
 			return nil, err
 		}
@@ -54,6 +56,7 @@ func GetShootoutStatisticsForMatch(matchID int) ([]*models.StatisticsShootout, e
 		SELECT
 			p.id AS 'player_id',
 			COUNT(DISTINCT m.id),
+			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
 			SUM(s.60s_plus),
 			SUM(s.100s_plus),
@@ -75,7 +78,7 @@ func GetShootoutStatisticsForMatch(matchID int) ([]*models.StatisticsShootout, e
 	stats := make([]*models.StatisticsShootout, 0)
 	for rows.Next() {
 		s := new(models.StatisticsShootout)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.Score, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
 		if err != nil {
 			return nil, err
 		}
@@ -90,6 +93,7 @@ func GetShootoutStatisticsForLeg(id int) ([]*models.StatisticsShootout, error) {
 		SELECT
 			l.id,
 			p.id,
+			score,
 			ppd,
 			60s_plus,
 			100s_plus,
@@ -107,7 +111,7 @@ func GetShootoutStatisticsForLeg(id int) ([]*models.StatisticsShootout, error) {
 	stats := make([]*models.StatisticsShootout, 0)
 	for rows.Next() {
 		s := new(models.StatisticsShootout)
-		err := rows.Scan(&s.LegID, &s.PlayerID, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.Score, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
 		if err != nil {
 			return nil, err
 		}
@@ -126,6 +130,7 @@ func GetShootoutStatisticsForPlayer(id int) (*models.StatisticsShootout, error) 
 			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
+			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
 			SUM(s.60s_plus),
 			SUM(s.100s_plus),
@@ -140,7 +145,7 @@ func GetShootoutStatisticsForPlayer(id int) (*models.StatisticsShootout, error) 
 		WHERE s.player_id = ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 2
-		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.Score, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return new(models.StatisticsShootout), nil
@@ -165,6 +170,7 @@ func GetShootoutHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 		SELECT
 			l.id,
 			p.id,
+			score,
 			ppd,
 			60s_plus,
 			100s_plus,
@@ -187,7 +193,7 @@ func GetShootoutHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 	legs = make([]*models.Leg, 0)
 	for rows.Next() {
 		s := new(models.StatisticsShootout)
-		err := rows.Scan(&s.LegID, &s.PlayerID, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.Score, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
 		if err != nil {
 			return nil, err
 		}
@@ -213,6 +219,7 @@ func CalculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout,
 	for _, player := range players {
 		stats := new(models.StatisticsShootout)
 		statisticsMap[player.PlayerID] = stats
+		stats.Score = player.CurrentScore
 	}
 
 	for _, visit := range visits {
@@ -236,4 +243,27 @@ func CalculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout,
 		stats.PPD = stats.PPD / float32(9)
 	}
 	return statisticsMap, nil
+}
+
+// ReCalculateShootoutStatistics will recaulcate statistics for Shootout matches
+func ReCalculateShootoutStatistics() (map[int]map[int]*models.StatisticsShootout, error) {
+	legs, err := GetLegsOfType(models.SHOOTOUT, true)
+	if err != nil {
+		return nil, err
+	}
+
+	s := make(map[int]map[int]*models.StatisticsShootout)
+	for _, leg := range legs {
+		stats, err := CalculateShootoutStatistics(leg.ID)
+		if err != nil {
+			return nil, err
+		}
+		for playerID, stat := range stats {
+			log.Printf(`UPDATE kcapp.statistics_shootout SET score = %d, ppd = %f, 60s_plus = %d, 100s_plus = %d, 140s_plus = %d, 180s = %d 	WHERE leg_id = %d AND player_id = %d;`,
+				stat.Score, stat.PPD, stat.Score60sPlus, stat.Score100sPlus, stat.Score140sPlus, stat.Score180s, leg.ID, playerID)
+		}
+		s[leg.ID] = stats
+	}
+
+	return s, err
 }
