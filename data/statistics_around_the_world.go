@@ -61,14 +61,14 @@ func GetAroundTheWorldStatistics(from string, to string) ([]*models.StatisticsAr
 	stats := make([]*models.StatisticsAroundThe, 0)
 	for rows.Next() {
 		s := new(models.StatisticsAroundThe)
-		h := make([]*float32, 26)
+		h := make([]*float64, 26)
 		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrown,
 			&s.Score, &s.MPR, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10],
 			&h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20], &h[25])
 		if err != nil {
 			return nil, err
 		}
-		hitrates := make(map[int]float32)
+		hitrates := make(map[int]float64)
 		for i := 1; i <= 20; i++ {
 			hitrates[i] = *h[i]
 		}
@@ -123,14 +123,14 @@ func GetAroundTheWorldStatisticsForLeg(id int) ([]*models.StatisticsAroundThe, e
 	stats := make([]*models.StatisticsAroundThe, 0)
 	for rows.Next() {
 		s := new(models.StatisticsAroundThe)
-		h := make([]*float32, 26)
+		h := make([]*float64, 26)
 		err := rows.Scan(&s.LegID, &s.PlayerID, &s.DartsThrown, &s.Score, &s.MPR, &s.TotalHitRate,
 			&h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10], &h[11],
 			&h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20], &h[25])
 		if err != nil {
 			return nil, err
 		}
-		hitrates := make(map[int]float32)
+		hitrates := make(map[int]float64)
 		for i := 1; i <= 20; i++ {
 			hitrates[i] = *h[i]
 		}
@@ -187,14 +187,14 @@ func GetAroundTheWorldStatisticsForMatch(id int) ([]*models.StatisticsAroundThe,
 	stats := make([]*models.StatisticsAroundThe, 0)
 	for rows.Next() {
 		s := new(models.StatisticsAroundThe)
-		h := make([]*float32, 26)
+		h := make([]*float64, 26)
 		err := rows.Scan(&s.PlayerID, &s.DartsThrown, &s.Score, &s.MPR, &s.TotalHitRate,
 			&h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10], &h[11],
 			&h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20], &h[25])
 		if err != nil {
 			return nil, err
 		}
-		hitrates := make(map[int]float32)
+		hitrates := make(map[int]float64)
 		for i := 1; i <= 20; i++ {
 			hitrates[i] = *h[i]
 		}
@@ -208,7 +208,7 @@ func GetAroundTheWorldStatisticsForMatch(id int) ([]*models.StatisticsAroundThe,
 // GetAroundTheWorldStatisticsForPlayer will return AtW statistics for the given player
 func GetAroundTheWorldStatisticsForPlayer(id int) (*models.StatisticsAroundThe, error) {
 	s := new(models.StatisticsAroundThe)
-	h := make([]*float32, 26)
+	h := make([]*float64, 26)
 	err := models.DB.QueryRow(`
 		SELECT
 			p.id,
@@ -259,7 +259,7 @@ func GetAroundTheWorldStatisticsForPlayer(id int) (*models.StatisticsAroundThe, 
 		}
 		return nil, err
 	}
-	hitrates := make(map[int]float32)
+	hitrates := make(map[int]float64)
 	for i := 1; i <= 20; i++ {
 		hitrates[i] = *h[i]
 	}
@@ -325,14 +325,14 @@ func GetAroundTheWorldHistoryForPlayer(id int, limit int) ([]*models.Leg, error)
 	legs = make([]*models.Leg, 0)
 	for rows.Next() {
 		s := new(models.StatisticsAroundThe)
-		h := make([]*float32, 26)
+		h := make([]*float64, 26)
 		err := rows.Scan(&s.LegID, &s.PlayerID, &s.DartsThrown, &s.Score, &s.MPR, &s.TotalHitRate,
 			&h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10], &h[11],
 			&h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20], &h[25])
 		if err != nil {
 			return nil, err
 		}
-		hitrates := make(map[int]float32)
+		hitrates := make(map[int]float64)
 		for i := 1; i <= 20; i++ {
 			hitrates[i] = *h[i]
 		}
@@ -398,16 +398,21 @@ func GetShanghaiStatistics(from string, to string) ([]*models.StatisticsAroundTh
 	stats := make([]*models.StatisticsAroundThe, 0)
 	for rows.Next() {
 		s := new(models.StatisticsAroundThe)
-		h := make([]*float32, 21)
+		h := make([]*null.Float, 21)
 		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrown,
 			&s.Score, &s.MPR, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10],
 			&h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20])
 		if err != nil {
 			return nil, err
 		}
-		hitrates := make(map[int]float32)
+		hitrates := make(map[int]float64)
 		for i := 1; i <= 20; i++ {
-			hitrates[i] = *h[i]
+			hitrate := h[i]
+			if hitrate.Valid {
+				hitrates[i] = hitrate.Float64
+			} else {
+				hitrates[i] = 0
+			}
 		}
 		s.Hitrates = hitrates
 		stats = append(stats, s)
@@ -459,7 +464,7 @@ func GetShanghaiStatisticsForLeg(id int) ([]*models.StatisticsAroundThe, error) 
 	stats := make([]*models.StatisticsAroundThe, 0)
 	for rows.Next() {
 		s := new(models.StatisticsAroundThe)
-		h := make([]*float32, 21)
+		h := make([]*float64, 21)
 		err := rows.Scan(&s.LegID, &s.PlayerID, &s.DartsThrown, &s.Score, &s.Shanghai,
 			&s.MPR, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7],
 			&h[8], &h[9], &h[10], &h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17],
@@ -467,7 +472,7 @@ func GetShanghaiStatisticsForLeg(id int) ([]*models.StatisticsAroundThe, error) 
 		if err != nil {
 			return nil, err
 		}
-		hitrates := make(map[int]float32)
+		hitrates := make(map[int]float64)
 		for i := 1; i <= 20; i++ {
 			hitrates[i] = *h[i]
 		}
@@ -522,16 +527,21 @@ func GetShanghaiStatisticsForMatch(id int) ([]*models.StatisticsAroundThe, error
 	stats := make([]*models.StatisticsAroundThe, 0)
 	for rows.Next() {
 		s := new(models.StatisticsAroundThe)
-		h := make([]*float32, 21)
+		h := make([]*null.Float, 21)
 		err := rows.Scan(&s.PlayerID, &s.DartsThrown, &s.Score, &s.MPR, &s.TotalHitRate,
 			&h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10], &h[11],
 			&h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20])
 		if err != nil {
 			return nil, err
 		}
-		hitrates := make(map[int]float32)
+		hitrates := make(map[int]float64)
 		for i := 1; i <= 20; i++ {
-			hitrates[i] = *h[i]
+			hitrate := h[i]
+			if hitrate.Valid {
+				hitrates[i] = hitrate.Float64
+			} else {
+				hitrates[i] = 0
+			}
 		}
 		s.Hitrates = hitrates
 		stats = append(stats, s)
@@ -542,7 +552,7 @@ func GetShanghaiStatisticsForMatch(id int) ([]*models.StatisticsAroundThe, error
 // GetShanghaiStatisticsForPlayer will return Shanghai statistics for the given player
 func GetShanghaiStatisticsForPlayer(id int) (*models.StatisticsAroundThe, error) {
 	s := new(models.StatisticsAroundThe)
-	h := make([]*float32, 26)
+	h := make([]null.Float, 26)
 	err := models.DB.QueryRow(`
 		SELECT
 			p.id,
@@ -592,9 +602,14 @@ func GetShanghaiStatisticsForPlayer(id int) (*models.StatisticsAroundThe, error)
 		}
 		return nil, err
 	}
-	hitrates := make(map[int]float32)
+	hitrates := make(map[int]float64)
 	for i := 1; i <= 20; i++ {
-		hitrates[i] = *h[i]
+		hitrate := h[i]
+		if hitrate.Valid {
+			hitrates[i] = hitrate.Float64
+		} else {
+			hitrates[i] = 0
+		}
 	}
 	s.Hitrates = hitrates
 	return s, nil
@@ -657,7 +672,7 @@ func GetShanghaiHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 	legs = make([]*models.Leg, 0)
 	for rows.Next() {
 		s := new(models.StatisticsAroundThe)
-		h := make([]*float32, 26)
+		h := make([]*float64, 26)
 		err := rows.Scan(&s.LegID, &s.PlayerID, &s.DartsThrown, &s.Score, &s.Shanghai,
 			&s.MPR, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7],
 			&h[8], &h[9], &h[10], &h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17],
@@ -665,7 +680,7 @@ func GetShanghaiHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 		if err != nil {
 			return nil, err
 		}
-		hitrates := make(map[int]float32)
+		hitrates := make(map[int]float64)
 		for i := 1; i <= 20; i++ {
 			hitrates[i] = *h[i]
 		}
@@ -696,7 +711,7 @@ func CalculateAroundTheWorldStatistics(legID int, matchType int) (map[int]*model
 		stats.PlayerID = player.PlayerID
 		stats.Score = 0
 		statisticsMap[player.PlayerID] = stats
-		stats.Hitrates = make(map[int]float32)
+		stats.Hitrates = make(map[int]float64)
 		for i := 1; i <= 21; i++ {
 			stats.Hitrates[i] = 0
 		}
@@ -737,7 +752,7 @@ func CalculateAroundTheWorldStatistics(legID int, matchType int) (map[int]*model
 	}
 
 	for _, stats := range statisticsMap {
-		totalHitRate := float32(0)
+		totalHitRate := float64(0)
 		for i := 1; i <= 20; i++ {
 			totalHitRate += stats.Hitrates[i]
 			stats.Hitrates[i] = stats.Hitrates[i] / 3
@@ -747,9 +762,9 @@ func CalculateAroundTheWorldStatistics(legID int, matchType int) (map[int]*model
 		delete(stats.Hitrates, 21)
 
 		if shanghai > 0 {
-			stats.TotalHitRate = totalHitRate / float32(shanghai*3)
+			stats.TotalHitRate = totalHitRate / float64(shanghai*3)
 		} else {
-			stats.TotalHitRate = totalHitRate / float32(round*3)
+			stats.TotalHitRate = totalHitRate / float64(round*3)
 		}
 		stats.MPR = null.FloatFrom(float64(stats.Marks) / float64(round))
 	}

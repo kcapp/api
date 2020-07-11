@@ -16,6 +16,11 @@ const (
 	TRIPLE = 3
 )
 
+var (
+	// CRICKETDARTS var holding darts aimed at in a game of Cricket
+	CRICKETDARTS = []int{15, 16, 17, 18, 19, 20, 25}
+)
+
 // Dart struct used for storing darts
 type Dart struct {
 	Value      null.Int `json:"value"`
@@ -110,6 +115,24 @@ func (dart Dart) IsBull() bool {
 		return true
 	}
 	return false
+}
+
+// IsMiss will check if this dart was a miss
+func (dart Dart) IsMiss() bool {
+	if dart.ValueRaw() == 0 {
+		return true
+	}
+	return false
+}
+
+// IsCricketMiss will check if this dart was a miss on cricket numbers
+func (dart Dart) IsCricketMiss() bool {
+	for _, num := range []int{15, 16, 17, 18, 19, 20, 25} {
+		if dart.ValueRaw() == num {
+			return false
+		}
+	}
+	return true
 }
 
 // ValueRaw will return the value of the dart or 0 if invalid

@@ -59,11 +59,15 @@ type StatisticsX01 struct {
 
 // GlobalStatistics struct used for storing global statistics
 type GlobalStatistics struct {
-	FishNChips int `json:"fish_n_chips"`
-	Matches    int `json:"matches"`
-	Legs       int `json:"legs"`
-	Visits     int `json:"visits"`
-	Points     int `json:"points"`
+	FishNChips     int `json:"fish_n_chips"`
+	Matches        int `json:"matches"`
+	Legs           int `json:"legs"`
+	Visits         int `json:"visits"`
+	Darts          int `json:"darts"`
+	Points         int `json:"points"`
+	PointsBusted   int `json:"points_busted"`
+	Score180s      int `json:"score_180s"`
+	ScoreBullseyes int `json:"score_bullseyes"`
 }
 
 // CheckoutStatistics stuct used for storing detailed checkout statistics

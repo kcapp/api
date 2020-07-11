@@ -13,7 +13,11 @@ func GetGlobalStatistics() (map[int]*models.GlobalStatistics, error) {
 			COUNT(DISTINCT m.id) AS 'matches',
 			COUNT(DISTINCT l.id) AS 'legs',
 			COUNT(DISTINCT s.id) AS 'visits',
-			SUM(s.first_dart * s.first_dart_multiplier + s.second_dart * s.second_dart_multiplier + s.third_dart * s.third_dart_multiplier) as 'points'
+			COUNT(first_dart) + SUM(IF(second_dart is null, 0, 1)) + SUM(IF(third_dart is null, 0, 1)) as darts,
+			SUM(s.first_dart * s.first_dart_multiplier + IFNULL(s.second_dart, 0) * s.second_dart_multiplier + IFNULL(s.third_dart, 0) * s.third_dart_multiplier) as 'points',
+			SUM(IF(s.is_bust = 1, s.first_dart * s.first_dart_multiplier + IFNULL(s.second_dart, 0) * s.second_dart_multiplier + IFNULL(s.third_dart, 0) * s.third_dart_multiplier, 0)) as 'points_busted',
+			SUM(IF(first_dart = 20 AND first_dart_multiplier = 3 AND second_dart = 20 AND second_dart_multiplier = 3 AND third_dart = 20 AND third_dart_multiplier = 3, 1, 0)) as '180s',
+			SUM(IF((first_dart = 25 AND first_dart_multiplier = 2) OR (second_dart = 25 AND second_dart_multiplier = 2) OR (third_dart = 25 AND third_dart_multiplier = 2), 1, 0)) as 'bullseyes'
 		FROM matches m
 			LEFT JOIN leg l on l.match_id = m.id
 			LEFT JOIN score s on s.leg_id = l.id
@@ -28,7 +32,7 @@ func GetGlobalStatistics() (map[int]*models.GlobalStatistics, error) {
 	for rows.Next() {
 		var officeID null.Int
 		s := new(models.GlobalStatistics)
-		err := rows.Scan(&officeID, &s.Matches, &s.Legs, &s.Visits, &s.Points)
+		err := rows.Scan(&officeID, &s.Matches, &s.Legs, &s.Visits, &s.Darts, &s.Points, &s.PointsBusted, &s.Score180s, &s.ScoreBullseyes)
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +54,11 @@ func GetGlobalStatistics() (map[int]*models.GlobalStatistics, error) {
 		all.Legs += s.Legs
 		all.Matches += s.Matches
 		all.Visits += s.Visits
+		all.Darts += s.Darts
 		all.Points += s.Points
+		all.PointsBusted += s.PointsBusted
+		all.Score180s += s.Score180s
+		all.ScoreBullseyes += s.ScoreBullseyes
 		all.FishNChips += s.FishNChips
 	}
 	stats[0] = all
