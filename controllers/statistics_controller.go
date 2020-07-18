@@ -63,13 +63,65 @@ func GetDartsAtXStatistics(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
-// GetGlobalStatistics will return some global statistics for all legs played
+// GetAroundTheClockStatistics will return Around The Clock statistics for a given period
+func GetAroundTheClockStatistics(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	SetHeaders(w)
+	stats, err := data.GetAroundTheClockStatistics(params["from"], params["to"])
+	if err != nil {
+		log.Println("Unable to get Around The Clock statistics", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(stats)
+}
+
+// GetAroundTheWorldStatistics will return Around The World statistics for a given period
+func GetAroundTheWorldStatistics(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	SetHeaders(w)
+	stats, err := data.GetAroundTheWorldStatistics(params["from"], params["to"])
+	if err != nil {
+		log.Println("Unable to get Around The World statistics", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(stats)
+}
+
+// GetShanghaiStatistics will return Shanghai statistics for a given period
+func GetShanghaiStatistics(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	SetHeaders(w)
+	stats, err := data.GetShanghaiStatistics(params["from"], params["to"])
+	if err != nil {
+		log.Println("Unable to get Shanghai statistics", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(stats)
+}
+
+// GetGlobalStatistics will return some global statistics for all matches
 func GetGlobalStatistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 
 	global, err := data.GetGlobalStatistics()
 	if err != nil {
 		log.Println("Unable to get global statistics", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(global)
+}
+
+// GetGlobalStatisticsFnc will return global fish and chips counter
+func GetGlobalStatisticsFnc(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+
+	global, err := data.GetGlobalStatisticsFnc()
+	if err != nil {
+		log.Println("Unable to get global fish and chips statistics", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

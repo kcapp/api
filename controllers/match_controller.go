@@ -202,7 +202,15 @@ func GetStatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if match.MatchType.ID == models.CRICKET {
+	if match.MatchType.ID == models.SHOOTOUT {
+		stats, err := data.GetShootoutStatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get shootout statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.CRICKET {
 		stats, err := data.GetCricketStatisticsForMatch(matchID)
 		if err != nil {
 			log.Printf("Unable to get cricket statistics for match %d: %s", matchID, err)
@@ -214,6 +222,30 @@ func GetStatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 		stats, err := data.GetDartsAtXStatisticsForMatch(matchID)
 		if err != nil {
 			log.Printf("Unable to get darts at x statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.AROUNDTHECLOCK {
+		stats, err := data.GetAroundTheClockStatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get around the clock statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.AROUNDTHEWORLD {
+		stats, err := data.GetAroundTheWorldStatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get around the world statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.SHANGHAI {
+		stats, err := data.GetShanghaiStatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get shanghai statistics for match %d: %s", matchID, err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

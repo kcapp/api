@@ -132,6 +132,30 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.AROUNDTHECLOCK {
+		stats, err := data.GetAroundTheClockStatisticsForLeg(legID)
+		if err != nil {
+			log.Println("Unable to get Around the Clock statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.AROUNDTHEWORLD {
+		stats, err := data.GetAroundTheWorldStatisticsForLeg(legID)
+		if err != nil {
+			log.Println("Unable to get Around the World statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.SHANGHAI {
+		stats, err := data.GetShanghaiStatisticsForLeg(legID)
+		if err != nil {
+			log.Println("Unable to get Shanghai statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
 	} else {
 		stats, err := data.GetX01StatisticsForLeg(legID)
 		if err != nil {

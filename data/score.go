@@ -1,45 +1,85 @@
 package data
 
 import (
+	"errors"
 	"log"
 	"math"
+	"sync"
 
+	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
 )
 
+var addVisitLock sync.Mutex
+
 // AddVisit will write thegiven visit to database
 func AddVisit(visit models.Visit) (*models.Visit, error) {
-	currentScore, err := GetPlayerScore(visit.PlayerID, visit.LegID)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO Don't allow to save score for same player twice in a row
-	// Only allow saving score for leg.current_player_id ?
+	addVisitLock.Lock()
+	defer addVisitLock.Unlock()
 
 	leg, err := GetLeg(visit.LegID)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO Don't allow to insert if leg is finished?
+	if leg.CurrentPlayerID != visit.PlayerID {
+		return nil, errors.New("Cannot insert score for non-current player")
+	}
+	if leg.IsFinished {
+		return nil, errors.New("Leg already finished")
+	}
 
 	match, err := GetMatch(leg.MatchID)
 	if err != nil {
 		return nil, err
 	}
 
-	if match.MatchType.ID == models.X01 || match.MatchType.ID == models.X01HANDICAP {
-		// Only set busts for x01 match modes
-		visit.SetIsBust(currentScore)
-	}
-
-	// Determine who the next player will be
 	players, err := GetPlayersScore(visit.LegID)
 	if err != nil {
 		return nil, err
 	}
 
+	isFinished := false
+	// Invalidate extra darts not thrown, and check if leg is finished
+	if match.MatchType.ID == models.X01 || match.MatchType.ID == models.X01HANDICAP {
+		visit.SetIsBust(players[visit.PlayerID].CurrentScore)
+		isFinished = !visit.IsBust && visit.IsCheckout(players[visit.PlayerID].CurrentScore)
+	} else if match.MatchType.ID == models.SHOOTOUT {
+		isFinished = ((len(leg.Visits)+1)*3)%(9*len(leg.Players)) == 0
+	} else if match.MatchType.ID == models.CRICKET {
+		isFinished, err = isCricketLegFinished(visit)
+		if err != nil {
+			return nil, err
+		}
+		if isFinished {
+			if visit.ThirdDart.IsCricketMiss() {
+				visit.ThirdDart.Value = null.IntFromPtr(nil)
+			}
+			if visit.SecondDart.IsCricketMiss() {
+				visit.SecondDart.Value = null.IntFromPtr(nil)
+			}
+		}
+	} else if match.MatchType.ID == models.DARTSATX {
+		isFinished = ((len(leg.Visits)+1)*3)%(99*len(leg.Players)) == 0
+	} else if match.MatchType.ID == models.AROUNDTHEWORLD {
+		isFinished = (len(leg.Visits)+1)%(21*len(leg.Players)) == 0
+	} else if match.MatchType.ID == models.AROUNDTHECLOCK {
+		players[visit.PlayerID].CurrentScore += visit.CalculateAroundTheClockScore(players[visit.PlayerID].CurrentScore)
+		if players[visit.PlayerID].CurrentScore == 21 {
+			if visit.FirstDart.IsBull() {
+				visit.SecondDart.Value = null.IntFromPtr(nil)
+				visit.ThirdDart.Value = null.IntFromPtr(nil)
+			} else if visit.SecondDart.IsBull() {
+				visit.ThirdDart.Value = null.IntFromPtr(nil)
+			}
+		}
+		isFinished = players[visit.PlayerID].CurrentScore == 21 && (visit.FirstDart.IsBull() || visit.SecondDart.IsBull() || visit.ThirdDart.IsBull())
+	} else if match.MatchType.ID == models.SHANGHAI {
+		round := int(math.Floor(float64(len(leg.Visits))/float64(len(leg.Players))) + 1)
+		isFinished = (len(leg.Visits)+1)%(20*len(leg.Players)) == 0 || (visit.IsShanghai() && visit.FirstDart.ValueRaw() == round)
+	}
+
+	// Determine who the next player will be
 	currentPlayerOrder := 1
 	order := make(map[int]int)
 	for _, player := range players {
@@ -76,77 +116,19 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		tx.Rollback()
 		return nil, err
 	}
-
 	tx.Commit()
 
 	log.Printf("[%d] Added score for player %d, (%d-%d, %d-%d, %d-%d, %t)", visit.LegID, visit.PlayerID, visit.FirstDart.Value.Int64,
 		visit.FirstDart.Multiplier, visit.SecondDart.Value.Int64, visit.SecondDart.Multiplier, visit.ThirdDart.Value.Int64, visit.ThirdDart.Multiplier,
 		visit.IsBust)
 
-	if match.MatchType.ID == models.SHOOTOUT {
-		if ((len(leg.Visits)+1)*3)%(9*len(leg.Players)) == 0 {
-			err = FinishLegNew(visit)
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else if match.MatchType.ID == models.DARTSATX {
-		if ((len(leg.Visits)+1)*3)%(99*len(leg.Players)) == 0 {
-			err = FinishLegNew(visit)
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else if match.MatchType.ID == models.CRICKET {
-		players, err := GetLegPlayers(visit.LegID)
+	if isFinished {
+		err = FinishLegNew(visit)
 		if err != nil {
 			return nil, err
 		}
-
-		// Did current player close all numbers?
-		closedPlayers := make(map[int]*models.Player2Leg, 0)
-		for _, player := range players {
-			if player.PlayerID != visit.PlayerID {
-				continue
-			}
-			closed := true
-			for _, dart := range []int{15, 16, 17, 18, 19, 20, 25} {
-				if player.Hits[dart] == nil || player.Hits[dart].Total < 3 {
-					closed = false
-					break
-				}
-			}
-			if closed {
-				closedPlayers[player.PlayerID] = player
-			}
-		}
-
-		// What is the lowest score?
-		lowestScore := math.MaxInt32
-		for _, player := range players {
-			if player.CurrentScore < lowestScore {
-				lowestScore = player.CurrentScore
-			}
-		}
-
-		// If current player closed all numbers and has the lowest score, it's finished
-		if player, ok := closedPlayers[visit.PlayerID]; ok {
-			if player.CurrentScore == lowestScore {
-				err = FinishLegNew(visit)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-	} else {
-		if !visit.IsBust && visit.IsCheckout(currentScore) {
-			// Finalize leg, since leg is finished!
-			err = FinishLegNew(visit)
-			if err != nil {
-				return nil, err
-			}
-		}
 	}
+
 	return &visit, nil
 }
 
@@ -520,4 +502,45 @@ func GetDartStatistics(dart int) (map[int]*models.Hits, error) {
 		return nil, err
 	}
 	return m, nil
+}
+
+func isCricketLegFinished(visit models.Visit) (bool, error) {
+	players, err := GetLegPlayers(visit.LegID)
+	if err != nil {
+		return false, err
+	}
+	allPlayers := make(map[int]*models.Player2Leg, 0)
+	for _, player := range players {
+		allPlayers[player.PlayerID] = player
+	}
+
+	// Add score for incoming visit
+	visit.CalculateCricketScore(allPlayers)
+	for _, player := range players {
+		player.CurrentScore = allPlayers[player.PlayerID].CurrentScore
+	}
+
+	// Did current player close all numbers?
+	player := allPlayers[visit.PlayerID]
+	closed := true
+	for _, dart := range []int{15, 16, 17, 18, 19, 20, 25} {
+		if player.Hits[dart] == nil || player.Hits[dart].Total < 3 {
+			closed = false
+			break
+		}
+	}
+
+	// What is the lowest score?
+	lowestScore := math.MaxInt32
+	for _, player := range players {
+		if player.CurrentScore < lowestScore {
+			lowestScore = player.CurrentScore
+		}
+	}
+
+	// If current player closed all numbers and has the lowest score, it's finished
+	if closed && player.CurrentScore == lowestScore {
+		return true, nil
+	}
+	return false, nil
 }

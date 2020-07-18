@@ -25,6 +25,7 @@ type Leg struct {
 	Visits             []*Visit            `json:"visits"`
 	Hits               map[int64]*Hits     `json:"hits,omitempty"`
 	CheckoutStatistics *CheckoutStatistics `json:"checkout_statistics,omitempty"`
+	Statistics         interface{}         `json:"statistics,omitempty"`
 }
 
 // MarshalJSON will marshall the given object to JSON
@@ -48,6 +49,7 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 		Visits             []*Visit            `json:"visits"`
 		Hits               map[int64]*Hits     `json:"hits,omitempty"`
 		CheckoutStatistics *CheckoutStatistics `json:"checkout_statistics,omitempty"`
+		Statistics         interface{}         `json:"statistics,omitempty"`
 	}
 	round := int(math.Floor(float64(len(leg.Visits))/float64(len(leg.Players))) + 1)
 
@@ -69,6 +71,7 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 		Visits:             leg.Visits,
 		Hits:               leg.Hits,
 		CheckoutStatistics: leg.CheckoutStatistics,
+		Statistics:         leg.Statistics,
 	})
 }
 

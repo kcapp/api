@@ -248,7 +248,6 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 
 	// Get score for other game modes
 	if m.MatchType.ID == models.CRICKET {
-		// Recalculate score for each player
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -297,6 +296,36 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		}
 		if err = rows.Err(); err != nil {
 			return nil, err
+		}
+	} else if m.MatchType.ID == models.AROUNDTHECLOCK {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			player.CurrentScore = 0
+		}
+
+		for _, visit := range visits {
+			score := visit.CalculateAroundTheClockScore(scores[visit.PlayerID].CurrentScore)
+			scores[visit.PlayerID].CurrentScore += score
+		}
+	} else if m.MatchType.ID == models.AROUNDTHEWORLD || m.MatchType.ID == models.SHANGHAI {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			player.CurrentScore = 0
+		}
+
+		round := 1
+		for i, visit := range visits {
+			if i > 0 && i%len(players) == 0 {
+				round++
+			}
+			score := visit.CalculateAroundTheWorldScore(round)
+			scores[visit.PlayerID].CurrentScore += score
 		}
 	}
 
