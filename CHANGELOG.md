@@ -1,5 +1,8 @@
 # Changelog
 
+## [unreleased] - TBD
+
+
 ## [1.1.0] - 2020-07-18
 #### Feature
 - Support for new game types `Around The World`, `Around The Clock` and `Shanghai`
@@ -21,5 +24,6 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
-[1.0.1]: https://github.com/kcapp/api/compare/v1.0.0...v1.0.1
+[unreleased]: https://github.com/kcapp/api/compare/v1.1.0...develop
+[1.1.0]: https://github.com/kcapp/api/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/kcapp/api/releases/tag/v1.0.0
