@@ -88,6 +88,8 @@ func main() {
 	router.HandleFunc("/statistics/7/{from}/{to}", controllers.GetShanghaiStatistics).Methods("GET")
 	router.HandleFunc("/statistics/aroundtheworld/{from}/{to}", controllers.GetAroundTheWorldStatistics).Methods("GET")
 	router.HandleFunc("/statistics/8/{from}/{to}", controllers.GetAroundTheClockStatistics).Methods("GET")
+	router.HandleFunc("/statistics/tictactoe/{from}/{to}", controllers.GetTicTacToeStatistics).Methods("GET")
+	router.HandleFunc("/statistics/9/{from}/{to}", controllers.GetTicTacToeStatistics).Methods("GET")
 	router.HandleFunc("/statistics/global", controllers.GetGlobalStatistics).Methods("GET")
 	router.HandleFunc("/statistics/global/fnc", controllers.GetGlobalStatisticsFnc).Methods("GET")
 	router.HandleFunc("/statistics/office/{from}/{to}", controllers.GetOfficeStatistics).Methods("GET")

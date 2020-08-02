@@ -22,8 +22,10 @@ const (
 	AROUNDTHEWORLD = 6
 	// SHANGHAI constant representing type 7
 	SHANGHAI = 7
-	// AROUNDTHECLOCK constant representing type 9
+	// AROUNDTHECLOCK constant representing type 8
 	AROUNDTHECLOCK = 8
+	// TICTACTOE constant representing type 9
+	TICTACTOE = 9
 )
 
 // Match struct used for storing matches

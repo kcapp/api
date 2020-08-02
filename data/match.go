@@ -43,6 +43,16 @@ func NewMatch(match models.Match) (*models.Match, error) {
 		return nil, err
 	}
 
+	if match.MatchType.ID == models.TICTACTOE {
+		params := match.Legs[0].Parameters
+		res, err = tx.Exec("INSERT INTO leg_parameters (leg_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", legID, params.Numbers[0],
+			params.Numbers[1], params.Numbers[2], params.Numbers[3], params.Numbers[4], params.Numbers[5], params.Numbers[6], params.Numbers[7], params.Numbers[8])
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
 	tx.Exec("UPDATE matches SET current_leg_id = ? WHERE id = ?", legID, matchID)
 	for idx, playerID := range match.Players {
 		order := idx + 1

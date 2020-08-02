@@ -258,7 +258,7 @@ func GetDartsAtXHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 	return legs, nil
 }
 
-// CalculateDartsAtXStatistics will generate cricket statistics for the given leg
+// CalculateDartsAtXStatistics will generate statistics for the given leg
 func CalculateDartsAtXStatistics(legID int) (map[int]*models.StatisticsDartsAtX, error) {
 	visits, err := GetLegVisits(legID)
 	if err != nil {

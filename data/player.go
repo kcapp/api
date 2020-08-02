@@ -327,6 +327,10 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			score := visit.CalculateAroundTheWorldScore(round)
 			scores[visit.PlayerID].CurrentScore += score
 		}
+	} else if m.MatchType.ID == models.TICTACTOE {
+		for _, player := range scores {
+			player.CurrentScore = 0
+		}
 	}
 
 	return scores, nil

@@ -27,10 +27,21 @@ type Visit struct {
 
 type comparingMatrix [][]bool
 
-// GetDarts does what the title says for a visit
+// GetDarts returns all darts for the given visit
 func (visit Visit) GetDarts() []Dart {
 	darts := []Dart{*visit.FirstDart, *visit.SecondDart, *visit.ThirdDart}
 	return darts
+}
+
+// GetLastDart will return the last non-miss dart from the visit
+func (visit Visit) GetLastDart() *Dart {
+	if visit.ThirdDart.IsMiss() {
+		if visit.SecondDart.IsMiss() {
+			return visit.FirstDart
+		}
+		return visit.SecondDart
+	}
+	return visit.ThirdDart
 }
 
 // ValidateInput will verify the input does not containg any errors

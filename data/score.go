@@ -77,6 +77,29 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 	} else if match.MatchType.ID == models.SHANGHAI {
 		round := int(math.Floor(float64(len(leg.Visits))/float64(len(leg.Players))) + 1)
 		isFinished = (len(leg.Visits)+1)%(20*len(leg.Players)) == 0 || (visit.IsShanghai() && visit.FirstDart.ValueRaw() == round)
+	} else if match.MatchType.ID == models.TICTACTOE {
+		numbers := leg.Parameters.Numbers
+		hits := leg.Parameters.Hits
+
+		for _, num := range numbers {
+			// Check if we hit the exact number, ending with a double
+			if num == visit.GetScore() && visit.GetLastDart().IsDouble() {
+				if visit.ThirdDart.IsMiss() {
+					visit.ThirdDart.Value = null.IntFromPtr(nil)
+				}
+				if visit.SecondDart.IsMiss() {
+					visit.SecondDart.Value = null.IntFromPtr(nil)
+				}
+				hits[num] = visit.PlayerID
+				break
+			}
+		}
+		// Check if current player has 3 in a row horizontally, diagonally or vertically
+		if leg.Parameters.IsTicTacToeWinner(visit.PlayerID) {
+			isFinished = true
+		} else if leg.Parameters.IsTicTacToeDraw() || len(hits) == 9 {
+			isFinished = true
+		}
 	}
 
 	// Determine who the next player will be

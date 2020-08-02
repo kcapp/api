@@ -250,6 +250,14 @@ func GetStatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.TICTACTOE {
+		stats, err := data.GetTicTacToeStatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get tic tac toe statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
 	} else {
 		stats, err := data.GetX01StatisticsForMatch(matchID)
 		if err != nil {

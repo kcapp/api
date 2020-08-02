@@ -26,6 +26,54 @@ type Leg struct {
 	Hits               map[int64]*Hits     `json:"hits,omitempty"`
 	CheckoutStatistics *CheckoutStatistics `json:"checkout_statistics,omitempty"`
 	Statistics         interface{}         `json:"statistics,omitempty"`
+	Parameters         *LegParameters      `json:"parameters,omitempty"`
+}
+
+// LegParameters struct used for storing leg parameters
+type LegParameters struct {
+	LegID   int         `json:"leg_id,omitempty"`
+	Numbers []int       `json:"numbers"`
+	Hits    map[int]int `json:"hits"`
+}
+
+// IsTicTacToeWinner will check if the given player has won a game of Tic Tac Toe
+func (params LegParameters) IsTicTacToeWinner(playerID int) bool {
+	hits := params.Hits
+	numbers := params.Numbers
+
+	for _, combo := range TicTacToeWinningCombos {
+		if hits[numbers[combo[0]]] == playerID && hits[numbers[combo[1]]] == playerID && hits[numbers[combo[2]]] == playerID {
+			return true
+		}
+	}
+	return false
+}
+
+// IsTicTacToeDraw will check if the given parameters indicate a draw
+func (params LegParameters) IsTicTacToeDraw() bool {
+	hits := params.Hits
+	numbers := params.Numbers
+
+	draw := true
+	for _, combo := range TicTacToeWinningCombos {
+		num1 := numbers[combo[0]]
+		num2 := numbers[combo[1]]
+		num3 := numbers[combo[2]]
+
+		// Check if keys exists
+		_, exists1 := hits[num1]
+		_, exists2 := hits[num2]
+		_, exists3 := hits[num3]
+
+		if (exists1 && exists2 && hits[num1] != hits[num2]) ||
+			(exists1 && exists3 && hits[num1] != hits[num3]) ||
+			(exists2 && exists3 && hits[num2] != hits[num3]) {
+			// Two numbers are taken by two different players, which means this combo cannot be completed
+			continue
+		}
+		draw = false
+	}
+	return draw
 }
 
 // MarshalJSON will marshall the given object to JSON
@@ -50,6 +98,7 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 		Hits               map[int64]*Hits     `json:"hits,omitempty"`
 		CheckoutStatistics *CheckoutStatistics `json:"checkout_statistics,omitempty"`
 		Statistics         interface{}         `json:"statistics,omitempty"`
+		Parameters         *LegParameters      `json:"parameters,omitempty"`
 	}
 	round := int(math.Floor(float64(len(leg.Visits))/float64(len(leg.Players))) + 1)
 
@@ -72,6 +121,7 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 		Hits:               leg.Hits,
 		CheckoutStatistics: leg.CheckoutStatistics,
 		Statistics:         leg.Statistics,
+		Parameters:         leg.Parameters,
 	})
 }
 

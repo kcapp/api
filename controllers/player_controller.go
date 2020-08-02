@@ -213,6 +213,16 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(stats)
 		return
 
+	case models.TICTACTOE:
+		stats, err := data.GetTicTacToeStatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get Tic Tac Toe Statistics for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
 	default:
 		log.Println("Unknown match type parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -308,6 +318,16 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 		legs, err := data.GetAroundTheClockHistoryForPlayer(id, limit)
 		if err != nil {
 			log.Println("Unable to get Around the Clock history for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	case models.TICTACTOE:
+		legs, err := data.GetTicTacToeHistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get Tic Tac Toe history for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
