@@ -259,7 +259,7 @@ func ReCalculateShootoutStatistics() (map[int]map[int]*models.StatisticsShootout
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE kcapp.statistics_shootout SET score = %d, ppd = %f, 60s_plus = %d, 100s_plus = %d, 140s_plus = %d, 180s = %d 	WHERE leg_id = %d AND player_id = %d;`,
+			log.Printf(`UPDATE kcapp.statistics_shootout SET score = %d, ppd = %f, 60s_plus = %d, 100s_plus = %d, 140s_plus = %d, 180s = %d WHERE leg_id = %d AND player_id = %d;`,
 				stat.Score, stat.PPD, stat.Score60sPlus, stat.Score100sPlus, stat.Score140sPlus, stat.Score180s, leg.ID, playerID)
 		}
 		s[leg.ID] = stats

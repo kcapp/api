@@ -246,7 +246,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		return nil, err
 	}
 
-	// Get score for other game modes
+	// Get score for other game types
 	if m.MatchType.ID == models.CRICKET {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
