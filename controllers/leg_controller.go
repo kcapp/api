@@ -164,6 +164,14 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.BERMUDATRIANGLE {
+		stats, err := data.GetBermudaTriangleStatisticsForLeg(legID)
+		if err != nil {
+			log.Println("Unable to get Bermuda Triangle statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
 	} else {
 		stats, err := data.GetX01StatisticsForLeg(legID)
 		if err != nil {

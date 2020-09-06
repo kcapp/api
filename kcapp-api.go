@@ -74,6 +74,7 @@ func main() {
 	router.HandleFunc("/player/{id}/statistics/{match_type}", controllers.GetPlayerMatchTypeStatistics).Methods("GET")
 	router.HandleFunc("/player/{id}/statistics/{match_type}/history/{limit}", controllers.GetPlayerMatchTypeHistory).Methods("GET")
 
+	router.HandleFunc("/statistics/10/{from}/{to}", controllers.GetBermudaTriangleStatistics).Methods("GET")
 	router.HandleFunc("/statistics/x01/{from}/{to}", controllers.GetX01Statistics).Methods("GET")
 	router.HandleFunc("/statistics/1/{from}/{to}", controllers.GetX01Statistics).Methods("GET")
 	router.HandleFunc("/statistics/shootout/{from}/{to}", controllers.GetShootoutStatistics).Methods("GET")

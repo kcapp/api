@@ -26,7 +26,24 @@ const (
 	AROUNDTHECLOCK = 8
 	// TICTACTOE constant representing type 9
 	TICTACTOE = 9
+	// BERMUDATRIANGLE constant representing type 10
+	BERMUDATRIANGLE = 10
 )
+
+// TargetsBermudaTriangle contains the target for each round of Bermuda Triangle
+var TargetsBermudaTriangle = [13]Target{Target{value: 12, multipliers: []int64{1, 2, 3}},
+	Target{value: 13, multipliers: []int64{1, 2, 3}},
+	Target{value: 14, multipliers: []int64{1, 2, 3}},
+	Target{value: -1, multipliers: []int64{2}},
+	Target{value: 15, multipliers: []int64{1, 2, 3}},
+	Target{value: 16, multipliers: []int64{1, 2, 3}},
+	Target{value: 17, multipliers: []int64{1, 2, 3}},
+	Target{value: -1, multipliers: []int64{3}},
+	Target{value: 18, multipliers: []int64{1, 2, 3}},
+	Target{value: 19, multipliers: []int64{1, 2, 3}},
+	Target{value: 20, multipliers: []int64{1, 2, 3}},
+	Target{value: 25, multipliers: []int64{1, 2}, score: 25},
+	Target{value: 25, multipliers: []int64{2}}}
 
 // Match struct used for storing matches
 type Match struct {
@@ -178,4 +195,11 @@ type MatchMetadata struct {
 	IsLooserOutcomeHome  bool             `json:"is_looser_outcome_home"`
 	WinnerOutcome        null.String      `json:"winner_outcome"`
 	LooserOutcome        null.String      `json:"looser_outcome"`
+}
+
+// Target contains information about value and multipler required to hit for a given round
+type Target struct {
+	value       int
+	multipliers []int64
+	score       int
 }

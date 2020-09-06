@@ -232,9 +232,8 @@ func FinishLegNew(visit models.Visit) error {
 	// Update leg with winner
 	winnerID := null.IntFrom(int64(visit.PlayerID))
 	if match.MatchType.ID == models.SHOOTOUT || match.MatchType.ID == models.DARTSATX || match.MatchType.ID == models.AROUNDTHEWORLD ||
-		(match.MatchType.ID == models.SHANGHAI && !visit.IsShanghai()) {
-		// For "9 Dart Shootout", "Darts at X", "Around the World" or "Shanghai (normal finish)" we need to check the scores of each player
-		// to determine which player won the leg with the highest score
+		(match.MatchType.ID == models.SHANGHAI && !visit.IsShanghai()) || match.MatchType.ID == models.BERMUDATRIANGLE {
+		// For certain game types we need to check the scores of each player to determine which player won the leg with the highest score
 		scores, err := GetPlayersScore(visit.LegID)
 		if err != nil {
 			return err
@@ -368,6 +367,25 @@ func FinishLegNew(visit models.Visit) error {
 				return err
 			}
 			log.Printf("[%d] Inserting Tic Tac Toe statistics for player %d", visit.LegID, playerID)
+		}
+	} else if match.MatchType.ID == models.BERMUDATRIANGLE {
+		statisticsMap, err := CalculateBermudaTriangleStatistics(visit.LegID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+				INSERT INTO statistics_bermuda_triangle (leg_id, player_id, darts_thrown, score, mpr, total_marks, highest_score_reached, total_hit_rate, hit_rate_1, hit_rate_2, hit_rate_3,
+					hit_rate_4, hit_rate_5, hit_rate_6, hit_rate_7, hit_rate_8, hit_rate_9, hit_rate_10, hit_rate_11, hit_rate_12, hit_rate_13, hit_count) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+				visit.LegID, playerID, stats.DartsThrown, stats.Score, stats.MPR, &stats.TotalMarks, stats.HighestScoreReached, stats.TotalHitRate, stats.Hitrates[0], stats.Hitrates[1], stats.Hitrates[2],
+				stats.Hitrates[3], stats.Hitrates[4], stats.Hitrates[5], stats.Hitrates[6], stats.Hitrates[7], stats.Hitrates[8], stats.Hitrates[9], stats.Hitrates[10], stats.Hitrates[11], stats.Hitrates[12],
+				stats.HitCount)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("[%d] Inserting Bermuda Triangle statistics for player %d", visit.LegID, playerID)
 		}
 	} else {
 		statisticsMap, err := CalculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
@@ -543,6 +561,11 @@ func UndoLegFinish(legID int) error {
 		return err
 	}
 	_, err = tx.Exec("DELETE FROM statistics_general WHERE leg_id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	_, err = tx.Exec("DELETE FROM statistics_bermuda_triangle WHERE leg_id = ?", legID)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -726,7 +749,8 @@ func GetLeg(id int) (*models.Leg, error) {
 	for i := 0; i < len(leg.Players); i++ {
 		p2l := new(models.Player2Leg)
 		p2l.Hits = make(map[int]*models.Hits)
-		if matchType == models.DARTSATX || matchType == models.TICTACTOE {
+		if matchType == models.DARTSATX || matchType == models.AROUNDTHECLOCK || matchType == models.AROUNDTHEWORLD || matchType == models.SHANGHAI ||
+			matchType == models.TICTACTOE || matchType == models.BERMUDATRIANGLE {
 			p2l.CurrentScore = 0
 		} else if matchType == models.X01HANDICAP {
 			// TODO
@@ -803,6 +827,13 @@ func GetLeg(id int) (*models.Leg, error) {
 					}
 				}
 				scores[visit.PlayerID].CurrentScore += score
+			} else if matchType == models.BERMUDATRIANGLE {
+				score = visit.CalculateBermudaTriangleScore(round - 1)
+				if score == 0 {
+					scores[visit.PlayerID].CurrentScore = scores[visit.PlayerID].CurrentScore / 2
+				} else {
+					scores[visit.PlayerID].CurrentScore += score
+				}
 			} else {
 				scores[visit.PlayerID].CurrentScore -= score
 			}
