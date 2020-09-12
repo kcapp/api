@@ -1,5 +1,7 @@
 package models
 
+import "github.com/guregu/null"
+
 // StatisticsBermudaTriangle struct used for storing statistics for Bermuda Triangle
 type StatisticsBermudaTriangle struct {
 	ID                  int             `json:"id"`
@@ -9,6 +11,7 @@ type StatisticsBermudaTriangle struct {
 	MatchesWon          int             `json:"matches_won"`
 	LegsPlayed          int             `json:"legs_played"`
 	LegsWon             int             `json:"legs_won"`
+	OfficeID            null.Int        `json:"office_id,omitempty"`
 	DartsThrown         int             `json:"darts_thrown,omitempty"`
 	Score               int             `json:"score,omitempty"`
 	TotalMarks          int             `json:"total_marks,omitempty"`
