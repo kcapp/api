@@ -49,7 +49,9 @@ func GetGlobalStatistics() (map[int]*models.GlobalStatistics, error) {
 		if officeID == 0 {
 			continue
 		}
-		s.FishNChips = fnc[officeID].FishNChips
+		if _, ok := fnc[officeID]; ok {
+			s.FishNChips = fnc[officeID].FishNChips
+		}
 
 		all.Legs += s.Legs
 		all.Matches += s.Matches

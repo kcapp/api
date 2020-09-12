@@ -11,6 +11,7 @@ type StatisticsDartsAtX struct {
 	MatchesWon    int             `json:"matches_won,omitempty"`
 	LegsPlayed    int             `json:"legs_played,omitempty"`
 	LegsWon       int             `json:"legs_won,omitempty"`
+	OfficeID      null.Int        `json:"office_id,omitempty"`
 	AvgScore      int             `json:"avg_score"`
 	Score         null.Int        `json:"score,omitempty"`
 	Singles       int             `json:"singles"`

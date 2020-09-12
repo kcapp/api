@@ -17,6 +17,7 @@ func GetCricketStatistics(from string, to string) ([]*models.StatisticsCricket, 
 			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
+			m.office_id AS 'office_id',
 			SUM(s.total_marks),
 			SUM(s.first_nine_marks),
 			SUM(s.total_marks) / SUM(s.rounds) as 'mpr',
@@ -35,7 +36,7 @@ func GetCricketStatistics(from string, to string) ([]*models.StatisticsCricket, 
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 4
-		GROUP BY p.id
+		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
 	if err != nil {
 		return nil, err
@@ -45,8 +46,8 @@ func GetCricketStatistics(from string, to string) ([]*models.StatisticsCricket, 
 	stats := make([]*models.StatisticsCricket, 0)
 	for rows.Next() {
 		s := new(models.StatisticsCricket)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.TotalMarks, &s.FirstNineMarks,
-			&s.MPR, &s.FirstNineMPR, &s.Marks5, &s.Marks6, &s.Marks7, &s.Marks8, &s.Marks9)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID,
+			&s.TotalMarks, &s.FirstNineMarks, &s.MPR, &s.FirstNineMPR, &s.Marks5, &s.Marks6, &s.Marks7, &s.Marks8, &s.Marks9)
 		if err != nil {
 			return nil, err
 		}

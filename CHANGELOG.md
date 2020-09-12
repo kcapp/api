@@ -3,6 +3,10 @@
 ## [unreleased] - TBD
 #### Feature
 - Support for new game type `Tic-Tac-Toe`
+- Global inidicator for Offices
+
+#### Changed
+- Each statistics type contain `office_id`
 
 ## [1.1.0] - 2020-07-18
 #### Feature

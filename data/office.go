@@ -14,7 +14,7 @@ func AddOffice(office models.Office) error {
 	}
 
 	// Prepare statement for inserting data
-	res, err := tx.Exec("INSERT INTO office (name, is_active) VALUES (?, ?)", office.Name, office.IsActive)
+	res, err := tx.Exec("INSERT INTO office (name, is_active, is_global) VALUES (?, ?, ?)", office.Name, office.IsActive, office.IsGlobal)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -31,13 +31,13 @@ func AddOffice(office models.Office) error {
 
 // UpdateOffice will update the given player
 func UpdateOffice(officeID int, office models.Office) error {
-	stmt, err := models.DB.Prepare(`UPDATE office SET name = ?, is_active = ? WHERE id = ?`)
+	stmt, err := models.DB.Prepare(`UPDATE office SET name = ?, is_active = ?, is_global = ? WHERE id = ?`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(office.Name, office.IsActive, officeID)
+	_, err = stmt.Exec(office.Name, office.IsActive, office.IsGlobal, officeID)
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func UpdateOffice(officeID int, office models.Office) error {
 
 // GetOffices will return all offices
 func GetOffices() (map[int]*models.Office, error) {
-	rows, err := models.DB.Query("SELECT id, name, is_active FROM office")
+	rows, err := models.DB.Query("SELECT id, name, is_global, is_active FROM office")
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func GetOffices() (map[int]*models.Office, error) {
 	offices := make(map[int]*models.Office, 0)
 	for rows.Next() {
 		office := new(models.Office)
-		err := rows.Scan(&office.ID, &office.Name, &office.IsActive)
+		err := rows.Scan(&office.ID, &office.Name, &office.IsGlobal, &office.IsActive)
 		if err != nil {
 			return nil, err
 		}
@@ -72,7 +72,7 @@ func GetOffices() (map[int]*models.Office, error) {
 // GetOffice will return a office for the given id
 func GetOffice(id int) (*models.Office, error) {
 	office := new(models.Office)
-	err := models.DB.QueryRow("SELECT id, name, is_active FROM office WHERE id = ?", id).Scan(&office.ID, &office.Name, &office.IsActive)
+	err := models.DB.QueryRow("SELECT id, name, is_global, is_active FROM office WHERE id = ?", id).Scan(&office.ID, &office.Name, &office.IsGlobal, &office.IsActive)
 	if err != nil {
 		return nil, err
 	}

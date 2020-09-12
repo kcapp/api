@@ -11,6 +11,7 @@ type StatisticsAroundThe struct {
 	MatchesWon    int             `json:"matches_won"`
 	LegsPlayed    int             `json:"legs_played"`
 	LegsWon       int             `json:"legs_won"`
+	OfficeID      null.Int        `json:"office_id,omitempty"`
 	DartsThrown   int             `json:"darts_thrown,omitempty"`
 	Score         int             `json:"score,omitempty"`
 	Shanghai      null.Int        `json:"shanghai,omitempty"`

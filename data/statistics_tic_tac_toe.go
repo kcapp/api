@@ -15,6 +15,7 @@ func GetTicTacToeStatistics(from string, to string) ([]*models.StatisticsTicTacT
 			COUNT(DISTINCT m2.id) as 'matches_won',
 			COUNT(DISTINCT l.id) as 'legs_played',
 			COUNT(DISTINCT l2.id) as 'legs_won',
+			m.office_id AS 'office_id',
 			SUM(darts_Thrown) as 'darts_thrown',
 			SUM(score) as 'score',
 			SUM(numbers_closed) as 'numbers_closed',
@@ -28,7 +29,7 @@ func GetTicTacToeStatistics(from string, to string) ([]*models.StatisticsTicTacT
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 9
-		GROUP BY p.id
+		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
 	if err != nil {
 		return nil, err
@@ -38,7 +39,8 @@ func GetTicTacToeStatistics(from string, to string) ([]*models.StatisticsTicTacT
 	stats := make([]*models.StatisticsTicTacToe, 0)
 	for rows.Next() {
 		s := new(models.StatisticsTicTacToe)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrown, &s.Score, &s.NumbersClosed, &s.HighestClosed)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID,
+			&s.DartsThrown, &s.Score, &s.NumbersClosed, &s.HighestClosed)
 		if err != nil {
 			return nil, err
 		}
