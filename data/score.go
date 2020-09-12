@@ -86,9 +86,9 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 			if num == visit.GetScore() && visit.GetLastDart().IsDouble() {
 				if visit.ThirdDart.IsMiss() {
 					visit.ThirdDart.Value = null.IntFromPtr(nil)
-				}
-				if visit.SecondDart.IsMiss() {
-					visit.SecondDart.Value = null.IntFromPtr(nil)
+					if visit.SecondDart.IsMiss() {
+						visit.SecondDart.Value = null.IntFromPtr(nil)
+					}
 				}
 				hits[num] = visit.PlayerID
 				break
@@ -100,6 +100,8 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		} else if leg.Parameters.IsTicTacToeDraw() || len(hits) == 9 {
 			isFinished = true
 		}
+	} else if match.MatchType.ID == models.BERMUDATRIANGLE {
+		isFinished = ((len(leg.Visits)+1)*3)%(39*len(leg.Players)) == 0
 	}
 
 	// Determine who the next player will be

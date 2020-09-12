@@ -115,6 +115,19 @@ func GetTicTacToeStatistics(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
+// GetBermudaTriangleStatistics will return Bermuda Triangle statistics for a given period
+func GetBermudaTriangleStatistics(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	SetHeaders(w)
+	stats, err := data.GetBermudaTriangleStatistics(params["from"], params["to"])
+	if err != nil {
+		log.Println("Unable to get Bermuda Triangle statistics", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(stats)
+}
+
 // GetGlobalStatistics will return some global statistics for all matches
 func GetGlobalStatistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
