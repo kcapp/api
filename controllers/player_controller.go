@@ -233,6 +233,16 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(stats)
 		return
 
+	case models.FOURTWENTY:
+		stats, err := data.Get420StatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get 420 Statistics for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
 	default:
 		log.Println("Unknown match type parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -348,6 +358,16 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 		legs, err := data.GetBermudaTriangleHistoryForPlayer(id, limit)
 		if err != nil {
 			log.Println("Unable to get Bermuda Triangle history for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	case models.FOURTWENTY:
+		legs, err := data.Get420HistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get 420 history for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

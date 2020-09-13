@@ -245,6 +245,18 @@ func FinishLegNew(visit models.Visit) error {
 				winnerID = null.IntFrom(int64(playerID))
 			}
 		}
+	} else if match.MatchType.ID == models.FOURTWENTY {
+		scores, err := GetPlayersScore(visit.LegID)
+		if err != nil {
+			return err
+		}
+		lowestScore := 421
+		for playerID, player := range scores {
+			if player.CurrentScore < lowestScore {
+				lowestScore = player.CurrentScore
+				winnerID = null.IntFrom(int64(playerID))
+			}
+		}
 	} else if match.MatchType.ID == models.TICTACTOE && !leg.Parameters.IsTicTacToeWinner(visit.PlayerID) {
 		// If current player did not win, this game is a draw
 		winnerID = null.IntFromPtr(nil)
@@ -386,6 +398,25 @@ func FinishLegNew(visit models.Visit) error {
 				return err
 			}
 			log.Printf("[%d] Inserting Bermuda Triangle statistics for player %d", visit.LegID, playerID)
+		}
+	} else if match.MatchType.ID == models.FOURTWENTY {
+		statisticsMap, err := Calculate420Statistics(visit.LegID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+					INSERT INTO statistics_420 (leg_id, player_id, score, total_hit_rate, hit_rate_1, hit_rate_2, hit_rate_3, hit_rate_4, hit_rate_5, hit_rate_6, hit_rate_7, hit_rate_8, hit_rate_9,
+						hit_rate_10, hit_rate_11, hit_rate_12, hit_rate_13, hit_rate_14, hit_rate_15, hit_rate_16, hit_rate_17, hit_rate_18, hit_rate_19, hit_rate_20) VALUES (?, ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+				visit.LegID, playerID, stats.Score, stats.TotalHitRate, stats.Hitrates[1], stats.Hitrates[2], stats.Hitrates[3], stats.Hitrates[4], stats.Hitrates[5], stats.Hitrates[6],
+				stats.Hitrates[7], stats.Hitrates[8], stats.Hitrates[9], stats.Hitrates[10], stats.Hitrates[11], stats.Hitrates[12], stats.Hitrates[13], stats.Hitrates[14], stats.Hitrates[15], stats.Hitrates[16],
+				stats.Hitrates[17], stats.Hitrates[18], stats.Hitrates[19], stats.Hitrates[20])
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("[%d] Inserting Four Twenty statistics for player %d", visit.LegID, playerID)
 		}
 	} else {
 		statisticsMap, err := CalculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
@@ -566,6 +597,11 @@ func UndoLegFinish(legID int) error {
 		return err
 	}
 	_, err = tx.Exec("DELETE FROM statistics_bermuda_triangle WHERE leg_id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	_, err = tx.Exec("DELETE FROM statistics_420 WHERE leg_id = ?", legID)
 	if err != nil {
 		tx.Rollback()
 		return err

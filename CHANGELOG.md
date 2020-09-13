@@ -2,7 +2,7 @@
 
 ## [unreleased] - TBD
 #### Feature
-- Support for new game type `Tic-Tac-Toe`
+- Support for new game types `Tic-Tac-Toe`, `Bermuda Triangle`, and `420`
 - Global inidicator for Offices
 
 #### Changed

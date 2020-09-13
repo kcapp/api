@@ -368,6 +368,17 @@ func (visit *Visit) CalculateBermudaTriangleScore(round int) int {
 	return score
 }
 
+// Calculate420Score will calculate the score for the given visit
+func (visit *Visit) Calculate420Score(round int) int {
+	score := 0
+
+	target := Targets420[round]
+	score += visit.FirstDart.Get420Score(target)
+	score += visit.SecondDart.Get420Score(target)
+	score += visit.ThirdDart.Get420Score(target)
+	return score
+}
+
 // IsShanghai will check if the given visit is a "Shanghai". A Shanghai visit is one where a single, double and triple multipler is hit with each dart
 func (visit *Visit) IsShanghai() bool {
 	first := visit.FirstDart

@@ -67,10 +67,18 @@ func (dart Dart) GetScore() int {
 
 // GetBermudaTriangleScore will get the Bermuda Triangle score for the given dart on target
 func (dart Dart) GetBermudaTriangleScore(target Target) int {
-	if (target.value == -1 || target.value == dart.ValueRaw()) && contains(target.multipliers, dart.Multiplier) {
+	if (target.Value == -1 || target.Value == dart.ValueRaw()) && contains(target.multipliers, dart.Multiplier) {
 		if target.score > 0 {
 			return target.score
 		}
+		return dart.GetScore()
+	}
+	return 0
+}
+
+// Get420Score will get the 420 score for the given dart on target
+func (dart Dart) Get420Score(target Target) int {
+	if dart.Multiplier == 2 && dart.ValueRaw() == target.Value {
 		return dart.GetScore()
 	}
 	return 0
