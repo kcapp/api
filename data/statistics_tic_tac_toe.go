@@ -20,7 +20,7 @@ func GetTicTacToeStatistics(from string, to string) ([]*models.StatisticsTicTacT
 			SUM(score) as 'score',
 			SUM(numbers_closed) as 'numbers_closed',
 			MAX(highest_closed) as 'highest_closed'
-		FROM statistics_general s
+		FROM statistics_tic_tac_toe s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
@@ -59,7 +59,7 @@ func GetTicTacToeStatisticsForLeg(id int) ([]*models.StatisticsTicTacToe, error)
 			s.score,
 			s.numbers_closed,
 			s.highest_closed
-		FROM statistics_general s
+		FROM statistics_tic_tac_toe s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
@@ -90,7 +90,7 @@ func GetTicTacToeStatisticsForMatch(id int) ([]*models.StatisticsTicTacToe, erro
 			SUM(score) as 'score',
 			SUM(numbers_closed) as 'numbers_closed',
 			MAX(highest_closed) as 'highest_closed'
-		FROM statistics_general s
+		FROM statistics_tic_tac_toe s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
@@ -129,7 +129,7 @@ func GetTicTacToeStatisticsForPlayer(id int) (*models.StatisticsTicTacToe, error
 			SUM(score) as 'score',
 			SUM(numbers_closed) as 'numbers_closed',
 			MAX(highest_closed) as 'highest_closed'
-		FROM statistics_general s
+		FROM statistics_tic_tac_toe s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
@@ -167,7 +167,7 @@ func GetTicTacToeHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 			s.score,
 			s.numbers_closed,
 			s.highest_closed
-		FROM statistics_general s
+		FROM statistics_tic_tac_toe s
 			LEFT JOIN player p ON p.id = s.player_id
 			LEFT JOIN leg l ON l.id = s.leg_id
 			LEFT JOIN matches m ON m.id = l.match_id
