@@ -372,7 +372,7 @@ func FinishLegNew(visit models.Visit) error {
 		}
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
-				INSERT INTO statistics_general (leg_id, player_id, darts_thrown, score, numbers_closed, highest_closed) VALUES (?,?,?,?,?,?)`, visit.LegID,
+				INSERT INTO statistics_tic_tac_toe (leg_id, player_id, darts_thrown, score, numbers_closed, highest_closed) VALUES (?,?,?,?,?,?)`, visit.LegID,
 				playerID, stats.DartsThrown, stats.Score, stats.NumbersClosed, stats.HighestClosed)
 			if err != nil {
 				tx.Rollback()
@@ -591,7 +591,7 @@ func UndoLegFinish(legID int) error {
 		tx.Rollback()
 		return err
 	}
-	_, err = tx.Exec("DELETE FROM statistics_general WHERE leg_id = ?", legID)
+	_, err = tx.Exec("DELETE FROM statistics_tic_tac_toe WHERE leg_id = ?", legID)
 	if err != nil {
 		tx.Rollback()
 		return err
