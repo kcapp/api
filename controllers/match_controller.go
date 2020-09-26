@@ -308,3 +308,15 @@ func GetMatchesTypes(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(types)
 }
+
+// GetOutshotTypes will return all outshot types
+func GetOutshotTypes(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	types, err := data.GetOutshotTypes()
+	if err != nil {
+		log.Println("Unable to get outshot types", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(types)
+}

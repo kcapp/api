@@ -51,7 +51,17 @@ func NewLeg(matchID int, startingScore int, players []int) (*models.Leg, error) 
 		for _, player := range scores {
 			handicaps[player.PlayerID] = player.Handicap
 		}
+	} else if match.MatchType.ID == models.TICTACTOE {
+		params := match.Legs[0].Parameters
+		params.GenerateTicTacToeNumbers(startingScore)
+		res, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			legID, params.OutshotType.ID, params.Numbers[0], params.Numbers[1], params.Numbers[2], params.Numbers[3], params.Numbers[4], params.Numbers[5], params.Numbers[6], params.Numbers[7], params.Numbers[8])
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
 	}
+
 	for idx, playerID := range players {
 		order := idx + 1
 		res, err = tx.Exec("INSERT INTO player2leg (player_id, leg_id, `order`, match_id, handicap) VALUES (?, ?, ?, ?, ?)",
@@ -642,9 +652,11 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 		SELECT
 			l.id, l.end_time, l.starting_score, l.is_finished,
 			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
-			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
+			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC),
+			m.match_type_id
 		FROM leg l
 			LEFT JOIN player2leg p2l ON p2l.leg_id = l.id
+			LEFT JOIN matches m ON m.id = l.match_id
 		WHERE l.match_id = ?
 		GROUP BY l.id
 		ORDER BY l.id ASC`, matchID)
@@ -656,9 +668,10 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 	legs := make([]*models.Leg, 0)
 	for rows.Next() {
 		leg := new(models.Leg)
+		var matchType int
 		var players string
 		err := rows.Scan(&leg.ID, &leg.Endtime, &leg.StartingScore, &leg.IsFinished, &leg.CurrentPlayerID,
-			&leg.WinnerPlayerID, &leg.CreatedAt, &leg.UpdatedAt, &leg.MatchID, &leg.HasScores, &players)
+			&leg.WinnerPlayerID, &leg.CreatedAt, &leg.UpdatedAt, &leg.MatchID, &leg.HasScores, &players, &matchType)
 		if err != nil {
 			return nil, err
 		}
@@ -668,6 +681,29 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 			return nil, err
 		}
 		leg.Visits = visits
+
+		if matchType == models.TICTACTOE {
+			n := make([]int, 9)
+			var ost null.Int
+			err := models.DB.QueryRow(`
+				SELECT outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9
+				FROM leg_parameters WHERE leg_id = ?`, leg.ID).Scan(&ost, &n[0], &n[1], &n[2], &n[3], &n[4], &n[5], &n[6], &n[7], &n[8])
+			if err != nil {
+				return nil, err
+			}
+			params := new(models.LegParameters)
+			if ost.Valid {
+				os, err := GetOutshotType(int(ost.Int64))
+				if err != nil {
+					return nil, err
+				}
+				params.OutshotType = os
+			}
+			params.Numbers = n
+			params.Hits = make(map[int]int)
+			leg.Parameters = params
+		}
+
 		legs = append(legs, leg)
 	}
 	if err = rows.Err(); err != nil {
@@ -798,13 +834,21 @@ func GetLeg(id int) (*models.Leg, error) {
 
 	if matchType == models.TICTACTOE {
 		n := make([]int, 9)
+		var ost null.Int
 		err := models.DB.QueryRow(`
-			SELECT number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9
-			FROM leg_parameters WHERE leg_id = ?`, id).Scan(&n[0], &n[1], &n[2], &n[3], &n[4], &n[5], &n[6], &n[7], &n[8])
+			SELECT outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9
+			FROM leg_parameters WHERE leg_id = ?`, id).Scan(&ost, &n[0], &n[1], &n[2], &n[3], &n[4], &n[5], &n[6], &n[7], &n[8])
 		if err != nil {
 			return nil, err
 		}
 		params := new(models.LegParameters)
+		if ost.Valid {
+			os, err := GetOutshotType(int(ost.Int64))
+			if err != nil {
+				return nil, err
+			}
+			params.OutshotType = os
+		}
 		params.Numbers = n
 		params.Hits = make(map[int]int)
 		leg.Parameters = params
@@ -897,7 +941,13 @@ func GetLeg(id int) (*models.Leg, error) {
 		// We also want to add hits for certain special numbers in some game types
 		for j, num := range specialNums {
 			// Check if we hit the exact number, ending with a double
-			if num == visit.GetScore() && visit.IsCheckout(num) {
+			lastDartValid := visit.GetLastDart().IsDouble()
+			if leg.Parameters.OutshotType.ID == models.OUTSHOTANY {
+				lastDartValid = true
+			} else if leg.Parameters.OutshotType.ID == models.OUTSHOTMASTER {
+				lastDartValid = visit.GetLastDart().IsDouble() || visit.GetLastDart().IsTriple()
+			}
+			if num == visit.GetScore() && lastDartValid {
 				leg.Parameters.Hits[num] = visit.PlayerID
 
 				// Remove the number to only let first player hit a specific number

@@ -8,6 +8,15 @@ import (
 )
 
 const (
+	// OUTSHOTDOUBLE constant representing Double Out
+	OUTSHOTDOUBLE = 1
+	// OUTSHOTMASTER constant representing Master Out
+	OUTSHOTMASTER = 2
+	// OUTSHOTANY constant representing Any Out
+	OUTSHOTANY = 3
+)
+
+const (
 	// X01 constant representing type 1
 	X01 = 1
 	// SHOOTOUT constant representing type 2
@@ -179,6 +188,13 @@ type MatchType struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
+}
+
+// OutshotType struct used for storing outshot types
+type OutshotType struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	ShortName string `json:"short_name"`
 }
 
 // MatchMode struct used for storing match modes

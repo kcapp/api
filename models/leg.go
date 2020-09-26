@@ -3,6 +3,8 @@ package models
 import (
 	"encoding/json"
 	"math"
+	"math/rand"
+	"time"
 
 	"github.com/guregu/null"
 )
@@ -31,9 +33,10 @@ type Leg struct {
 
 // LegParameters struct used for storing leg parameters
 type LegParameters struct {
-	LegID   int         `json:"leg_id,omitempty"`
-	Numbers []int       `json:"numbers"`
-	Hits    map[int]int `json:"hits"`
+	LegID       int          `json:"leg_id,omitempty"`
+	OutshotType *OutshotType `json:"outshot_type,omitempty"`
+	Numbers     []int        `json:"numbers"`
+	Hits        map[int]int  `json:"hits"`
 }
 
 // IsTicTacToeWinner will check if the given player has won a game of Tic Tac Toe
@@ -47,6 +50,75 @@ func (params LegParameters) IsTicTacToeWinner(playerID int) bool {
 		}
 	}
 	return false
+}
+
+// GenerateTicTacToeNumbers will generate 9 unique numbers for a Tic-Tac-Toe board
+func (params *LegParameters) GenerateTicTacToeNumbers(startingScore int) {
+	rand.Seed(time.Now().UnixNano())
+
+	bogey := []int{169, 168, 166, 165, 163, 162, 159}
+	numbers := make([]int, 9)
+	min := 21 + startingScore
+
+	// Get 9 random numbers between the given range
+	iteration := 1
+	for i := range numbers {
+		//min = 21 + startingScore + (10 * (iteration - 1))
+		min = 21 + startingScore + ((startingScore / 4) * (iteration - 1))
+		max := min + 10
+
+		valid := true
+		for valid {
+			num := rand.Intn(max-min) + min
+			// Make sure we don't select duplicates, and don't select bogey numbers
+			if !containsInt(numbers, num) && !containsInt(bogey, num) {
+				numbers[i] = num
+				valid = false
+				if i%3 == 0 {
+					iteration++
+				}
+			}
+		}
+	}
+	// Shuffle the numbers
+	for i := range numbers {
+		j := rand.Intn(i + 1)
+		numbers[i], numbers[j] = numbers[j], numbers[i]
+	}
+
+	// Make sure the middle number is the largest number
+	max := 0
+	idx := 0
+	for i, e := range numbers {
+		if i == 0 || e > max {
+			max = e
+			idx = i
+		}
+	}
+	if idx != 4 {
+		numbers[4], numbers[idx] = numbers[idx], numbers[4]
+	}
+
+	// The middle number should be more difficult, so we make sure it's odd, and increase it's value
+	iteration = 0
+	valid := true
+	for valid {
+		newMiddle := numbers[4] + iteration + 10
+		if newMiddle%2 == 0 {
+			newMiddle++
+		}
+		if !containsInt(numbers, newMiddle) && !containsInt(bogey, newMiddle) {
+			if newMiddle > 170 {
+				// Numbers got too big, so reset counter
+				iteration -= 10
+			} else {
+				numbers[4] = newMiddle
+				break
+			}
+		}
+		iteration++
+	}
+	params.Numbers = numbers
 }
 
 // IsTicTacToeDraw will check if the given parameters indicate a draw
