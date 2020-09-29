@@ -81,13 +81,13 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		numbers := leg.Parameters.Numbers
 		hits := leg.Parameters.Hits
 
+		lastDartValid := visit.GetLastDart().IsDouble()
+		if leg.Parameters.OutshotType.ID == models.OUTSHOTANY {
+			lastDartValid = true
+		} else if leg.Parameters.OutshotType.ID == models.OUTSHOTMASTER {
+			lastDartValid = visit.GetLastDart().IsDouble() || visit.GetLastDart().IsTriple()
+		}
 		for _, num := range numbers {
-			lastDartValid := visit.GetLastDart().IsDouble()
-			if leg.Parameters.OutshotType.ID == models.OUTSHOTANY {
-				lastDartValid = true
-			} else if leg.Parameters.OutshotType.ID == models.OUTSHOTMASTER {
-				lastDartValid = visit.GetLastDart().IsDouble() || visit.GetLastDart().IsTriple()
-			}
 			// Check if we hit the exact number, ending with a double
 			if num == visit.GetScore() && lastDartValid {
 				if visit.ThirdDart.IsMiss() {

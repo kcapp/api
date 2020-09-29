@@ -900,8 +900,16 @@ func GetLeg(id int) (*models.Leg, error) {
 				scores[visit.PlayerID].CurrentScore += score
 			} else if matchType == models.TICTACTOE {
 				score = 0
+
+				lastDartValid := visit.GetLastDart().IsDouble()
+				if leg.Parameters.OutshotType.ID == models.OUTSHOTANY {
+					lastDartValid = true
+				} else if leg.Parameters.OutshotType.ID == models.OUTSHOTMASTER {
+					lastDartValid = visit.GetLastDart().IsDouble() || visit.GetLastDart().IsTriple()
+				}
+
 				for _, num := range leg.Parameters.Numbers {
-					if num == visit.GetScore() && visit.IsCheckout(num) {
+					if num == visit.GetScore() && lastDartValid {
 						score = num
 						break
 					}
