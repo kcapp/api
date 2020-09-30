@@ -63,7 +63,6 @@ func (params *LegParameters) GenerateTicTacToeNumbers(startingScore int) {
 	// Get 9 random numbers between the given range
 	iteration := 1
 	for i := range numbers {
-		//min = 21 + startingScore + (10 * (iteration - 1))
 		min = 21 + startingScore + ((startingScore / 4) * (iteration - 1))
 		max := min + 10
 
@@ -103,7 +102,7 @@ func (params *LegParameters) GenerateTicTacToeNumbers(startingScore int) {
 	iteration = 0
 	valid := true
 	for valid {
-		newMiddle := numbers[4] + iteration + 10
+		newMiddle := numbers[4] + iteration + 10 + rand.Intn(5)
 		if newMiddle%2 == 0 {
 			newMiddle++
 		}
