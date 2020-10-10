@@ -16,6 +16,7 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
+			m.office_id AS 'office_id',
 			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 			SUM(s.ppd) / COUNT(p.id) AS 'ppd',
 			SUM(s.60s_plus),
@@ -31,7 +32,7 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND m.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 2
-		GROUP BY p.id
+		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC, ppd DESC`, from, to)
 	if err != nil {
 		return nil, err
@@ -41,7 +42,8 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 	stats := make([]*models.StatisticsShootout, 0)
 	for rows.Next() {
 		s := new(models.StatisticsShootout)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.Score, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID, &s.Score,
+			&s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
 		if err != nil {
 			return nil, err
 		}
@@ -259,7 +261,7 @@ func ReCalculateShootoutStatistics() (map[int]map[int]*models.StatisticsShootout
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE kcapp.statistics_shootout SET score = %d, ppd = %f, 60s_plus = %d, 100s_plus = %d, 140s_plus = %d, 180s = %d 	WHERE leg_id = %d AND player_id = %d;`,
+			log.Printf(`UPDATE kcapp.statistics_shootout SET score = %d, ppd = %f, 60s_plus = %d, 100s_plus = %d, 140s_plus = %d, 180s = %d WHERE leg_id = %d AND player_id = %d;`,
 				stat.Score, stat.PPD, stat.Score60sPlus, stat.Score100sPlus, stat.Score140sPlus, stat.Score180s, leg.ID, playerID)
 		}
 		s[leg.ID] = stats

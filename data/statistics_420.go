@@ -4,12 +4,11 @@ import (
 	"database/sql"
 	"log"
 
-	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
 )
 
-// GetAroundTheClockStatistics will return statistics for all players active during the given period
-func GetAroundTheClockStatistics(from string, to string) ([]*models.StatisticsAroundThe, error) {
+// Get420Statistics will return statistics for all players active during the given period
+func Get420Statistics(from string, to string) ([]*models.Statistics420, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id,
@@ -18,9 +17,7 @@ func GetAroundTheClockStatistics(from string, to string) ([]*models.StatisticsAr
 			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
 			m.office_id AS 'office_id',
-			SUM(s.darts_thrown) as 'darts_thrown',
 			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
-			MAX(s.longest_streak) as 'longest_streak',
 			SUM(s.total_hit_rate) / COUNT(l.id) as 'total_hit_rate',
 			SUM(s.hit_rate_1) / COUNT(l.id) as 'hit_rate_1',
 			SUM(s.hit_rate_2) / COUNT(l.id) as 'hit_rate_2',
@@ -43,7 +40,7 @@ func GetAroundTheClockStatistics(from string, to string) ([]*models.StatisticsAr
 			SUM(s.hit_rate_19) / COUNT(l.id) as 'hit_rate_19',
 			SUM(s.hit_rate_20) / COUNT(l.id) as 'hit_rate_20',
 			SUM(s.hit_rate_bull) / COUNT(l.id) as 'hit_rate_bull'
-		FROM statistics_around_the s
+		FROM statistics_420 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
@@ -51,7 +48,7 @@ func GetAroundTheClockStatistics(from string, to string) ([]*models.StatisticsAr
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
-			AND m.match_type_id = 8
+			AND m.match_type_id = 11
 		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
 	if err != nil {
@@ -59,13 +56,13 @@ func GetAroundTheClockStatistics(from string, to string) ([]*models.StatisticsAr
 	}
 	defer rows.Close()
 
-	stats := make([]*models.StatisticsAroundThe, 0)
+	stats := make([]*models.Statistics420, 0)
 	for rows.Next() {
-		s := new(models.StatisticsAroundThe)
-		h := make([]*float64, 26)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID, &s.DartsThrown,
-			&s.Score, &s.LongestStreak, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9],
-			&h[10], &h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20], &h[25])
+		s := new(models.Statistics420)
+		h := make([]*float64, 22)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID, &s.Score, &s.TotalHitRate,
+			&h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10], &h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17],
+			&h[18], &h[19], &h[20], &h[21])
 		if err != nil {
 			return nil, err
 		}
@@ -73,22 +70,20 @@ func GetAroundTheClockStatistics(from string, to string) ([]*models.StatisticsAr
 		for i := 1; i <= 20; i++ {
 			hitrates[i] = *h[i]
 		}
-		hitrates[25] = *h[25]
+		hitrates[25] = *h[21]
 		s.Hitrates = hitrates
 		stats = append(stats, s)
 	}
 	return stats, nil
 }
 
-// GetAroundTheClockStatisticsForLeg will return statistics for all players in the given leg
-func GetAroundTheClockStatisticsForLeg(id int) ([]*models.StatisticsAroundThe, error) {
+// Get420StatisticsForLeg will return statistics for all players in the given leg
+func Get420StatisticsForLeg(id int) ([]*models.Statistics420, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			l.id,
 			p.id,
-			s.darts_thrown,
 			s.score,
-			s.longest_streak,
 			s.total_hit_rate,
 			s.hit_rate_1,
 			s.hit_rate_2,
@@ -111,7 +106,7 @@ func GetAroundTheClockStatisticsForLeg(id int) ([]*models.StatisticsAroundThe, e
 			s.hit_rate_19,
 			s.hit_rate_20,
 			s.hit_rate_bull
-		FROM statistics_around_the s
+		FROM statistics_420 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
@@ -121,13 +116,12 @@ func GetAroundTheClockStatisticsForLeg(id int) ([]*models.StatisticsAroundThe, e
 	}
 	defer rows.Close()
 
-	stats := make([]*models.StatisticsAroundThe, 0)
+	stats := make([]*models.Statistics420, 0)
 	for rows.Next() {
-		s := new(models.StatisticsAroundThe)
-		h := make([]*float64, 26)
-		err := rows.Scan(&s.LegID, &s.PlayerID, &s.DartsThrown, &s.Score, &s.LongestStreak, &s.TotalHitRate,
-			&h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10], &h[11],
-			&h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20], &h[25])
+		s := new(models.Statistics420)
+		h := make([]*float64, 22)
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.Score, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9],
+			&h[10], &h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20], &h[21])
 		if err != nil {
 			return nil, err
 		}
@@ -135,21 +129,19 @@ func GetAroundTheClockStatisticsForLeg(id int) ([]*models.StatisticsAroundThe, e
 		for i := 1; i <= 20; i++ {
 			hitrates[i] = *h[i]
 		}
-		hitrates[25] = *h[25]
+		hitrates[25] = *h[21]
 		s.Hitrates = hitrates
 		stats = append(stats, s)
 	}
 	return stats, nil
 }
 
-// GetAroundTheClockStatisticsForMatch will return statistics for all players in the given match
-func GetAroundTheClockStatisticsForMatch(id int) ([]*models.StatisticsAroundThe, error) {
+// Get420StatisticsForMatch will return statistics for all players in the given match
+func Get420StatisticsForMatch(id int) ([]*models.Statistics420, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id,
-			SUM(s.darts_thrown) as 'darts_thrown',
 			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
-			MAX(s.longest_streak) as 'avg_longest_streak',
 			SUM(s.total_hit_rate) / COUNT(l.id) as 'total_hit_rate',
 			SUM(s.hit_rate_1) / COUNT(l.id) as 'hit_rate_1',
 			SUM(s.hit_rate_2) / COUNT(l.id) as 'hit_rate_2',
@@ -171,8 +163,8 @@ func GetAroundTheClockStatisticsForMatch(id int) ([]*models.StatisticsAroundThe,
 			SUM(s.hit_rate_18) / COUNT(l.id) as 'hit_rate_18',
 			SUM(s.hit_rate_19) / COUNT(l.id) as 'hit_rate_19',
 			SUM(s.hit_rate_20) / COUNT(l.id) as 'hit_rate_20',
-			SUM(s.hit_rate_bull) / COUNT(l.id) as 'hit_rate_25'
-		FROM statistics_around_the s
+			SUM(s.hit_rate_bull) / COUNT(l.id) as 'hit_rate_bull'
+		FROM statistics_420 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
@@ -185,14 +177,12 @@ func GetAroundTheClockStatisticsForMatch(id int) ([]*models.StatisticsAroundThe,
 	}
 	defer rows.Close()
 
-	stats := make([]*models.StatisticsAroundThe, 0)
+	stats := make([]*models.Statistics420, 0)
 	for rows.Next() {
-		s := new(models.StatisticsAroundThe)
-		h := make([]*float64, 26)
-		err := rows.Scan(&s.PlayerID, &s.DartsThrown, &s.Score, &s.LongestStreak, &s.TotalHitRate,
-			&h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9],
-			&h[10], &h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17],
-			&h[18], &h[19], &h[20], &h[25])
+		s := new(models.Statistics420)
+		h := make([]*float64, 22)
+		err := rows.Scan(&s.PlayerID, &s.Score, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9],
+			&h[10], &h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20], &h[21])
 		if err != nil {
 			return nil, err
 		}
@@ -200,17 +190,17 @@ func GetAroundTheClockStatisticsForMatch(id int) ([]*models.StatisticsAroundThe,
 		for i := 1; i <= 20; i++ {
 			hitrates[i] = *h[i]
 		}
-		hitrates[25] = *h[25]
+		hitrates[25] = *h[21]
 		s.Hitrates = hitrates
 		stats = append(stats, s)
 	}
 	return stats, nil
 }
 
-// GetAroundTheClockStatisticsForPlayer will return AtW statistics for the given player
-func GetAroundTheClockStatisticsForPlayer(id int) (*models.StatisticsAroundThe, error) {
-	s := new(models.StatisticsAroundThe)
-	h := make([]*float64, 26)
+// Get420StatisticsForPlayer will return AtW statistics for the given player
+func Get420StatisticsForPlayer(id int) (*models.Statistics420, error) {
+	s := new(models.Statistics420)
+	h := make([]*float64, 22)
 	err := models.DB.QueryRow(`
 		SELECT
 			p.id,
@@ -218,9 +208,7 @@ func GetAroundTheClockStatisticsForPlayer(id int) (*models.StatisticsAroundThe, 
 			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
-			SUM(s.darts_thrown) as 'darts_thrown',
 			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
-			MAX(s.longest_streak) as 'longest_streak',
 			SUM(s.total_hit_rate) / COUNT(l.id) as 'total_hit_rate',
 			SUM(s.hit_rate_1) / COUNT(l.id) as 'hit_rate_1',
 			SUM(s.hit_rate_2) / COUNT(l.id) as 'hit_rate_2',
@@ -242,8 +230,8 @@ func GetAroundTheClockStatisticsForPlayer(id int) (*models.StatisticsAroundThe, 
 			SUM(s.hit_rate_18) / COUNT(l.id) as 'hit_rate_18',
 			SUM(s.hit_rate_19) / COUNT(l.id) as 'hit_rate_19',
 			SUM(s.hit_rate_20) / COUNT(l.id) as 'hit_rate_20',
-			SUM(s.hit_rate_bull) / COUNT(l.id) as 'hit_rate_25'
-		FROM statistics_around_the s
+			SUM(s.hit_rate_bull) / COUNT(l.id) as 'hit_rate_bull'
+		FROM statistics_420 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
@@ -251,15 +239,13 @@ func GetAroundTheClockStatisticsForPlayer(id int) (*models.StatisticsAroundThe, 
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE s.player_id = ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
-			AND m.match_type_id = 8
-		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon,
-		&s.DartsThrown, &s.Score, &s.LongestStreak, &s.TotalHitRate,
-		&h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9],
-		&h[10], &h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17],
-		&h[18], &h[19], &h[20], &h[25])
+			AND m.match_type_id = 11
+		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.Score,
+		&s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10], &h[11], &h[12], &h[13],
+		&h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20], &h[21])
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return new(models.StatisticsAroundThe), nil
+			return new(models.Statistics420), nil
 		}
 		return nil, err
 	}
@@ -267,14 +253,14 @@ func GetAroundTheClockStatisticsForPlayer(id int) (*models.StatisticsAroundThe, 
 	for i := 1; i <= 20; i++ {
 		hitrates[i] = *h[i]
 	}
-	hitrates[25] = *h[25]
+	hitrates[25] = *h[21]
 	s.Hitrates = hitrates
 	return s, nil
 }
 
-// GetAroundTheClockHistoryForPlayer will return history of AtW statistics for the given player
-func GetAroundTheClockHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.AROUNDTHECLOCK, false)
+// Get420HistoryForPlayer will return history of AtW statistics for the given player
+func Get420HistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.FOURTWENTY, false)
 	if err != nil {
 		return nil, err
 	}
@@ -287,9 +273,7 @@ func GetAroundTheClockHistoryForPlayer(id int, limit int) ([]*models.Leg, error)
 		SELECT
 			l.id,
 			p.id,
-			s.darts_thrown,
 			s.score,
-			s.longest_streak,
 			s.total_hit_rate,
 			s.hit_rate_1,
 			s.hit_rate_2,
@@ -312,13 +296,13 @@ func GetAroundTheClockHistoryForPlayer(id int, limit int) ([]*models.Leg, error)
 			s.hit_rate_19,
 			s.hit_rate_20,
 			s.hit_rate_bull
-		FROM statistics_around_the s
+		FROM statistics_420 s
 			LEFT JOIN player p ON p.id = s.player_id
 			LEFT JOIN leg l ON l.id = s.leg_id
 			LEFT JOIN matches m ON m.id = l.match_id
 		WHERE s.player_id = ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
-			AND m.match_type_id = 8
+			AND m.match_type_id = 11
 		ORDER BY l.id DESC
 		LIMIT ?`, id, limit)
 	if err != nil {
@@ -328,11 +312,11 @@ func GetAroundTheClockHistoryForPlayer(id int, limit int) ([]*models.Leg, error)
 
 	legs = make([]*models.Leg, 0)
 	for rows.Next() {
-		s := new(models.StatisticsAroundThe)
-		h := make([]*float64, 26)
-		err := rows.Scan(&s.LegID, &s.PlayerID, &s.DartsThrown, &s.Score, &s.LongestStreak, &s.TotalHitRate,
-			&h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10], &h[11],
-			&h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20], &h[25])
+		s := new(models.Statistics420)
+		h := make([]*float64, 22)
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.Score, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5],
+			&h[6], &h[7], &h[8], &h[9], &h[10], &h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18],
+			&h[19], &h[20], &h[21])
 		if err != nil {
 			return nil, err
 		}
@@ -340,7 +324,7 @@ func GetAroundTheClockHistoryForPlayer(id int, limit int) ([]*models.Leg, error)
 		for i := 1; i <= 20; i++ {
 			hitrates[i] = *h[i]
 		}
-		hitrates[25] = *h[25]
+		hitrates[25] = *h[21]
 		s.Hitrates = hitrates
 
 		leg := m[s.LegID]
@@ -350,8 +334,8 @@ func GetAroundTheClockHistoryForPlayer(id int, limit int) ([]*models.Leg, error)
 	return legs, nil
 }
 
-// CalculateAroundTheClockStatistics will generate around the clock statistics for the given leg
-func CalculateAroundTheClockStatistics(legID int) (map[int]*models.StatisticsAroundThe, error) {
+// Calculate420Statistics will generate around the clock statistics for the given leg
+func Calculate420Statistics(legID int) (map[int]*models.Statistics420, error) {
 	leg, err := GetLeg(legID)
 	if err != nil {
 		return nil, err
@@ -362,88 +346,71 @@ func CalculateAroundTheClockStatistics(legID int) (map[int]*models.StatisticsAro
 		return nil, err
 	}
 
-	statisticsMap := make(map[int]*models.StatisticsAroundThe)
+	statisticsMap := make(map[int]*models.Statistics420)
 	for _, player := range players {
-		stats := new(models.StatisticsAroundThe)
+		stats := new(models.Statistics420)
 		stats.PlayerID = player.PlayerID
-		stats.Score = 0
-		statisticsMap[player.PlayerID] = stats
+		stats.Score = 420
 		stats.Hitrates = make(map[int]float64)
-		for i := 1; i <= 21; i++ {
+		for i := 1; i <= 20; i++ {
 			stats.Hitrates[i] = 0
 		}
+		stats.Hitrates[25] = 0
+
+		statisticsMap[player.PlayerID] = stats
 	}
 
-	for _, visit := range leg.Visits {
+	round := 0
+	for i, visit := range leg.Visits {
+		if i > 0 && i%len(players) == 0 {
+			round++
+		}
 		stats := statisticsMap[visit.PlayerID]
-		currentScore := stats.Score
-		currentScore = isHit(stats, currentScore, visit.FirstDart)
-		currentScore = isHit(stats, currentScore, visit.SecondDart)
-		currentScore = isHit(stats, currentScore, visit.ThirdDart)
-		score := visit.CalculateAroundTheClockScore(stats.Score)
-		stats.Score += score
-		stats.DartsThrown = visit.DartsThrown
+		target := models.Targets420[round]
+
+		score := visit.Calculate420Score(round)
+		stats.Score -= score
+
+		hits := 0.0
+		if visit.FirstDart.Get420Score(target) > 0 {
+			hits++
+		}
+		if visit.SecondDart.Get420Score(target) > 0 {
+			hits++
+		}
+		if visit.ThirdDart.Get420Score(target) > 0 {
+			hits++
+		}
+		stats.Hitrates[target.Value] = float64(hits) / 3.0
+		stats.TotalHitRate += hits
 	}
 
 	for _, stats := range statisticsMap {
-		stats.Hitrates[25] = stats.Hitrates[21]
-		delete(stats.Hitrates, 21)
+		stats.TotalHitRate = float64(stats.TotalHitRate) / 60.0
 
-		for i := 1; i <= 20; i++ {
-			if stats.Score < i {
-				stats.Hitrates[i] = 0
-			}
-			stats.TotalHitRate += stats.Hitrates[i]
-		}
-		if stats.Score == 21 {
-			stats.TotalHitRate += stats.Hitrates[25]
-		} else {
-			stats.Hitrates[25] = 0
-		}
-		stats.TotalHitRate = stats.TotalHitRate / 21
-
-		if stats.CurrentStreak > stats.LongestStreak.ValueOrZero() {
-			stats.LongestStreak = null.IntFrom(stats.CurrentStreak)
-		}
 	}
 	return statisticsMap, nil
 }
 
-func isHit(stats *models.StatisticsAroundThe, currentScore int, dart *models.Dart) int {
-	target := currentScore + 1
-	if (dart.ValueRaw() == target && dart.IsSingle()) || (target == 21 && dart.IsBull()) {
-		stats.Hitrates[target] = 1 / (1 + stats.Hitrates[target])
-		stats.CurrentStreak++
-	} else {
-		stats.Hitrates[target]++
-		if stats.CurrentStreak > stats.LongestStreak.ValueOrZero() {
-			stats.LongestStreak = null.IntFrom(stats.CurrentStreak)
-		}
-		stats.CurrentStreak = 0
-		target--
-	}
-	return target
-}
-
-// ReCalculateAroundTheClockStatistics will recaulcate statistics for Around the Clock legs
-func ReCalculateAroundTheClockStatistics() (map[int]map[int]*models.StatisticsAroundThe, error) {
-	legs, err := GetLegsOfType(models.AROUNDTHECLOCK, true)
+// ReCalculate420Statistics will recaulcate statistics for Around the Clock legs
+func ReCalculate420Statistics() (map[int]map[int]*models.Statistics420, error) {
+	legs, err := GetLegsOfType(models.FOURTWENTY, true)
 	if err != nil {
 		return nil, err
 	}
 
-	s := make(map[int]map[int]*models.StatisticsAroundThe)
+	s := make(map[int]map[int]*models.Statistics420)
 	for _, leg := range legs {
-		stats, err := CalculateAroundTheClockStatistics(leg.ID)
+		stats, err := Calculate420Statistics(leg.ID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_around_the SET darts_thrown = %d, score = %d, longest_streak = %d, total_hit_rate = %f, hit_rate_1 = %f, hit_rate_2 = %f, hit_rate_3 = %f, hit_rate_4 = %f, hit_rate_5 = %f, hit_rate_6 = %f, hit_rate_7 = %f, hit_rate_8 = %f, hit_rate_9 = %f, hit_rate_10 = %f, hit_rate_11 = %f, hit_rate_12 = %f, hit_rate_13 = %f, hit_rate_14 = %f, hit_rate_15 = %f, hit_rate_16 = %f, hit_rate_17 = %f, hit_rate_18 = %f, hit_rate_19 = %f, hit_rate_20 = %f, hit_rate_bull = %f WHERE leg_id = %d AND player_id = %d;`,
-				stat.DartsThrown, stat.Score, stat.LongestStreak.Int64, stat.TotalHitRate, stat.Hitrates[1], stat.Hitrates[2], stat.Hitrates[3], stat.Hitrates[4], stat.Hitrates[5],
-				stat.Hitrates[6], stat.Hitrates[7], stat.Hitrates[8], stat.Hitrates[9], stat.Hitrates[10], stat.Hitrates[11], stat.Hitrates[12], stat.Hitrates[13],
-				stat.Hitrates[14], stat.Hitrates[15], stat.Hitrates[16], stat.Hitrates[17], stat.Hitrates[18], stat.Hitrates[19], stat.Hitrates[20], stat.Hitrates[25],
-				leg.ID, playerID)
+			log.Printf(`UPDATE statistics_420 SET score = %d, total_hit_rate = %f, hit_rate_1 = %f, hit_rate_2 = %f, hit_rate_3 = %f, hit_rate_4 = %f, hit_rate_5 = %f, hit_rate_6 = %f, hit_rate_7 = %f, hit_rate_8 = %f,
+			hit_rate_9 = %f, hit_rate_10 = %f, hit_rate_11 = %f, hit_rate_12 = %f, hit_rate_13 = %f, hit_rate_14 = %f, hit_rate_15 = %f, hit_rate_16 = %f, hit_rate_17 = %f, hit_rate_18 = %f, hit_rate_19 = %f, hit_rate_20 = %f,
+			hit_rate_bull = %f WHERE leg_id = %d AND player_id = %d;`,
+				stat.Score, stat.TotalHitRate, stat.Hitrates[1], stat.Hitrates[2], stat.Hitrates[3], stat.Hitrates[4], stat.Hitrates[5], stat.Hitrates[6], stat.Hitrates[7], stat.Hitrates[8], stat.Hitrates[9], stat.Hitrates[10],
+				stat.Hitrates[11], stat.Hitrates[12], stat.Hitrates[13], stat.Hitrates[14], stat.Hitrates[15], stat.Hitrates[16], stat.Hitrates[17], stat.Hitrates[18], stat.Hitrates[19], stat.Hitrates[20], stat.Hitrates[25], leg.ID, playerID)
 		}
 		s[leg.ID] = stats
 	}

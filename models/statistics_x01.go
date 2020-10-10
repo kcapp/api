@@ -48,6 +48,7 @@ type StatisticsX01 struct {
 	MatchesWon            int                 `json:"matches_won"`
 	LegsPlayed            int                 `json:"legs_played"`
 	LegsWon               int                 `json:"legs_won"`
+	OfficeID              null.Int            `json:"office_id,omitempty"`
 	BestThreeDartAvg      *BestStatisticFloat `json:"best_three_dart_avg,omitempty"`
 	BestFirstNineAvg      *BestStatisticFloat `json:"best_first_nine_avg,omitempty"`
 	Best301               *BestStatistic      `json:"best_301,omitempty"`

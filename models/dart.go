@@ -65,6 +65,25 @@ func (dart Dart) GetScore() int {
 	return int(dart.Value.Int64 * dart.Multiplier)
 }
 
+// GetBermudaTriangleScore will get the Bermuda Triangle score for the given dart on target
+func (dart Dart) GetBermudaTriangleScore(target Target) int {
+	if (target.Value == -1 || target.Value == dart.ValueRaw()) && contains(target.multipliers, dart.Multiplier) {
+		if target.score > 0 {
+			return target.score
+		}
+		return dart.GetScore()
+	}
+	return 0
+}
+
+// Get420Score will get the 420 score for the given dart on target
+func (dart Dart) Get420Score(target Target) int {
+	if dart.Multiplier == 2 && dart.ValueRaw() == target.Value {
+		return dart.GetScore()
+	}
+	return 0
+}
+
 // IsCheckoutAttempt checks if this dart was a checkout attempt
 func (dart Dart) IsCheckoutAttempt(currentScore int, num int) bool {
 	if !dart.Value.Valid {
@@ -212,4 +231,22 @@ func (dart *Dart) CalculateCricketScore(playerID int, scores map[int]*Player2Leg
 		points = 0
 	}
 	return points
+}
+
+func contains(s []int64, e int64) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+func containsInt(s []int, e int) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }

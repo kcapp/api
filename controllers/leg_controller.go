@@ -156,6 +156,30 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.TICTACTOE {
+		stats, err := data.GetTicTacToeStatisticsForLeg(legID)
+		if err != nil {
+			log.Println("Unable to get Tic Tac Toe statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.BERMUDATRIANGLE {
+		stats, err := data.GetBermudaTriangleStatisticsForLeg(legID)
+		if err != nil {
+			log.Println("Unable to get Bermuda Triangle statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.FOURTWENTY {
+		stats, err := data.Get420StatisticsForLeg(legID)
+		if err != nil {
+			log.Println("Unable to get 420 statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
 	} else {
 		stats, err := data.GetX01StatisticsForLeg(legID)
 		if err != nil {

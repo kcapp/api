@@ -19,6 +19,7 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
+			m.office_id AS 'office_id',
 			SUM(s.ppd_score) / SUM(s.darts_thrown) AS 'ppd',
 			SUM(s.first_nine_ppd) / (COUNT(p.id)) AS 'first_nine_ppd',
 			(SUM(s.ppd_score) / SUM(s.darts_thrown)) * 3 AS 'three_dart_avg',
@@ -41,7 +42,7 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 			AND l.starting_score IN (?)
 			AND l.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 1
-		GROUP BY p.id
+		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC,
 			(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100) DESC`, from, to, startingScores)
 	if err != nil {
@@ -56,9 +57,9 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 	stats := make([]*models.StatisticsX01, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg,
-			&s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19,
-			&s.AccuracyOverall, &s.CheckoutPercentage)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID, &s.PPD,
+			&s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus,
+			&s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
 		if err != nil {
 			return nil, err
 		}
@@ -786,7 +787,7 @@ func GetOfficeStatistics(from string, to string) ([]*models.OfficeStatistics, er
 				GROUP BY leg_id)
 			ORDER BY checkout DESC, leg_id
 		) checkouts
-		GROUP BY player_id, checkout
+		GROUP BY player_id, office_id, checkout
 		ORDER BY checkout DESC, leg_id`, from, to)
 	if err != nil {
 		return nil, err
@@ -845,7 +846,7 @@ func GetOfficeStatisticsForOffice(officeID int, from string, to string) ([]*mode
 				GROUP BY leg_id)
 			ORDER BY checkout DESC, leg_id
 		) checkouts
-		GROUP BY player_id, checkout
+		GROUP BY player_id, office_id, checkout
 		ORDER BY checkout DESC, leg_id`, officeID, from, to)
 	if err != nil {
 		return nil, err

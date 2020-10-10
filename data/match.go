@@ -32,6 +32,7 @@ func NewMatch(match models.Match) (*models.Match, error) {
 		tx.Rollback()
 		return nil, err
 	}
+	startingScore := match.Legs[0].StartingScore
 	res, err = tx.Exec("INSERT INTO leg (starting_score, current_player_id, match_id, created_at) VALUES (?, ?, ?, NOW()) ", match.Legs[0].StartingScore, match.Players[0], matchID)
 	if err != nil {
 		tx.Rollback()
@@ -41,6 +42,16 @@ func NewMatch(match models.Match) (*models.Match, error) {
 	if err != nil {
 		tx.Rollback()
 		return nil, err
+	}
+	if match.MatchType.ID == models.TICTACTOE {
+		params := match.Legs[0].Parameters
+		params.GenerateTicTacToeNumbers(startingScore)
+		res, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			legID, params.OutshotType.ID, params.Numbers[0], params.Numbers[1], params.Numbers[2], params.Numbers[3], params.Numbers[4], params.Numbers[5], params.Numbers[6], params.Numbers[7], params.Numbers[8])
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	tx.Exec("UPDATE matches SET current_leg_id = ? WHERE id = ?", legID, matchID)
@@ -512,6 +523,37 @@ func GetMatchTypes() ([]*models.MatchType, error) {
 	}
 
 	return types, nil
+}
+
+// GetOutshotTypes will return all outshot types
+func GetOutshotTypes() ([]*models.OutshotType, error) {
+	rows, err := models.DB.Query("SELECT id, `name`, short_name FROM outshot_type")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	types := make([]*models.OutshotType, 0)
+	for rows.Next() {
+		os := new(models.OutshotType)
+		err := rows.Scan(&os.ID, &os.Name, &os.ShortName)
+		if err != nil {
+			return nil, err
+		}
+		types = append(types, os)
+	}
+
+	return types, nil
+}
+
+// GetOutshotType will return the outshot with the given ID
+func GetOutshotType(id int) (*models.OutshotType, error) {
+	outshot := new(models.OutshotType)
+	err := models.DB.QueryRow("SELECT id, `name`, short_name FROM outshot_type WHERE id = ?", id).Scan(&outshot.ID, &outshot.Name, &outshot.ShortName)
+	if err != nil {
+		return nil, err
+	}
+	return outshot, nil
 }
 
 // GetWinsPerPlayer gets the number of wins per player for the given match

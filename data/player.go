@@ -246,7 +246,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		return nil, err
 	}
 
-	// Get score for other game modes
+	// Get score for other game types
 	if m.MatchType.ID == models.CRICKET {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
@@ -326,6 +326,48 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			}
 			score := visit.CalculateAroundTheWorldScore(round)
 			scores[visit.PlayerID].CurrentScore += score
+		}
+	} else if m.MatchType.ID == models.TICTACTOE {
+		for _, player := range scores {
+			player.CurrentScore = 0
+		}
+	} else if m.MatchType.ID == models.BERMUDATRIANGLE {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			player.CurrentScore = 0
+		}
+
+		round := 1
+		for i, visit := range visits {
+			if i > 0 && i%len(players) == 0 {
+				round++
+			}
+			score := visit.CalculateBermudaTriangleScore(round - 1)
+			if score == 0 {
+				scores[visit.PlayerID].CurrentScore = scores[visit.PlayerID].CurrentScore / 2
+			} else {
+				scores[visit.PlayerID].CurrentScore += score
+			}
+		}
+	} else if m.MatchType.ID == models.FOURTWENTY {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			player.CurrentScore = 420
+		}
+
+		round := 1
+		for i, visit := range visits {
+			if i > 0 && i%len(players) == 0 {
+				round++
+			}
+			score := visit.Calculate420Score(round - 1)
+			scores[visit.PlayerID].CurrentScore -= score
 		}
 	}
 

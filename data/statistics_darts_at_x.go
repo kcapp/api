@@ -16,6 +16,7 @@ func GetDartsAtXStatistics(from string, to string) ([]*models.StatisticsDartsAtX
 			COUNT(DISTINCT m2.id) as 'matches_won',
 			COUNT(DISTINCT l.id) as 'legs_played',
 			COUNT(DISTINCT l2.id) as 'legs_won',
+			m.office_id AS 'office_id',
 			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 			SUM(s.singles) as 'singles',
 			SUM(s.doubles) as 'doubles',
@@ -35,7 +36,7 @@ func GetDartsAtXStatistics(from string, to string) ([]*models.StatisticsDartsAtX
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 5
-		GROUP BY p.id
+		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC, avg_score DESC`, from, to)
 	if err != nil {
 		return nil, err
@@ -45,8 +46,8 @@ func GetDartsAtXStatistics(from string, to string) ([]*models.StatisticsDartsAtX
 	stats := make([]*models.StatisticsDartsAtX, 0)
 	for rows.Next() {
 		s := new(models.StatisticsDartsAtX)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.AvgScore, &s.Singles, &s.Doubles, &s.Triples, &s.HitRate,
-			&s.Hits5, &s.Hits6, &s.Hits7, &s.Hits8, &s.Hits9)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID, &s.AvgScore,
+			&s.Singles, &s.Doubles, &s.Triples, &s.HitRate, &s.Hits5, &s.Hits6, &s.Hits7, &s.Hits8, &s.Hits9)
 		if err != nil {
 			return nil, err
 		}
@@ -258,7 +259,7 @@ func GetDartsAtXHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 	return legs, nil
 }
 
-// CalculateDartsAtXStatistics will generate cricket statistics for the given leg
+// CalculateDartsAtXStatistics will generate statistics for the given leg
 func CalculateDartsAtXStatistics(legID int) (map[int]*models.StatisticsDartsAtX, error) {
 	visits, err := GetLegVisits(legID)
 	if err != nil {

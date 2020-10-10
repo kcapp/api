@@ -310,7 +310,7 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 func GetTournamentStandings() ([]*models.TournamentStanding, error) {
 	rows, err := models.DB.Query(`
 		SELECT player_id, first_name, tournament_elo, tournament_elo_matches, current_elo, current_elo_matches,
-			@curRank := @curRank + 1 AS rank FROM (
+			@curRank := @curRank + 1 AS "rank" FROM (
 				SELECT
 					pe.player_id,
 					p.first_name,

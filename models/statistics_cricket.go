@@ -11,6 +11,7 @@ type StatisticsCricket struct {
 	MatchesWon     int      `json:"matches_won,omitempty"`
 	LegsPlayed     int      `json:"legs_played,omitempty"`
 	LegsWon        int      `json:"legs_won,omitempty"`
+	OfficeID       null.Int `json:"office_id,omitempty"`
 	TotalMarks     int      `json:"total_marks"`
 	Rounds         int      `json:"rounds"`
 	Score          null.Int `json:"score"`

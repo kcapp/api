@@ -8,98 +8,126 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/kcapp/api/data"
+	"github.com/kcapp/api/models"
 )
 
-// GetX01Statistics will return X01 statistics for a given period
-func GetX01Statistics(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
+// GetStatistics will return statistics for the given match type
+func GetStatistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-
-	statistics, err := data.GetX01Statistics(params["from"], params["to"], 301, 501)
+	params := mux.Vars(r)
+	matchType, err := strconv.Atoi(params["match_type"])
 	if err != nil {
-		log.Println("Unable to get X01 statistics", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println("Invalid match type parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	json.NewEncoder(w).Encode(statistics)
-}
 
-// GetShootoutStatistics will return Shootout statistics for a given period
-func GetShootoutStatistics(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	SetHeaders(w)
-	stats, err := data.GetShootoutStatistics(params["from"], params["to"])
-	if err != nil {
-		log.Println("Unable to get Shootout statistics", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	switch matchType {
+	case models.X01:
+		statistics, err := data.GetX01Statistics(params["from"], params["to"], 301, 501)
+		if err != nil {
+			log.Println("Unable to get X01 statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(statistics)
+		return
+
+	case models.SHOOTOUT:
+		stats, err := data.GetShootoutStatistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get Shootout statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.CRICKET:
+		stats, err := data.GetCricketStatistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get Cricket statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.DARTSATX:
+		stats, err := data.GetDartsAtXStatistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get Darts At X statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.AROUNDTHEWORLD:
+		stats, err := data.GetAroundTheWorldStatistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get Around The World statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.SHANGHAI:
+		stats, err := data.GetShanghaiStatistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get Shanghai statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.AROUNDTHECLOCK:
+		stats, err := data.GetAroundTheClockStatistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get Around The Clock statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.TICTACTOE:
+		stats, err := data.GetTicTacToeStatistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get Tic Tac Toe statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.BERMUDATRIANGLE:
+		stats, err := data.GetBermudaTriangleStatistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get Bermuda Triangle statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.FOURTWENTY:
+		stats, err := data.Get420Statistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get 420 Statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	default:
+		log.Println("Unknown match type parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	json.NewEncoder(w).Encode(stats)
-}
-
-// GetCricketStatistics will return Cricket statistics for a given period
-func GetCricketStatistics(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	SetHeaders(w)
-	stats, err := data.GetCricketStatistics(params["from"], params["to"])
-	if err != nil {
-		log.Println("Unable to get Cricket statistics", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(stats)
-}
-
-// GetDartsAtXStatistics will return Cricket statistics for a given period
-func GetDartsAtXStatistics(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	SetHeaders(w)
-	stats, err := data.GetDartsAtXStatistics(params["from"], params["to"])
-	if err != nil {
-		log.Println("Unable to get Darts At X statistics", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(stats)
-}
-
-// GetAroundTheClockStatistics will return Around The Clock statistics for a given period
-func GetAroundTheClockStatistics(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	SetHeaders(w)
-	stats, err := data.GetAroundTheClockStatistics(params["from"], params["to"])
-	if err != nil {
-		log.Println("Unable to get Around The Clock statistics", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(stats)
-}
-
-// GetAroundTheWorldStatistics will return Around The World statistics for a given period
-func GetAroundTheWorldStatistics(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	SetHeaders(w)
-	stats, err := data.GetAroundTheWorldStatistics(params["from"], params["to"])
-	if err != nil {
-		log.Println("Unable to get Around The World statistics", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(stats)
-}
-
-// GetShanghaiStatistics will return Shanghai statistics for a given period
-func GetShanghaiStatistics(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	SetHeaders(w)
-	stats, err := data.GetShanghaiStatistics(params["from"], params["to"])
-	if err != nil {
-		log.Println("Unable to get Shanghai statistics", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(stats)
 }
 
 // GetGlobalStatistics will return some global statistics for all matches

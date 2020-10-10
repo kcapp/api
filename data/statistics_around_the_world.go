@@ -17,6 +17,7 @@ func GetAroundTheWorldStatistics(from string, to string) ([]*models.StatisticsAr
 			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
+			m.office_id AS 'office_id',
 			SUM(s.darts_thrown) as 'darts_thrown',
 			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 			SUM(s.mpr) / COUNT(DISTINCT l.id) as 'mpr',
@@ -51,7 +52,7 @@ func GetAroundTheWorldStatistics(from string, to string) ([]*models.StatisticsAr
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 6
-		GROUP BY p.id
+		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
 	if err != nil {
 		return nil, err
@@ -62,7 +63,7 @@ func GetAroundTheWorldStatistics(from string, to string) ([]*models.StatisticsAr
 	for rows.Next() {
 		s := new(models.StatisticsAroundThe)
 		h := make([]*float64, 26)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrown,
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID, &s.DartsThrown,
 			&s.Score, &s.MPR, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10],
 			&h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20], &h[25])
 		if err != nil {
@@ -355,6 +356,7 @@ func GetShanghaiStatistics(from string, to string) ([]*models.StatisticsAroundTh
 			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won',
+			m.office_id AS 'office_id',
 			SUM(s.darts_thrown) as 'darts_thrown',
 			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 			SUM(s.mpr) / COUNT(DISTINCT l.id) as 'mpr',
@@ -388,7 +390,7 @@ func GetShanghaiStatistics(from string, to string) ([]*models.StatisticsAroundTh
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 7
-		GROUP BY p.id
+		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
 	if err != nil {
 		return nil, err
@@ -399,9 +401,9 @@ func GetShanghaiStatistics(from string, to string) ([]*models.StatisticsAroundTh
 	for rows.Next() {
 		s := new(models.StatisticsAroundThe)
 		h := make([]*null.Float, 21)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrown,
-			&s.Score, &s.MPR, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10],
-			&h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20])
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID,
+			&s.DartsThrown, &s.Score, &s.MPR, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7],
+			&h[8], &h[9], &h[10], &h[11], &h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20])
 		if err != nil {
 			return nil, err
 		}

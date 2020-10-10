@@ -27,10 +27,21 @@ type Visit struct {
 
 type comparingMatrix [][]bool
 
-// GetDarts does what the title says for a visit
+// GetDarts returns all darts for the given visit
 func (visit Visit) GetDarts() []Dart {
 	darts := []Dart{*visit.FirstDart, *visit.SecondDart, *visit.ThirdDart}
 	return darts
+}
+
+// GetLastDart will return the last non-miss dart from the visit
+func (visit Visit) GetLastDart() *Dart {
+	if visit.ThirdDart.IsMiss() {
+		if visit.SecondDart.IsMiss() {
+			return visit.FirstDart
+		}
+		return visit.SecondDart
+	}
+	return visit.ThirdDart
 }
 
 // ValidateInput will verify the input does not containg any errors
@@ -343,6 +354,28 @@ func (visit *Visit) CalculateAroundTheWorldScore(round int) int {
 	if round == visit.ThirdDart.ValueRaw() || (round == 21 && visit.ThirdDart.IsBull()) {
 		score += visit.ThirdDart.GetScore()
 	}
+	return score
+}
+
+// CalculateBermudaTriangleScore will calculate the score for the given visit
+func (visit *Visit) CalculateBermudaTriangleScore(round int) int {
+	score := 0
+
+	target := TargetsBermudaTriangle[round]
+	score += visit.FirstDart.GetBermudaTriangleScore(target)
+	score += visit.SecondDart.GetBermudaTriangleScore(target)
+	score += visit.ThirdDart.GetBermudaTriangleScore(target)
+	return score
+}
+
+// Calculate420Score will calculate the score for the given visit
+func (visit *Visit) Calculate420Score(round int) int {
+	score := 0
+
+	target := Targets420[round]
+	score += visit.FirstDart.Get420Score(target)
+	score += visit.SecondDart.Get420Score(target)
+	score += visit.ThirdDart.Get420Score(target)
 	return score
 }
 

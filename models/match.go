@@ -8,6 +8,15 @@ import (
 )
 
 const (
+	// OUTSHOTDOUBLE constant representing Double Out
+	OUTSHOTDOUBLE = 1
+	// OUTSHOTMASTER constant representing Master Out
+	OUTSHOTMASTER = 2
+	// OUTSHOTANY constant representing Any Out
+	OUTSHOTANY = 3
+)
+
+const (
 	// X01 constant representing type 1
 	X01 = 1
 	// SHOOTOUT constant representing type 2
@@ -22,9 +31,53 @@ const (
 	AROUNDTHEWORLD = 6
 	// SHANGHAI constant representing type 7
 	SHANGHAI = 7
-	// AROUNDTHECLOCK constant representing type 9
+	// AROUNDTHECLOCK constant representing type 8
 	AROUNDTHECLOCK = 8
+	// TICTACTOE constant representing type 9
+	TICTACTOE = 9
+	// BERMUDATRIANGLE constant representing type 10
+	BERMUDATRIANGLE = 10
+	// FOURTWENTY constant representing type 11
+	FOURTWENTY = 11
 )
+
+// TargetsBermudaTriangle contains the target for each round of Bermuda Triangle
+var TargetsBermudaTriangle = [13]Target{Target{Value: 12, multipliers: []int64{1, 2, 3}},
+	Target{Value: 13, multipliers: []int64{1, 2, 3}},
+	Target{Value: 14, multipliers: []int64{1, 2, 3}},
+	Target{Value: -1, multipliers: []int64{2}},
+	Target{Value: 15, multipliers: []int64{1, 2, 3}},
+	Target{Value: 16, multipliers: []int64{1, 2, 3}},
+	Target{Value: 17, multipliers: []int64{1, 2, 3}},
+	Target{Value: -1, multipliers: []int64{3}},
+	Target{Value: 18, multipliers: []int64{1, 2, 3}},
+	Target{Value: 19, multipliers: []int64{1, 2, 3}},
+	Target{Value: 20, multipliers: []int64{1, 2, 3}},
+	Target{Value: 25, multipliers: []int64{1, 2}, score: 25},
+	Target{Value: 25, multipliers: []int64{2}}}
+
+// Targets420 contains the target for each round of 420
+var Targets420 = [21]Target{Target{Value: 1, multipliers: []int64{2}},
+	{Value: 18, multipliers: []int64{2}},
+	{Value: 4, multipliers: []int64{2}},
+	{Value: 13, multipliers: []int64{2}},
+	{Value: 6, multipliers: []int64{2}},
+	{Value: 10, multipliers: []int64{2}},
+	{Value: 15, multipliers: []int64{2}},
+	{Value: 2, multipliers: []int64{2}},
+	{Value: 17, multipliers: []int64{2}},
+	{Value: 3, multipliers: []int64{2}},
+	{Value: 19, multipliers: []int64{2}},
+	{Value: 7, multipliers: []int64{2}},
+	{Value: 16, multipliers: []int64{2}},
+	{Value: 8, multipliers: []int64{2}},
+	{Value: 11, multipliers: []int64{2}},
+	{Value: 14, multipliers: []int64{2}},
+	{Value: 9, multipliers: []int64{2}},
+	{Value: 12, multipliers: []int64{2}},
+	{Value: 5, multipliers: []int64{2}},
+	{Value: 20, multipliers: []int64{2}},
+	{Value: 25, multipliers: []int64{2}}}
 
 // Match struct used for storing matches
 type Match struct {
@@ -138,6 +191,13 @@ type MatchType struct {
 	Description string `json:"description"`
 }
 
+// OutshotType struct used for storing outshot types
+type OutshotType struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	ShortName string `json:"short_name"`
+}
+
 // MatchMode struct used for storing match modes
 type MatchMode struct {
 	ID           int      `json:"id"`
@@ -176,4 +236,11 @@ type MatchMetadata struct {
 	IsLooserOutcomeHome  bool             `json:"is_looser_outcome_home"`
 	WinnerOutcome        null.String      `json:"winner_outcome"`
 	LooserOutcome        null.String      `json:"looser_outcome"`
+}
+
+// Target contains information about value and multipler required to hit for a given round
+type Target struct {
+	Value       int
+	multipliers []int64
+	score       int
 }

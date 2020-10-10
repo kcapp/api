@@ -250,6 +250,30 @@ func GetStatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.TICTACTOE {
+		stats, err := data.GetTicTacToeStatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get tic tac toe statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.BERMUDATRIANGLE {
+		stats, err := data.GetBermudaTriangleStatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get bermuda triangle statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.FOURTWENTY {
+		stats, err := data.Get420StatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get 420 statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
 	} else {
 		stats, err := data.GetX01StatisticsForMatch(matchID)
 		if err != nil {
@@ -279,6 +303,18 @@ func GetMatchesTypes(w http.ResponseWriter, r *http.Request) {
 	types, err := data.GetMatchTypes()
 	if err != nil {
 		log.Println("Unable to get match types", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(types)
+}
+
+// GetOutshotTypes will return all outshot types
+func GetOutshotTypes(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	types, err := data.GetOutshotTypes()
+	if err != nil {
+		log.Println("Unable to get outshot types", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

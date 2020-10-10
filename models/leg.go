@@ -3,6 +3,8 @@ package models
 import (
 	"encoding/json"
 	"math"
+	"math/rand"
+	"time"
 
 	"github.com/guregu/null"
 )
@@ -26,6 +28,123 @@ type Leg struct {
 	Hits               map[int64]*Hits     `json:"hits,omitempty"`
 	CheckoutStatistics *CheckoutStatistics `json:"checkout_statistics,omitempty"`
 	Statistics         interface{}         `json:"statistics,omitempty"`
+	Parameters         *LegParameters      `json:"parameters,omitempty"`
+}
+
+// LegParameters struct used for storing leg parameters
+type LegParameters struct {
+	LegID       int          `json:"leg_id,omitempty"`
+	OutshotType *OutshotType `json:"outshot_type,omitempty"`
+	Numbers     []int        `json:"numbers"`
+	Hits        map[int]int  `json:"hits"`
+}
+
+// IsTicTacToeWinner will check if the given player has won a game of Tic Tac Toe
+func (params LegParameters) IsTicTacToeWinner(playerID int) bool {
+	hits := params.Hits
+	numbers := params.Numbers
+
+	for _, combo := range TicTacToeWinningCombos {
+		if hits[numbers[combo[0]]] == playerID && hits[numbers[combo[1]]] == playerID && hits[numbers[combo[2]]] == playerID {
+			return true
+		}
+	}
+	return false
+}
+
+// GenerateTicTacToeNumbers will generate 9 unique numbers for a Tic-Tac-Toe board
+func (params *LegParameters) GenerateTicTacToeNumbers(startingScore int) {
+	rand.Seed(time.Now().UnixNano())
+
+	bogey := []int{169, 168, 166, 165, 163, 162, 159}
+	numbers := make([]int, 9)
+	min := 21 + startingScore
+
+	// Get 9 random numbers between the given range
+	iteration := 1
+	for i := range numbers {
+		min = 21 + startingScore + ((startingScore / 4) * (iteration - 1))
+		max := min + 10
+
+		valid := true
+		for valid {
+			num := rand.Intn(max-min) + min
+			// Make sure we don't select duplicates, and don't select bogey numbers
+			if !containsInt(numbers, num) && !containsInt(bogey, num) {
+				numbers[i] = num
+				valid = false
+				if i%3 == 0 {
+					iteration++
+				}
+			}
+		}
+	}
+	// Shuffle the numbers
+	for i := range numbers {
+		j := rand.Intn(i + 1)
+		numbers[i], numbers[j] = numbers[j], numbers[i]
+	}
+
+	// Make sure the middle number is the largest number
+	max := 0
+	idx := 0
+	for i, e := range numbers {
+		if i == 0 || e > max {
+			max = e
+			idx = i
+		}
+	}
+	if idx != 4 {
+		numbers[4], numbers[idx] = numbers[idx], numbers[4]
+	}
+
+	// The middle number should be more difficult, so we make sure it's odd, and increase it's value
+	iteration = 0
+	valid := true
+	for valid {
+		newMiddle := numbers[4] + iteration + 10 + rand.Intn(5)
+		if newMiddle%2 == 0 {
+			newMiddle++
+		}
+		if !containsInt(numbers, newMiddle) && !containsInt(bogey, newMiddle) {
+			if newMiddle > 170 {
+				// Numbers got too big, so reset counter
+				iteration -= 10
+			} else {
+				numbers[4] = newMiddle
+				break
+			}
+		}
+		iteration++
+	}
+	params.Numbers = numbers
+}
+
+// IsTicTacToeDraw will check if the given parameters indicate a draw
+func (params LegParameters) IsTicTacToeDraw() bool {
+	hits := params.Hits
+	numbers := params.Numbers
+
+	draw := true
+	for _, combo := range TicTacToeWinningCombos {
+		num1 := numbers[combo[0]]
+		num2 := numbers[combo[1]]
+		num3 := numbers[combo[2]]
+
+		// Check if keys exists
+		_, exists1 := hits[num1]
+		_, exists2 := hits[num2]
+		_, exists3 := hits[num3]
+
+		if (exists1 && exists2 && hits[num1] != hits[num2]) ||
+			(exists1 && exists3 && hits[num1] != hits[num3]) ||
+			(exists2 && exists3 && hits[num2] != hits[num3]) {
+			// Two numbers are taken by two different players, which means this combo cannot be completed
+			continue
+		}
+		draw = false
+	}
+	return draw
 }
 
 // MarshalJSON will marshall the given object to JSON
@@ -50,6 +169,7 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 		Hits               map[int64]*Hits     `json:"hits,omitempty"`
 		CheckoutStatistics *CheckoutStatistics `json:"checkout_statistics,omitempty"`
 		Statistics         interface{}         `json:"statistics,omitempty"`
+		Parameters         *LegParameters      `json:"parameters,omitempty"`
 	}
 	round := int(math.Floor(float64(len(leg.Visits))/float64(len(leg.Players))) + 1)
 
@@ -72,6 +192,7 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 		Hits:               leg.Hits,
 		CheckoutStatistics: leg.CheckoutStatistics,
 		Statistics:         leg.Statistics,
+		Parameters:         leg.Parameters,
 	})
 }
 
