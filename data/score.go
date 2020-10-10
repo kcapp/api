@@ -109,7 +109,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 	} else if match.MatchType.ID == models.BERMUDATRIANGLE {
 		isFinished = ((len(leg.Visits)+1)*3)%(39*len(leg.Players)) == 0
 	} else if match.MatchType.ID == models.FOURTWENTY {
-		isFinished = ((len(leg.Visits)+1)*3)%(60*len(leg.Players)) == 0
+		isFinished = ((len(leg.Visits)+1)*3)%(63*len(leg.Players)) == 0
 	}
 
 	// Determine who the next player will be

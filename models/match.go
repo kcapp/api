@@ -57,7 +57,7 @@ var TargetsBermudaTriangle = [13]Target{Target{Value: 12, multipliers: []int64{1
 	Target{Value: 25, multipliers: []int64{2}}}
 
 // Targets420 contains the target for each round of 420
-var Targets420 = [20]Target{Target{Value: 1, multipliers: []int64{2}},
+var Targets420 = [21]Target{Target{Value: 1, multipliers: []int64{2}},
 	{Value: 18, multipliers: []int64{2}},
 	{Value: 4, multipliers: []int64{2}},
 	{Value: 13, multipliers: []int64{2}},
@@ -76,7 +76,8 @@ var Targets420 = [20]Target{Target{Value: 1, multipliers: []int64{2}},
 	{Value: 9, multipliers: []int64{2}},
 	{Value: 12, multipliers: []int64{2}},
 	{Value: 5, multipliers: []int64{2}},
-	{Value: 20, multipliers: []int64{2}}}
+	{Value: 20, multipliers: []int64{2}},
+	{Value: 25, multipliers: []int64{2}}}
 
 // Match struct used for storing matches
 type Match struct {
