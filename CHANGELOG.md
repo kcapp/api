@@ -1,5 +1,9 @@
 # Changelog
 
+## [unreleased] - TBD
+#### Feature
+
+
 ## [1.2.0] - 2020-10-10
 #### Feature
 - Support for new game types `Tic-Tac-Toe`, `Bermuda Triangle`, and `420`
@@ -29,6 +33,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
+[unreleased]: https://github.com/kcapp/api/compare/v1.2.0...develop
 [1.2.0]: https://github.com/kcapp/api/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/kcapp/api/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/kcapp/api/releases/tag/v1.0.0
