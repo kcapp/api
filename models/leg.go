@@ -203,6 +203,7 @@ type Player2Leg struct {
 	PlayerName      string           `json:"player_name"`
 	Order           int              `json:"order"`
 	CurrentScore    int              `json:"current_score"`
+	StartingScore   int              `json:"-"`
 	IsCurrentPlayer bool             `json:"is_current_player"`
 	Wins            int              `json:"wins,omitempty"`
 	VisitStatistics *VisitStatistics `json:"visit_statistics,omitempty"`

@@ -379,6 +379,22 @@ func (visit *Visit) Calculate420Score(round int) int {
 	return score
 }
 
+// CalculateKillBullScore will calculate the score for the given visit
+func (visit *Visit) CalculateKillBullScore() int {
+	score := 0
+
+	if visit.FirstDart.IsBull() {
+		score += visit.FirstDart.GetScore()
+	}
+	if visit.SecondDart.IsBull() {
+		score += visit.SecondDart.GetScore()
+	}
+	if visit.ThirdDart.IsBull() {
+		score += visit.ThirdDart.GetScore()
+	}
+	return score
+}
+
 // IsShanghai will check if the given visit is a "Shanghai". A Shanghai visit is one where a single, double and triple multipler is hit with each dart
 func (visit *Visit) IsShanghai() bool {
 	first := visit.FirstDart

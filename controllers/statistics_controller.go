@@ -123,6 +123,16 @@ func GetStatistics(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(stats)
 		return
 
+	case models.KILLBULL:
+		stats, err := data.GetKillBullStatistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get Kill Bull Statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
 	default:
 		log.Println("Unknown match type parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)

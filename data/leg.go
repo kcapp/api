@@ -428,6 +428,22 @@ func FinishLegNew(visit models.Visit) error {
 			}
 			log.Printf("[%d] Inserting Four Twenty statistics for player %d", visit.LegID, playerID)
 		}
+	} else if match.MatchType.ID == models.KILLBULL {
+		statisticsMap, err := CalculateKillBullStatistics(visit.LegID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+						INSERT INTO statistics_kill_bull (leg_id, player_id, darts_thrown, score, marks3, marks4, marks5, marks6, longest_streak, times_busted, total_hit_rate) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+				visit.LegID, playerID, stats.DartsThrown, stats.Score, stats.Marks3, stats.Marks4, stats.Marks5, stats.Marks6, stats.LongestStreak, stats.TimesBusted, stats.TotalHitRate)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("[%d] Inserting Kill Bull statistics for player %d", visit.LegID, playerID)
+		}
 	} else {
 		statisticsMap, err := CalculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
 		if err != nil {
@@ -612,6 +628,11 @@ func UndoLegFinish(legID int) error {
 		return err
 	}
 	_, err = tx.Exec("DELETE FROM statistics_420 WHERE leg_id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	_, err = tx.Exec("DELETE FROM statistics_kill_bull WHERE leg_id = ?", legID)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -828,6 +849,7 @@ func GetLeg(id int) (*models.Leg, error) {
 			// TODO
 		} else {
 			p2l.CurrentScore = leg.StartingScore
+			p2l.StartingScore = leg.StartingScore
 		}
 		scores[leg.Players[i]] = p2l
 	}
@@ -921,6 +943,13 @@ func GetLeg(id int) (*models.Leg, error) {
 					scores[visit.PlayerID].CurrentScore = scores[visit.PlayerID].CurrentScore / 2
 				} else {
 					scores[visit.PlayerID].CurrentScore += score
+				}
+			} else if matchType == models.KILLBULL {
+				score = visit.CalculateKillBullScore()
+				if score == 0 {
+					scores[visit.PlayerID].CurrentScore = scores[visit.PlayerID].StartingScore
+				} else {
+					scores[visit.PlayerID].CurrentScore -= score
 				}
 			} else {
 				scores[visit.PlayerID].CurrentScore -= score

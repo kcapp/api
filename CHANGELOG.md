@@ -2,7 +2,7 @@
 
 ## [unreleased] - TBD
 #### Feature
-
+- Support for new game type `Kill Bull`
 
 ## [1.2.0] - 2020-10-10
 #### Feature

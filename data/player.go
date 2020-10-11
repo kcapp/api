@@ -212,6 +212,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 					IFNULL(SUM(third_dart * third_dart_multiplier), 0))
 					-- For X01 score goes down, while Shootout it counts up
 					* IF(m.match_type_id = 2, -1, 1)) AS 'current_score',
+				l.starting_score,
 				b.player_id,
 				b.skill_level
 			FROM player2leg p2l
@@ -232,7 +233,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 	for rows.Next() {
 		p2l := new(models.Player2Leg)
 		bc := new(models.BotConfig)
-		err := rows.Scan(&p2l.LegID, &p2l.PlayerID, &p2l.PlayerName, &p2l.Order, &p2l.Handicap, &p2l.IsCurrentPlayer, &p2l.CurrentScore, &bc.PlayerID, &bc.Skill)
+		err := rows.Scan(&p2l.LegID, &p2l.PlayerID, &p2l.PlayerName, &p2l.Order, &p2l.Handicap, &p2l.IsCurrentPlayer, &p2l.CurrentScore, &p2l.StartingScore, &bc.PlayerID, &bc.Skill)
 		if err != nil {
 			return nil, err
 		}
@@ -369,8 +370,24 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			score := visit.Calculate420Score(round - 1)
 			scores[visit.PlayerID].CurrentScore -= score
 		}
-	}
+	} else if m.MatchType.ID == models.KILLBULL {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			player.CurrentScore = player.StartingScore
+		}
 
+		for _, visit := range visits {
+			score := visit.CalculateKillBullScore()
+			if score == 0 {
+				scores[visit.PlayerID].CurrentScore = scores[visit.PlayerID].StartingScore
+			} else {
+				scores[visit.PlayerID].CurrentScore -= score
+			}
+		}
+	}
 	return scores, nil
 }
 

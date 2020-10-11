@@ -110,6 +110,17 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		isFinished = ((len(leg.Visits)+1)*3)%(39*len(leg.Players)) == 0
 	} else if match.MatchType.ID == models.FOURTWENTY {
 		isFinished = ((len(leg.Visits)+1)*3)%(63*len(leg.Players)) == 0
+	} else if match.MatchType.ID == models.KILLBULL {
+		score := players[visit.PlayerID].CurrentScore - visit.CalculateKillBullScore()
+		if score <= 0 {
+			if !visit.ThirdDart.IsBull() {
+				visit.ThirdDart.Value = null.IntFromPtr(nil)
+				if !visit.SecondDart.IsBull() {
+					visit.SecondDart.Value = null.IntFromPtr(nil)
+				}
+			}
+			isFinished = true
+		}
 	}
 
 	// Determine who the next player will be
