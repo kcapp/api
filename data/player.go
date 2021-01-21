@@ -21,8 +21,8 @@ func GetPlayers() (map[int]*models.Player, error) {
 
 	rows, err := models.DB.Query(`
 		SELECT
-			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname,
-			p.slack_handle, p.color, p.profile_pic_url, p.office_id, p.is_bot, p.created_at
+			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color,
+			p.profile_pic_url, p.board_stream_url, p.board_stream_css, p.office_id, p.is_bot, p.created_at
 		FROM player p`)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
-			&p.Color, &p.ProfilePicURL, &p.OfficeID, &p.IsBot, &p.CreatedAt)
+			&p.Color, &p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsBot, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -63,7 +63,7 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color,
-			p.profile_pic_url, p.office_id, p.is_bot, p.created_at
+			p.profile_pic_url, p.board_stream_url, p.board_stream_css, p.office_id, p.is_bot, p.created_at
 		FROM player p
 		WHERE active = 1`)
 	if err != nil {
@@ -75,7 +75,7 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
-			&p.Color, &p.ProfilePicURL, &p.OfficeID, &p.IsBot, &p.CreatedAt)
+			&p.Color, &p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsBot, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -101,13 +101,14 @@ func GetPlayer(id int) (*models.Player, error) {
 	err := models.DB.QueryRow(`
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname,
-			p.slack_handle, p.color, p.profile_pic_url, p.office_id, p.is_bot,
-			p.created_at, pe.current_elo, pe.tournament_elo
+			p.slack_handle, p.color, p.profile_pic_url, p.board_stream_url, p.board_stream_css,
+			p.office_id, p.is_bot, p.created_at, pe.current_elo, pe.tournament_elo
 		FROM player p
 		JOIN player_elo pe on pe.player_id = p.id
 		WHERE p.id = ?`, id).
 		Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
-			&p.Color, &p.ProfilePicURL, &p.OfficeID, &p.IsBot, &p.CreatedAt, &p.CurrentElo, &p.TournamentElo)
+			&p.Color, &p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsBot, &p.CreatedAt,
+			&p.CurrentElo, &p.TournamentElo)
 	if err != nil {
 		return nil, err
 	}
@@ -127,6 +128,61 @@ func GetPlayer(id int) (*models.Player, error) {
 	return p, nil
 }
 
+// GetPlayerEloChangelog returns the elo changelog for the given player
+func GetPlayerEloChangelog(id int, start int, limit int) (*models.PlayerEloChangelogs, error) {
+	var total int
+	err := models.DB.QueryRow(`SELECT COUNT(id) FROM player_elo_changelog WHERE player_id = ?`, id).Scan(&total)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := models.DB.Query(`
+		SELECT
+			home.id, home.match_id, m.updated_at,
+			if(m.tournament_id is null, false, true) as 'is_official',
+			mm.short_name as 'match_mode',
+			mt.name as 'match_type', m.winner_id,
+			home.player_id, home.old_elo, home.new_elo, home.old_tournament_elo, home.new_tournament_elo,
+			away.player_id, away.old_elo, away.new_elo, away.old_tournament_elo, away.new_tournament_elo
+		FROM player_elo_changelog home
+			JOIN player_elo_changelog away ON away.match_id = home.match_id AND away.player_id <> home.player_id
+			JOIN matches m on m.id = home.match_id
+			JOIN match_type mt on m.match_type_id = mt.id
+			JOIN match_mode mm on m.match_mode_id = mm.id
+		WHERE home.player_id = ?
+		ORDER BY home.id DESC
+		LIMIT ?, ?`, id, start, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if err != nil {
+		return nil, err
+	}
+	changelogs := new(models.PlayerEloChangelogs)
+	changelogs.Total = total
+	changelogs.Changelog = make([]*models.PlayerEloChangelog, 0)
+	for rows.Next() {
+		change := new(models.PlayerEloChangelog)
+
+		home := new(models.PlayerElo)
+		away := new(models.PlayerElo)
+
+		err := rows.Scan(&change.ID, &change.MatchID, &change.FinishedAt, &change.IsOfficial, &change.MatchMode,
+			&change.MatchType, &change.WinnerID,
+			&home.PlayerID, &home.CurrentElo, &home.CurrentEloNew, &home.TournamentElo, &home.TournamentEloNew,
+			&away.PlayerID, &away.CurrentElo, &away.CurrentEloNew, &away.TournamentElo, &away.TournamentEloNew)
+		if err != nil {
+			return nil, err
+		}
+		change.HomePlayer = home
+		change.AwayPlayer = away
+		changelogs.Changelog = append(changelogs.Changelog, change)
+	}
+	return changelogs, nil
+}
+
 // AddPlayer will add a new player to the database
 func AddPlayer(player models.Player) error {
 	tx, err := models.DB.Begin()
@@ -135,8 +191,11 @@ func AddPlayer(player models.Player) error {
 	}
 
 	// Prepare statement for inserting data
-	res, err := tx.Exec("INSERT INTO player (first_name, last_name, vocal_name, nickname, slack_handle, color, profile_pic_url, office_id, is_bot) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)",
-		player.FirstName, player.LastName, player.VocalName, player.Nickname, player.SlackHandle, player.Color, player.ProfilePicURL, player.OfficeID)
+	res, err := tx.Exec(`INSERT INTO player (first_name, last_name, vocal_name, nickname, slack_handle, color,
+			profile_pic_url, board_stream_url, board_stream_css, office_id, is_bot)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+		player.FirstName, player.LastName, player.VocalName, player.Nickname, player.SlackHandle, player.Color, player.ProfilePicURL,
+		player.BoardStreamURL, player.BoardStreamCSS, player.OfficeID)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -162,14 +221,16 @@ func UpdatePlayer(playerID int, player models.Player) error {
 	// Prepare statement for inserting data
 	stmt, err := models.DB.Prepare(`
 		UPDATE player SET
-			first_name = ?, last_name = ?, vocal_name = ?, nickname = ?, slack_handle = ?, color = ?, profile_pic_url = ?, office_id = ?
+			first_name = ?, last_name = ?, vocal_name = ?, nickname = ?, slack_handle = ?,
+			color = ?, profile_pic_url = ?, board_stream_url = ?, board_stream_css = ?, office_id = ?
 		WHERE id = ?`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(player.FirstName, player.LastName, player.VocalName, player.Nickname, player.SlackHandle, player.Color, player.ProfilePicURL, player.OfficeID, playerID)
+	_, err = stmt.Exec(player.FirstName, player.LastName, player.VocalName, player.Nickname, player.SlackHandle, player.Color,
+		player.ProfilePicURL, player.BoardStreamURL, player.BoardStreamCSS, player.OfficeID, playerID)
 	if err != nil {
 		return err
 	}
@@ -403,6 +464,8 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 			p.slack_handle,
 			p.color,
 			p.profile_pic_url,
+			p.board_stream_url,
+			p.board_stream_css,
 			p.office_id,
 			p.is_bot
 		FROM player2leg p2l
@@ -415,7 +478,8 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL, &p.OfficeID, &p.IsBot)
+		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color,
+			&p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsBot)
 		if err != nil {
 			return nil, err
 		}
@@ -795,12 +859,13 @@ func UpdateEloForMatch(matchID int) error {
 	if err != nil {
 		return err
 	}
-	if match.MatchType.ID != models.X01 || len(match.Players) != 2 || match.IsWalkover || match.IsPractice {
+	if match.MatchType.ID != models.X01 || len(match.Players) != 2 || match.IsWalkover || match.IsAbandoned ||
+		match.IsPractice || !match.IsFinished {
 		// Don't calculate Elo for non-X01 matches, matches which does not have 2 players, and
 		// matches which were walkovers
 		return nil
 	}
-	log.Printf("Updating Elo for players %v in match %d", match.Players, matchID)
+	//log.Printf("Updating Elo for players %v in match %d", match.Players, matchID)
 
 	elos, err := GetPlayersElo(match.Players...)
 	if err != nil {
@@ -931,12 +996,7 @@ func updateElo(matchID int, player1 *models.PlayerElo, player2 *models.PlayerElo
 
 // RecalculateElo will recalculate Elo for all players
 func RecalculateElo() error {
-	rows, err := models.DB.Query(`
-		SELECT
-			m.id
-		FROM matches m
-		WHERE m.tournament_id IN (15, 16)
-		ORDER BY m.created_at`)
+	rows, err := models.DB.Query(`SELECT id FROM matches ORDER BY updated_at`)
 	if err != nil {
 		return err
 	}
@@ -988,6 +1048,13 @@ func CalculateElo(player1Elo int, player1Matches int, player1Score int, player2E
 		player2Elo, player1Elo = calculateElo(player2Elo, player2Matches, player1Elo, player1Matches, multiplier, false)
 	} else {
 		player1Elo, player2Elo = calculateElo(player1Elo, player1Matches, player2Elo, player2Matches, 1.0, true)
+	}
+	// Cap Elo at 400 to avoid players going too low
+	if player1Elo < 400 {
+		player1Elo = 400
+	}
+	if player2Elo < 400 {
+		player2Elo = 400
 	}
 	return player1Elo, player2Elo
 }

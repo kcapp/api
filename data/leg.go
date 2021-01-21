@@ -769,6 +769,28 @@ func GetLegsOfType(matchType int, loadVisits bool) ([]*models.Leg, error) {
 			}
 			leg.Visits = visits
 		}
+		if matchType == models.TICTACTOE {
+			n := make([]int, 9)
+			var ost null.Int
+			err := models.DB.QueryRow(`
+				SELECT outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9
+				FROM leg_parameters WHERE leg_id = ?`, leg.ID).Scan(&ost, &n[0], &n[1], &n[2], &n[3], &n[4], &n[5], &n[6], &n[7], &n[8])
+			if err != nil {
+				return nil, err
+			}
+			params := new(models.LegParameters)
+			if ost.Valid {
+				os, err := GetOutshotType(int(ost.Int64))
+				if err != nil {
+					return nil, err
+				}
+				params.OutshotType = os
+			}
+			params.Numbers = n
+			params.Hits = make(map[int]int)
+			leg.Parameters = params
+		}
+
 		legs = append(legs, leg)
 	}
 	if err = rows.Err(); err != nil {

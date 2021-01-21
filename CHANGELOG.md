@@ -3,6 +3,9 @@
 ## [unreleased] - TBD
 #### Feature
 - Support for new game type `Kill Bull`
+- New properties for players `board_stream_url` and `board_stream_css`
+- Endpoints for loading Elo Changelog for a player
+
 
 ## [1.2.0] - 2020-10-10
 #### Feature

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"log"
-	"time"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
@@ -17,12 +16,8 @@ func NewMatch(match models.Match) (*models.Match, error) {
 	if err != nil {
 		return nil, err
 	}
-	createdAt := time.Now().Format("2006-01-02 15:04:05")
-	if match.CreatedAt != "" {
-		createdAt = match.CreatedAt
-	}
-	res, err := tx.Exec("INSERT INTO matches (match_type_id, match_mode_id, owe_type_id, venue_id, office_id, is_practice, tournament_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-		match.MatchType.ID, match.MatchMode.ID, match.OweTypeID, match.VenueID, match.OfficeID, match.IsPractice, match.TournamentID, createdAt)
+	res, err := tx.Exec("INSERT INTO matches (match_type_id, match_mode_id, owe_type_id, venue_id, office_id, is_practice, tournament_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())",
+		match.MatchType.ID, match.MatchMode.ID, match.OweTypeID, match.VenueID, match.OfficeID, match.IsPractice, match.TournamentID)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -301,7 +296,7 @@ func GetMatch(id int) (*models.Match, error) {
 	if m.OweTypeID.Valid {
 		m.OweType = ot
 	}
-	if m.VenueID.Valid {
+	if m.VenueID.Valid && m.VenueID.Int64 != 0 {
 		m.Venue, err = GetVenue(int(m.VenueID.Int64))
 		if err != nil {
 			return nil, err

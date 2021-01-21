@@ -59,6 +59,37 @@ func GetPlayer(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(player)
 }
 
+// GetPlayerEloChangelog will return the elo changelog for the given player
+func GetPlayerEloChangelog(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	start, err := strconv.Atoi(params["start"])
+	if err != nil {
+		log.Println("Invalid start parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	limit, err := strconv.Atoi(params["limit"])
+	if err != nil {
+		log.Println("Invalid limit parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	changelog, err := data.GetPlayerEloChangelog(id, start, limit)
+	if err != nil {
+		log.Println("Unable to get player elo changelog", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(changelog)
+}
+
 // GetPlayerX01Statistics will return statistics for the given player
 func GetPlayerX01Statistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
