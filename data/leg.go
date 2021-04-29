@@ -519,9 +519,6 @@ func FinishLegNew(visit models.Visit) error {
 			return err
 		}
 		log.Printf("Match %d finished with a Draw", match.ID)
-	} else {
-		// Match is not finished
-		log.Printf("Match %d is not finished, continuing to next leg", match.ID)
 	}
 	tx.Commit()
 
@@ -567,6 +564,12 @@ func FinishLegNew(visit models.Visit) error {
 					return err
 				}
 			}
+		}
+	} else {
+		log.Printf("Match %d is not finished, creating next leg", match.ID)
+		_, err = NewLeg(match.ID, leg.StartingScore, leg.Players)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
