@@ -89,7 +89,7 @@ func GetTournament(id int) (*models.Tournament, error) {
 				JOIN player p ON p.id = ts.player_id
 				JOIN tournament t ON t.id = ts.tournament_id
 			WHERE ts.tournament_id = ?
-			ORDER BY "rank"`, id)
+			ORDER BY ts.rank`, id)
 		if err != nil {
 			return nil, err
 		}

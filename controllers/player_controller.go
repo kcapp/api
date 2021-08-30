@@ -140,19 +140,7 @@ func GetPlayerStatistics(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	/*visits, err := data.GetPlayerVisitCount(id)
-	if err != nil {
-		log.Println("Unable to get visits for player", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	x01.Visits = visits
-	for _, v := range visits {
-		x01.TotalVisits += v.Count
-	}*/
 	statistics.X01 = x01
-
 	json.NewEncoder(w).Encode(statistics)
 }
 

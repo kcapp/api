@@ -33,7 +33,6 @@ func main() {
 	router.HandleFunc("/match/types", controllers.GetMatchesTypes).Methods("GET")
 	router.HandleFunc("/match/modes", controllers.GetMatchesModes).Methods("GET")
 	router.HandleFunc("/match/outshot", controllers.GetOutshotTypes).Methods("GET")
-	//router.HandleFunc("/match/{id}/continue", controllers.ContinueMatch).Methods("PUT")
 	router.HandleFunc("/match", controllers.GetMatches).Methods("GET")
 	router.HandleFunc("/match/{id}", controllers.GetMatch).Methods("GET")
 	router.HandleFunc("/match/{id}/metadata", controllers.GetMatchMetadata).Methods("GET")
@@ -62,7 +61,6 @@ func main() {
 	router.HandleFunc("/player/{id}", controllers.GetPlayer).Methods("GET")
 	router.HandleFunc("/player/{id}", controllers.UpdatePlayer).Methods("PUT")
 	router.HandleFunc("/player/{id}/statistics", controllers.GetPlayerStatistics).Methods("GET")
-
 	router.HandleFunc("/player/{id}/statistics/previous", controllers.GetPlayerX01PreviousStatistics).Methods("GET")
 	router.HandleFunc("/player/{id}/progression", controllers.GetPlayerProgression).Methods("GET")
 	router.HandleFunc("/player/{id}/checkouts", controllers.GetPlayerCheckouts).Methods("GET")
