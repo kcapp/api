@@ -41,7 +41,7 @@ func NewMatch(match models.Match) (*models.Match, error) {
 	if match.MatchType.ID == models.TICTACTOE {
 		params := match.Legs[0].Parameters
 		params.GenerateTicTacToeNumbers(startingScore)
-		res, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			legID, params.OutshotType.ID, params.Numbers[0], params.Numbers[1], params.Numbers[2], params.Numbers[3], params.Numbers[4], params.Numbers[5], params.Numbers[6], params.Numbers[7], params.Numbers[8])
 		if err != nil {
 			tx.Rollback()
@@ -64,7 +64,7 @@ func NewMatch(match models.Match) (*models.Match, error) {
 				tx.Rollback()
 				return nil, err
 			}
-			res, err = tx.Exec("INSERT INTO bot2player2leg (player2leg_id, player_id, skill_level) VALUES (?, ?, ?)", player2LegID, config.PlayerID, config.Skill)
+			_, err = tx.Exec("INSERT INTO bot2player2leg (player2leg_id, player_id, skill_level) VALUES (?, ?, ?)", player2LegID, config.PlayerID, config.Skill)
 			if err != nil {
 				tx.Rollback()
 				return nil, err
@@ -458,7 +458,7 @@ func ContinueMatch(id int) (*models.Leg, error) {
 		return nil, err
 	}
 	if match.IsFinished {
-		return nil, errors.New("Cannot continue finished match")
+		return nil, errors.New("cannot continue finished match")
 	}
 
 	legs, err := GetLegsForMatch(id)

@@ -207,7 +207,7 @@ func GetAroundTheClockStatisticsForMatch(id int) ([]*models.StatisticsAroundThe,
 	return stats, nil
 }
 
-// GetAroundTheClockStatisticsForPlayer will return AtW statistics for the given player
+// GetAroundTheClockStatisticsForPlayer will return Around the Clock statistics for the given player
 func GetAroundTheClockStatisticsForPlayer(id int) (*models.StatisticsAroundThe, error) {
 	s := new(models.StatisticsAroundThe)
 	h := make([]*float64, 26)
@@ -272,7 +272,7 @@ func GetAroundTheClockStatisticsForPlayer(id int) (*models.StatisticsAroundThe, 
 	return s, nil
 }
 
-// GetAroundTheClockHistoryForPlayer will return history of AtW statistics for the given player
+// GetAroundTheClockHistoryForPlayer will return history of Around the Clock statistics for the given player
 func GetAroundTheClockHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 	legs, err := GetLegsOfType(models.AROUNDTHECLOCK, false)
 	if err != nil {
@@ -350,7 +350,7 @@ func GetAroundTheClockHistoryForPlayer(id int, limit int) ([]*models.Leg, error)
 	return legs, nil
 }
 
-// CalculateAroundTheClockStatistics will generate around the clock statistics for the given leg
+// CalculateAroundTheClockStatistics will generate Around the Clock statistics for the given leg
 func CalculateAroundTheClockStatistics(legID int) (map[int]*models.StatisticsAroundThe, error) {
 	leg, err := GetLeg(legID)
 	if err != nil {

@@ -272,6 +272,16 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(stats)
 		return
 
+	case models.GOTCHA:
+		stats, err := data.GetGotchaStatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get Gotcha Statistics for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
 	default:
 		log.Println("Unknown match type parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -413,6 +423,15 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(legs)
 		return
 
+	case models.GOTCHA:
+		legs, err := data.GetGotchaHistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get Gotcha history for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
 	default:
 		log.Println("Unknown match type parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)

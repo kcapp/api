@@ -182,7 +182,7 @@ func GetBermudaTriangleStatisticsForMatch(id int) ([]*models.StatisticsBermudaTr
 	return stats, nil
 }
 
-// GetBermudaTriangleStatisticsForPlayer will return AtW statistics for the given player
+// GetBermudaTriangleStatisticsForPlayer will return Bermuda Triangle statistics for the given player
 func GetBermudaTriangleStatisticsForPlayer(id int) (*models.StatisticsBermudaTriangle, error) {
 	s := new(models.StatisticsBermudaTriangle)
 	h := make([]*float64, 26)
@@ -238,7 +238,7 @@ func GetBermudaTriangleStatisticsForPlayer(id int) (*models.StatisticsBermudaTri
 	return s, nil
 }
 
-// GetBermudaTriangleHistoryForPlayer will return history of AtW statistics for the given player
+// GetBermudaTriangleHistoryForPlayer will return history of Bermuda Triangle statistics for the given player
 func GetBermudaTriangleHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 	legs, err := GetLegsOfType(models.BERMUDATRIANGLE, false)
 	if err != nil {
@@ -308,7 +308,7 @@ func GetBermudaTriangleHistoryForPlayer(id int, limit int) ([]*models.Leg, error
 	return legs, nil
 }
 
-// CalculateBermudaTriangleStatistics will generate around the clock statistics for the given leg
+// CalculateBermudaTriangleStatistics will generate Bermuda Triangle statistics for the given leg
 func CalculateBermudaTriangleStatistics(legID int) (map[int]*models.StatisticsBermudaTriangle, error) {
 	leg, err := GetLeg(legID)
 	if err != nil {
@@ -381,7 +381,7 @@ func CalculateBermudaTriangleStatistics(legID int) (map[int]*models.StatisticsBe
 	return statisticsMap, nil
 }
 
-// ReCalculateBermudaTriangleStatistics will recaulcate statistics for Around the Clock legs
+// ReCalculateBermudaTriangleStatistics will recaulcate statistics for Bermuda Triangle legs
 func ReCalculateBermudaTriangleStatistics() (map[int]map[int]*models.StatisticsBermudaTriangle, error) {
 	legs, err := GetLegsOfType(models.BERMUDATRIANGLE, true)
 	if err != nil {

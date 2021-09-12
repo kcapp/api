@@ -41,6 +41,8 @@ const (
 	FOURTWENTY = 11
 	// KILLBULL constant representing type 12
 	KILLBULL = 12
+	// GOTCHA constant representing type 13
+	GOTCHA = 13
 )
 
 // TargetsBermudaTriangle contains the target for each round of Bermuda Triangle

@@ -3,12 +3,17 @@
 ## [unreleased] - TBD
 #### Feature
 - Support for new game type `Kill Bull`
+- Support for new game type `Gotcha`
 - New properties for players `board_stream_url` and `board_stream_css`
 - Endpoints for loading Elo Changelog for a player
 - Start next leg when previous is finished
 
 #### Changed
 - Capped `Elo` at lower boundry of `400`
+- Added Go module files
+
+#### Fixed
+- Misc code fixes
 
 ## [1.2.0] - 2020-10-10
 #### Feature

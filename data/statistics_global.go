@@ -28,7 +28,7 @@ func GetGlobalStatistics() (map[int]*models.GlobalStatistics, error) {
 	}
 	defer rows.Close()
 
-	stats := make(map[int]*models.GlobalStatistics, 0)
+	stats := make(map[int]*models.GlobalStatistics)
 	for rows.Next() {
 		var officeID null.Int
 		s := new(models.GlobalStatistics)
@@ -90,7 +90,7 @@ func GetGlobalStatisticsFnc() (map[int]*models.GlobalStatistics, error) {
 	}
 	defer rows.Close()
 
-	stats := make(map[int]*models.GlobalStatistics, 0)
+	stats := make(map[int]*models.GlobalStatistics)
 	for rows.Next() {
 		var officeID null.Int
 		s := new(models.GlobalStatistics)

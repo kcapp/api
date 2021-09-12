@@ -72,8 +72,8 @@ func GetKillBullStatisticsForLeg(id int) ([]*models.StatisticsKillBull, error) {
 		FROM statistics_kill_bull s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
-			JOIN matches m ON m.id = l.match_id
-		WHERE l.id = ? GROUP BY p.id`, id)
+			JOIN player2leg p2l on l.id = p2l.leg_id AND p.id = p2l.player_id
+		WHERE l.id = ? GROUP BY p.id ORDER BY p2l.order`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func GetKillBullStatisticsForMatch(id int) ([]*models.StatisticsKillBull, error)
 	return stats, nil
 }
 
-// GetKillBullStatisticsForPlayer will return AtW statistics for the given player
+// GetKillBullStatisticsForPlayer will return Kill Bull statistics for the given player
 func GetKillBullStatisticsForPlayer(id int) (*models.StatisticsKillBull, error) {
 	s := new(models.StatisticsKillBull)
 	err := models.DB.QueryRow(`
@@ -169,7 +169,7 @@ func GetKillBullStatisticsForPlayer(id int) (*models.StatisticsKillBull, error) 
 	return s, nil
 }
 
-// GetKillBullHistoryForPlayer will return history of AtW statistics for the given player
+// GetKillBullHistoryForPlayer will return history of Kill Bull statistics for the given player
 func GetKillBullHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 	legs, err := GetLegsOfType(models.KILLBULL, false)
 	if err != nil {
@@ -221,7 +221,7 @@ func GetKillBullHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 	return legs, nil
 }
 
-// CalculateKillBullStatistics will generate around the clock statistics for the given leg
+// CalculateKillBullStatistics will generate Kill Bull statistics for the given leg
 func CalculateKillBullStatistics(legID int) (map[int]*models.StatisticsKillBull, error) {
 	leg, err := GetLeg(legID)
 	if err != nil {
@@ -238,6 +238,7 @@ func CalculateKillBullStatistics(legID int) (map[int]*models.StatisticsKillBull,
 		stats := new(models.StatisticsKillBull)
 		stats.PlayerID = player.PlayerID
 		stats.Score = player.StartingScore
+		stats.TotalHitRate = 0
 		statisticsMap[player.PlayerID] = stats
 	}
 
@@ -298,13 +299,15 @@ func CalculateKillBullStatistics(legID int) (map[int]*models.StatisticsKillBull,
 		if stats.CurrentStreak > stats.LongestStreak {
 			stats.LongestStreak = stats.CurrentStreak
 		}
-		stats.TotalHitRate = float64(stats.TotalHitRate) / float64(stats.DartsThrown)
+		if stats.DartsThrown > 0 {
+			stats.TotalHitRate = float64(stats.TotalHitRate) / float64(stats.DartsThrown)
+		}
 
 	}
 	return statisticsMap, nil
 }
 
-// ReCalculateKillBullStatistics will recaulcate statistics for Around the Clock legs
+// ReCalculateKillBullStatistics will recaulcate statistics for Kill Bull legs
 func ReCalculateKillBullStatistics() (map[int]map[int]*models.StatisticsKillBull, error) {
 	legs, err := GetLegsOfType(models.FOURTWENTY, true)
 	if err != nil {

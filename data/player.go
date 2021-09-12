@@ -448,6 +448,22 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 				scores[visit.PlayerID].CurrentScore -= score
 			}
 		}
+	} else if m.MatchType.ID == models.GOTCHA {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+
+		targetScore := 0
+		for _, player := range scores {
+			player.CurrentScore = 0
+			targetScore = player.StartingScore
+		}
+
+		for _, visit := range visits {
+			score := visit.CalculateGotchaScore(scores, targetScore)
+			scores[visit.PlayerID].CurrentScore += score
+		}
 	}
 	return scores, nil
 }

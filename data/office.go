@@ -53,7 +53,7 @@ func GetOffices() (map[int]*models.Office, error) {
 	}
 	defer rows.Close()
 
-	offices := make(map[int]*models.Office, 0)
+	offices := make(map[int]*models.Office)
 	for rows.Next() {
 		office := new(models.Office)
 		err := rows.Scan(&office.ID, &office.Name, &office.IsGlobal, &office.IsActive)

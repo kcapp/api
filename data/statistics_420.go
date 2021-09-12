@@ -197,7 +197,7 @@ func Get420StatisticsForMatch(id int) ([]*models.Statistics420, error) {
 	return stats, nil
 }
 
-// Get420StatisticsForPlayer will return AtW statistics for the given player
+// Get420StatisticsForPlayer will return 420 statistics for the given player
 func Get420StatisticsForPlayer(id int) (*models.Statistics420, error) {
 	s := new(models.Statistics420)
 	h := make([]*float64, 22)
@@ -258,7 +258,7 @@ func Get420StatisticsForPlayer(id int) (*models.Statistics420, error) {
 	return s, nil
 }
 
-// Get420HistoryForPlayer will return history of AtW statistics for the given player
+// Get420HistoryForPlayer will return history of 420 statistics for the given player
 func Get420HistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 	legs, err := GetLegsOfType(models.FOURTWENTY, false)
 	if err != nil {
@@ -334,7 +334,7 @@ func Get420HistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 	return legs, nil
 }
 
-// Calculate420Statistics will generate around the clock statistics for the given leg
+// Calculate420Statistics will generate 420 statistics for the given leg
 func Calculate420Statistics(legID int) (map[int]*models.Statistics420, error) {
 	leg, err := GetLeg(legID)
 	if err != nil {
@@ -392,7 +392,7 @@ func Calculate420Statistics(legID int) (map[int]*models.Statistics420, error) {
 	return statisticsMap, nil
 }
 
-// ReCalculate420Statistics will recaulcate statistics for Around the Clock legs
+// ReCalculate420Statistics will recaulcate statistics for 420 legs
 func ReCalculate420Statistics() (map[int]map[int]*models.Statistics420, error) {
 	legs, err := GetLegsOfType(models.FOURTWENTY, true)
 	if err != nil {

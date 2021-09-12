@@ -282,6 +282,14 @@ func GetStatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.GOTCHA {
+		stats, err := data.GetGotchaStatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get Gotcha statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
 	} else {
 		stats, err := data.GetX01StatisticsForMatch(matchID)
 		if err != nil {
