@@ -277,7 +277,7 @@ func getPlayersReset(visit *models.Visit, players map[int]*models.Player2Leg) in
 
 // ReCalculateGotchaStatistics will recaulcate statistics for Gotcha legs
 func ReCalculateGotchaStatistics() (map[int]map[int]*models.StatisticsGotcha, error) {
-	legs, err := GetLegsOfType(models.FOURTWENTY, true)
+	legs, err := GetLegsOfType(models.GOTCHA, true)
 	if err != nil {
 		return nil, err
 	}

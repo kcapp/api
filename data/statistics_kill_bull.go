@@ -309,7 +309,7 @@ func CalculateKillBullStatistics(legID int) (map[int]*models.StatisticsKillBull,
 
 // ReCalculateKillBullStatistics will recaulcate statistics for Kill Bull legs
 func ReCalculateKillBullStatistics() (map[int]map[int]*models.StatisticsKillBull, error) {
-	legs, err := GetLegsOfType(models.FOURTWENTY, true)
+	legs, err := GetLegsOfType(models.KILLBULL, true)
 	if err != nil {
 		return nil, err
 	}

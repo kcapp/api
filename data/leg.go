@@ -743,7 +743,7 @@ func GetLeg(id int) (*models.Leg, error) {
 		p2l := new(models.Player2Leg)
 		p2l.Hits = make(map[int]*models.Hits)
 		if matchType == models.DARTSATX || matchType == models.AROUNDTHECLOCK || matchType == models.AROUNDTHEWORLD || matchType == models.SHANGHAI ||
-			matchType == models.TICTACTOE || matchType == models.BERMUDATRIANGLE {
+			matchType == models.TICTACTOE || matchType == models.BERMUDATRIANGLE || matchType == models.GOTCHA {
 			p2l.CurrentScore = 0
 		} else if matchType == models.X01HANDICAP {
 			// TODO
@@ -851,6 +851,9 @@ func GetLeg(id int) (*models.Leg, error) {
 				} else {
 					scores[visit.PlayerID].CurrentScore -= score
 				}
+			} else if matchType == models.GOTCHA {
+				score = visit.CalculateGotchaScore(scores, leg.StartingScore)
+				scores[visit.PlayerID].CurrentScore += score
 			} else {
 				scores[visit.PlayerID].CurrentScore -= score
 			}
