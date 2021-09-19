@@ -53,8 +53,11 @@ func RegisterPayback(owe models.Owe) error {
 	}
 
 	updatedRows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if updatedRows == 0 {
-		return errors.New("No rows were updated when registering payback")
+		return errors.New("no rows were updated when registering payback")
 	}
 	log.Printf("Player %d paid back %d items %d to player %d", owe.PlayerOwerID, owe.Amount, owe.OweType.ID.Int64, owe.PlayerOweeID)
 	return nil

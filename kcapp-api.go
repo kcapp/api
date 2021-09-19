@@ -33,7 +33,6 @@ func main() {
 	router.HandleFunc("/match/types", controllers.GetMatchesTypes).Methods("GET")
 	router.HandleFunc("/match/modes", controllers.GetMatchesModes).Methods("GET")
 	router.HandleFunc("/match/outshot", controllers.GetOutshotTypes).Methods("GET")
-	router.HandleFunc("/match/{id}/continue", controllers.ContinueMatch).Methods("PUT")
 	router.HandleFunc("/match", controllers.GetMatches).Methods("GET")
 	router.HandleFunc("/match/{id}", controllers.GetMatch).Methods("GET")
 	router.HandleFunc("/match/{id}/metadata", controllers.GetMatchMetadata).Methods("GET")
@@ -48,7 +47,6 @@ func main() {
 	router.HandleFunc("/leg/{id}/statistics", controllers.GetStatisticsForLeg).Methods("GET")
 	router.HandleFunc("/leg/{id}/players", controllers.GetLegPlayers).Methods("GET")
 	router.HandleFunc("/leg/{id}/order", controllers.ChangePlayerOrder).Methods("PUT")
-	router.HandleFunc("/leg/{id}/finish", controllers.FinishLeg).Methods("PUT")
 	router.HandleFunc("/leg/{id}/undo", controllers.UndoFinishLeg).Methods("PUT")
 
 	router.HandleFunc("/visit", controllers.AddVisit).Methods("POST")
@@ -62,11 +60,11 @@ func main() {
 	router.HandleFunc("/player/{id}", controllers.GetPlayer).Methods("GET")
 	router.HandleFunc("/player/{id}", controllers.UpdatePlayer).Methods("PUT")
 	router.HandleFunc("/player/{id}/statistics", controllers.GetPlayerStatistics).Methods("GET")
-
 	router.HandleFunc("/player/{id}/statistics/previous", controllers.GetPlayerX01PreviousStatistics).Methods("GET")
 	router.HandleFunc("/player/{id}/progression", controllers.GetPlayerProgression).Methods("GET")
 	router.HandleFunc("/player/{id}/checkouts", controllers.GetPlayerCheckouts).Methods("GET")
 	router.HandleFunc("/player/{id}/tournament", controllers.GetPlayerTournamentStandings).Methods("GET")
+	router.HandleFunc("/player/{id}/elo/{start}/{limit}", controllers.GetPlayerEloChangelog).Methods("GET")
 	router.HandleFunc("/player/{player_1}/vs/{player_2}", controllers.GetPlayerHeadToHead).Methods("GET")
 	router.HandleFunc("/player/{player_1}/vs/{player_2}/simulate", controllers.SimulateMatch).Methods("PUT")
 	router.HandleFunc("/player", controllers.AddPlayer).Methods("POST")
@@ -97,6 +95,8 @@ func main() {
 	router.HandleFunc("/venue/{id}", controllers.GetVenue).Methods("GET")
 	router.HandleFunc("/venue/{id}/config", controllers.GetVenueConfiguration).Methods("GET")
 	router.HandleFunc("/venue/{id}/spectate", controllers.SpectateVenue).Methods("GET")
+	router.HandleFunc("/venue/{id}/players", controllers.GetRecentPlayers).Methods("GET")
+	router.HandleFunc("/venue/{id}/matches", controllers.GetActiveVenueMatches).Methods("GET")
 
 	router.HandleFunc("/tournament", controllers.NewTournament).Methods("POST")
 	router.HandleFunc("/tournament", controllers.GetTournaments).Methods("GET")

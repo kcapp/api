@@ -180,6 +180,22 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.KILLBULL {
+		stats, err := data.GetKillBullStatisticsForLeg(legID)
+		if err != nil {
+			log.Println("Unable to get Kill Bull statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.GOTCHA {
+		stats, err := data.GetGotchaStatisticsForLeg(legID)
+		if err != nil {
+			log.Println("Unable to get Gotcha statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
 	} else {
 		stats, err := data.GetX01StatisticsForLeg(legID)
 		if err != nil {
@@ -215,39 +231,6 @@ func ChangePlayerOrder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-// FinishLeg will finalize a leg
-func FinishLeg(w http.ResponseWriter, r *http.Request) {
-	SetHeaders(w)
-	var visit models.Visit
-	err := json.NewDecoder(r.Body).Decode(&visit)
-	if err != nil {
-		log.Println("Unable to deserialize body", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	err = visit.ValidateInput()
-	if err != nil {
-		log.Println("Invalid visit", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	err = data.FinishLeg(visit)
-	if err != nil {
-		log.Println("Unable to finalize leg", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	leg, err := data.GetLeg(visit.LegID)
-	if err != nil {
-		log.Println("Unable to get leg", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(leg)
 }
 
 // DeleteLeg will delete a leg

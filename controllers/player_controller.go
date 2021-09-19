@@ -59,6 +59,37 @@ func GetPlayer(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(player)
 }
 
+// GetPlayerEloChangelog will return the elo changelog for the given player
+func GetPlayerEloChangelog(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	start, err := strconv.Atoi(params["start"])
+	if err != nil {
+		log.Println("Invalid start parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	limit, err := strconv.Atoi(params["limit"])
+	if err != nil {
+		log.Println("Invalid limit parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	changelog, err := data.GetPlayerEloChangelog(id, start, limit)
+	if err != nil {
+		log.Println("Unable to get player elo changelog", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(changelog)
+}
+
 // GetPlayerX01Statistics will return statistics for the given player
 func GetPlayerX01Statistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
@@ -109,19 +140,7 @@ func GetPlayerStatistics(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	/*visits, err := data.GetPlayerVisitCount(id)
-	if err != nil {
-		log.Println("Unable to get visits for player", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	x01.Visits = visits
-	for _, v := range visits {
-		x01.TotalVisits += v.Count
-	}*/
 	statistics.X01 = x01
-
 	json.NewEncoder(w).Encode(statistics)
 }
 
@@ -237,6 +256,26 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 		stats, err := data.Get420StatisticsForPlayer(id)
 		if err != nil {
 			log.Println("Unable to get 420 Statistics for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.KILLBULL:
+		stats, err := data.GetKillBullStatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get Kill Bull Statistics for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.GOTCHA:
+		stats, err := data.GetGotchaStatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get Gotcha Statistics for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -374,6 +413,25 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(legs)
 		return
 
+	case models.KILLBULL:
+		legs, err := data.GetKillBullHistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get Kill Bull history for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	case models.GOTCHA:
+		legs, err := data.GetGotchaHistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get Gotcha history for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
 	default:
 		log.Println("Unknown match type parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)

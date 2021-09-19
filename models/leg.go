@@ -149,7 +149,7 @@ func (params LegParameters) IsTicTacToeDraw() bool {
 
 // MarshalJSON will marshall the given object to JSON
 func (leg Leg) MarshalJSON() ([]byte, error) {
-	// Use a type to get consistnt order of JSON key-value pairs.
+	// Use a type to get consistent order of JSON key-value pairs.
 	type legJSON struct {
 		ID                 int                 `json:"id"`
 		Endtime            null.String         `json:"end_time"`
@@ -203,6 +203,7 @@ type Player2Leg struct {
 	PlayerName      string           `json:"player_name"`
 	Order           int              `json:"order"`
 	CurrentScore    int              `json:"current_score"`
+	StartingScore   int              `json:"-"`
 	IsCurrentPlayer bool             `json:"is_current_player"`
 	Wins            int              `json:"wins,omitempty"`
 	VisitStatistics *VisitStatistics `json:"visit_statistics,omitempty"`

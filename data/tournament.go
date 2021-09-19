@@ -47,7 +47,7 @@ func GetTournamentGroups() (map[int]*models.TournamentGroup, error) {
 	}
 	defer rows.Close()
 
-	groups := make(map[int]*models.TournamentGroup, 0)
+	groups := make(map[int]*models.TournamentGroup)
 	for rows.Next() {
 		group := new(models.TournamentGroup)
 		err := rows.Scan(&group.ID, &group.Name, &group.Division)
@@ -89,7 +89,7 @@ func GetTournament(id int) (*models.Tournament, error) {
 				JOIN player p ON p.id = ts.player_id
 				JOIN tournament t ON t.id = ts.tournament_id
 			WHERE ts.tournament_id = ?
-			ORDER BY rank`, id)
+			ORDER BY ts.rank`, id)
 		if err != nil {
 			return nil, err
 		}
@@ -165,7 +165,7 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 	}
 	defer rows.Close()
 
-	matches := make(map[int][]*models.Match, 0)
+	matches := make(map[int][]*models.Match)
 	for rows.Next() {
 		var groupID int
 		m := new(models.Match)
@@ -249,7 +249,7 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 		return nil, err
 	}
 	defer rows.Close()
-	statistics := make(map[int][]*models.TournamentOverview, 0)
+	statistics := make(map[int][]*models.TournamentOverview)
 	for rows.Next() {
 		tournament := new(models.Tournament)
 		group := new(models.TournamentGroup)
@@ -510,7 +510,7 @@ func NewTournament(tournament models.Tournament) (*models.Tournament, error) {
 		return nil, err
 	}
 	for _, player := range tournament.Players {
-		res, err = tx.Exec(`INSERT INTO player2tournament (player_id, tournament_id, tournament_group_id) VALUES (?, ?, ?)`,
+		_, err = tx.Exec(`INSERT INTO player2tournament (player_id, tournament_id, tournament_group_id) VALUES (?, ?, ?)`,
 			player.PlayerID, tournamentID, player.TournamentGroupID)
 		if err != nil {
 			tx.Rollback()

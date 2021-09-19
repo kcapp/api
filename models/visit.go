@@ -101,6 +101,43 @@ func (visit *Visit) SetIsBust(currentScore int) {
 	visit.IsBust = isBust
 }
 
+// SetIsBustAbove will set IsBust for the given visit if score is above the given target
+func (visit *Visit) SetIsBustAbove(currentScore int, targetScore int) {
+	isBust := false
+	isBust = visit.FirstDart.IsBustAbove(currentScore, targetScore)
+	currentScore = currentScore + visit.FirstDart.GetScore()
+	if !isBust && currentScore < targetScore {
+		isBust = visit.SecondDart.IsBustAbove(currentScore, targetScore)
+		currentScore = currentScore - visit.SecondDart.GetScore()
+		if !isBust && currentScore < targetScore {
+			isBust = visit.ThirdDart.IsBustAbove(currentScore, targetScore)
+		} else {
+			// Invalidate third dart if second was bust
+			visit.ThirdDart.Value = null.IntFromPtr(nil)
+		}
+	} else {
+		// Invalidate second/third dart if first was bust
+		visit.SecondDart.Value = null.IntFromPtr(nil)
+		visit.ThirdDart.Value = null.IntFromPtr(nil)
+	}
+
+	if !isBust && currentScore < targetScore {
+		// If this visit was not a bust, make sure that darts are set
+		// as 0 (miss) instead of 'nil' (not thrown)
+		if !visit.FirstDart.Value.Valid {
+			visit.FirstDart.Value = null.IntFrom(0)
+		}
+		if !visit.SecondDart.Value.Valid {
+			visit.SecondDart.Value = null.IntFrom(0)
+		}
+		if !visit.ThirdDart.Value.Valid {
+			visit.ThirdDart.Value = null.IntFrom(0)
+		}
+	}
+
+	visit.IsBust = isBust
+}
+
 // IsCheckout will check if the given visit is a checkout (remaining score is 0 and last dart thrown is a double)
 func (visit Visit) IsCheckout(currentScore int) bool {
 	remaining := currentScore - visit.GetScore()
@@ -377,6 +414,51 @@ func (visit *Visit) Calculate420Score(round int) int {
 	score += visit.SecondDart.Get420Score(target)
 	score += visit.ThirdDart.Get420Score(target)
 	return score
+}
+
+// CalculateKillBullScore will calculate the score for the given visit
+func (visit *Visit) CalculateKillBullScore() int {
+	score := 0
+
+	if visit.FirstDart.IsBull() {
+		score += visit.FirstDart.GetScore()
+	}
+	if visit.SecondDart.IsBull() {
+		score += visit.SecondDart.GetScore()
+	}
+	if visit.ThirdDart.IsBull() {
+		score += visit.ThirdDart.GetScore()
+	}
+	return score
+}
+
+// CalculateGotchaScore will calculate the score for the given visit
+func (visit *Visit) CalculateGotchaScore(scores map[int]*Player2Leg, targetScore int) int {
+	currentScore := scores[visit.PlayerID].CurrentScore + visit.FirstDart.GetScore()
+	for _, player := range scores {
+		if visit.PlayerID != player.PlayerID && player.CurrentScore == currentScore {
+			player.CurrentScore = 0
+		}
+	}
+	currentScore += visit.SecondDart.GetScore()
+	for _, player := range scores {
+		if visit.PlayerID != player.PlayerID && player.CurrentScore == currentScore {
+			player.CurrentScore = 0
+		}
+	}
+
+	currentScore += visit.ThirdDart.GetScore()
+	for _, player := range scores {
+		if visit.PlayerID != player.PlayerID && player.CurrentScore == currentScore {
+			player.CurrentScore = 0
+		}
+	}
+	scored := currentScore - scores[visit.PlayerID].CurrentScore
+	if currentScore > targetScore {
+		// Check if we went higher than target score
+		scored = 0
+	}
+	return scored
 }
 
 // IsShanghai will check if the given visit is a "Shanghai". A Shanghai visit is one where a single, double and triple multipler is hit with each dart

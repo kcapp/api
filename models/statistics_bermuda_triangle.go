@@ -13,7 +13,7 @@ type StatisticsBermudaTriangle struct {
 	LegsWon             int             `json:"legs_won"`
 	OfficeID            null.Int        `json:"office_id,omitempty"`
 	DartsThrown         int             `json:"darts_thrown,omitempty"`
-	Score               int             `json:"score,omitempty"`
+	Score               int             `json:"score"`
 	TotalMarks          int             `json:"total_marks,omitempty"`
 	MPR                 float64         `json:"mpr,omitempty"`
 	HighestScoreReached int             `json:"highest_score_reached,omitempty"`

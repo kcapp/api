@@ -43,6 +43,20 @@ func (dart *Dart) IsBust(currentScore int) bool {
 	return false
 }
 
+// IsBustAbove will check if the given dart puts score above the given target
+func (dart *Dart) IsBustAbove(currentScore int, targetScore int) bool {
+	scoreAfterThrow := currentScore + dart.GetScore()
+	if scoreAfterThrow > targetScore {
+		return true
+	}
+
+	// If the throw is not a bust, make sure the dart is valid
+	if !dart.Value.Valid {
+		dart.Value = null.IntFrom(0)
+	}
+	return false
+}
+
 // ValidateInput will verify that the dart contains valid values
 func (dart *Dart) ValidateInput() error {
 	if dart.Value.Int64 < 0 {

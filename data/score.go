@@ -12,7 +12,7 @@ import (
 
 var addVisitLock sync.Mutex
 
-// AddVisit will write thegiven visit to database
+// AddVisit will write the given visit to database
 func AddVisit(visit models.Visit) (*models.Visit, error) {
 	addVisitLock.Lock()
 	defer addVisitLock.Unlock()
@@ -23,10 +23,10 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 	}
 
 	if leg.CurrentPlayerID != visit.PlayerID {
-		return nil, errors.New("Cannot insert score for non-current player")
+		return nil, errors.New("cannot insert score for non-current player")
 	}
 	if leg.IsFinished {
-		return nil, errors.New("Leg already finished")
+		return nil, errors.New("leg already finished")
 	}
 
 	match, err := GetMatch(leg.MatchID)
@@ -110,6 +110,23 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		isFinished = ((len(leg.Visits)+1)*3)%(39*len(leg.Players)) == 0
 	} else if match.MatchType.ID == models.FOURTWENTY {
 		isFinished = ((len(leg.Visits)+1)*3)%(63*len(leg.Players)) == 0
+	} else if match.MatchType.ID == models.KILLBULL {
+		score := players[visit.PlayerID].CurrentScore - visit.CalculateKillBullScore()
+		if score <= 0 {
+			if !visit.ThirdDart.IsBull() {
+				visit.ThirdDart.Value = null.IntFromPtr(nil)
+				if !visit.SecondDart.IsBull() {
+					visit.SecondDart.Value = null.IntFromPtr(nil)
+				}
+			}
+			isFinished = true
+		}
+	} else if match.MatchType.ID == models.GOTCHA {
+		visit.SetIsBustAbove(players[visit.PlayerID].CurrentScore, leg.StartingScore)
+		score := players[visit.PlayerID].CurrentScore + visit.CalculateGotchaScore(players, leg.StartingScore)
+		if score == leg.StartingScore {
+			isFinished = true
+		}
 	}
 
 	// Determine who the next player will be
@@ -156,7 +173,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		visit.IsBust)
 
 	if isFinished {
-		err = FinishLegNew(visit)
+		err = FinishLeg(visit)
 		if err != nil {
 			return nil, err
 		}
@@ -542,7 +559,7 @@ func isCricketLegFinished(visit models.Visit) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	allPlayers := make(map[int]*models.Player2Leg, 0)
+	allPlayers := make(map[int]*models.Player2Leg)
 	for _, player := range players {
 		allPlayers[player.PlayerID] = player
 	}

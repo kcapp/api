@@ -39,6 +39,10 @@ const (
 	BERMUDATRIANGLE = 10
 	// FOURTWENTY constant representing type 11
 	FOURTWENTY = 11
+	// KILLBULL constant representing type 12
+	KILLBULL = 12
+	// GOTCHA constant representing type 13
+	GOTCHA = 13
 )
 
 // TargetsBermudaTriangle contains the target for each round of Bermuda Triangle
@@ -150,8 +154,8 @@ func (match Match) MarshalJSON() ([]byte, error) {
 	} else if idx > 3 {
 		idx = 3
 	}
-
 	legNum := strconv.Itoa(len(match.Legs)) + legPostfix[idx]
+
 	return json.Marshal(matchJSON{
 		ID:               match.ID,
 		CurrentLegID:     match.CurrentLegID,

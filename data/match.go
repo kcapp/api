@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"log"
-	"time"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
@@ -17,12 +16,8 @@ func NewMatch(match models.Match) (*models.Match, error) {
 	if err != nil {
 		return nil, err
 	}
-	createdAt := time.Now().Format("2006-01-02 15:04:05")
-	if match.CreatedAt != "" {
-		createdAt = match.CreatedAt
-	}
-	res, err := tx.Exec("INSERT INTO matches (match_type_id, match_mode_id, owe_type_id, venue_id, office_id, is_practice, tournament_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-		match.MatchType.ID, match.MatchMode.ID, match.OweTypeID, match.VenueID, match.OfficeID, match.IsPractice, match.TournamentID, createdAt)
+	res, err := tx.Exec("INSERT INTO matches (match_type_id, match_mode_id, owe_type_id, venue_id, office_id, is_practice, tournament_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())",
+		match.MatchType.ID, match.MatchMode.ID, match.OweTypeID, match.VenueID, match.OfficeID, match.IsPractice, match.TournamentID)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -46,7 +41,7 @@ func NewMatch(match models.Match) (*models.Match, error) {
 	if match.MatchType.ID == models.TICTACTOE {
 		params := match.Legs[0].Parameters
 		params.GenerateTicTacToeNumbers(startingScore)
-		res, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			legID, params.OutshotType.ID, params.Numbers[0], params.Numbers[1], params.Numbers[2], params.Numbers[3], params.Numbers[4], params.Numbers[5], params.Numbers[6], params.Numbers[7], params.Numbers[8])
 		if err != nil {
 			tx.Rollback()
@@ -69,7 +64,7 @@ func NewMatch(match models.Match) (*models.Match, error) {
 				tx.Rollback()
 				return nil, err
 			}
-			res, err = tx.Exec("INSERT INTO bot2player2leg (player2leg_id, player_id, skill_level) VALUES (?, ?, ?)", player2LegID, config.PlayerID, config.Skill)
+			_, err = tx.Exec("INSERT INTO bot2player2leg (player2leg_id, player_id, skill_level) VALUES (?, ?, ?)", player2LegID, config.PlayerID, config.Skill)
 			if err != nil {
 				tx.Rollback()
 				return nil, err
@@ -301,7 +296,7 @@ func GetMatch(id int) (*models.Match, error) {
 	if m.OweTypeID.Valid {
 		m.OweType = ot
 	}
-	if m.VenueID.Valid {
+	if m.VenueID.Valid && m.VenueID.Int64 != 0 {
 		m.Venue, err = GetVenue(int(m.VenueID.Int64))
 		if err != nil {
 			return nil, err
@@ -463,7 +458,7 @@ func ContinueMatch(id int) (*models.Leg, error) {
 		return nil, err
 	}
 	if match.IsFinished {
-		return nil, errors.New("Cannot continue finished match")
+		return nil, errors.New("cannot continue finished match")
 	}
 
 	legs, err := GetLegsForMatch(id)

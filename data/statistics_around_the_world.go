@@ -206,7 +206,7 @@ func GetAroundTheWorldStatisticsForMatch(id int) ([]*models.StatisticsAroundThe,
 	return stats, nil
 }
 
-// GetAroundTheWorldStatisticsForPlayer will return AtW statistics for the given player
+// GetAroundTheWorldStatisticsForPlayer will return Around the World statistics for the given player
 func GetAroundTheWorldStatisticsForPlayer(id int) (*models.StatisticsAroundThe, error) {
 	s := new(models.StatisticsAroundThe)
 	h := make([]*float64, 26)
@@ -269,7 +269,7 @@ func GetAroundTheWorldStatisticsForPlayer(id int) (*models.StatisticsAroundThe, 
 	return s, nil
 }
 
-// GetAroundTheWorldHistoryForPlayer will return history of AtW statistics for the given player
+// GetAroundTheWorldHistoryForPlayer will return history of Around the World statistics for the given player
 func GetAroundTheWorldHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 	legs, err := GetLegsOfType(models.AROUNDTHEWORLD, false)
 	if err != nil {
@@ -695,7 +695,7 @@ func GetShanghaiHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 	return legs, nil
 }
 
-// CalculateAroundTheWorldStatistics will generate around the world statistics for the given leg
+// CalculateAroundTheWorldStatistics will generate Around the World statistics for the given leg
 func CalculateAroundTheWorldStatistics(legID int, matchType int) (map[int]*models.StatisticsAroundThe, error) {
 	leg, err := GetLeg(legID)
 	if err != nil {
