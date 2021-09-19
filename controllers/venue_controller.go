@@ -123,3 +123,41 @@ func SpectateVenue(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(matches)
 }
+
+// GetRecentPlayers will get all players who recently played at agiven venue
+func GetRecentPlayers(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	players, err := data.GetRecentPlayers(id)
+	if err != nil {
+		log.Println("Unable to get recent players at venue", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(players)
+}
+
+// GetActiveVenueMatches will return a list of active matches
+func GetActiveVenueMatches(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	matches, err := data.GetActiveVenueMatches(id)
+	if err != nil {
+		log.Println("Unable to get active matches", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(matches)
+}

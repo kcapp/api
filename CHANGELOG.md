@@ -7,6 +7,8 @@
 - New properties for players `board_stream_url` and `board_stream_css`
 - Endpoints for loading Elo Changelog for a player
 - Start next leg when previous is finished
+- Endpoint for getting recent players at a given venue
+- Endpoint for getting unfinished matches at a given venue
 
 #### Changed
 - Capped `Elo` at lower boundry of `400`
