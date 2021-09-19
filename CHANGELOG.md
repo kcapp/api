@@ -1,6 +1,6 @@
 # Changelog
 
-## [unreleased] - TBD
+## [2.0.0] - 2021-09-19
 #### Feature
 - Support for new game type `Kill Bull`
 - Support for new game type `Gotcha`
@@ -46,7 +46,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
-[unreleased]: https://github.com/kcapp/api/compare/v1.2.0...develop
+[2.0.0]: https://github.com/kcapp/api/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/kcapp/api/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/kcapp/api/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/kcapp/api/releases/tag/v1.0.0
