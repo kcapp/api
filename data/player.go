@@ -464,6 +464,22 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			score := visit.CalculateGotchaScore(scores, targetScore)
 			scores[visit.PlayerID].CurrentScore += score
 		}
+	} else if m.MatchType.ID == models.JDCPRACTICE {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			player.CurrentScore = 0
+		}
+
+		round := 1
+		for i, visit := range visits {
+			if i > 0 && i%len(players) == 0 {
+				round++
+			}
+			scores[visit.PlayerID].CurrentScore += visit.CalculateJDCPracticeScore(round - 1)
+		}
 	}
 	return scores, nil
 }

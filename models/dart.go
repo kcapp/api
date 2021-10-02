@@ -98,6 +98,14 @@ func (dart Dart) Get420Score(target Target) int {
 	return 0
 }
 
+// GetJDCPracticeScore will get the JDC Practice score for the given dart on target
+func (dart Dart) GetJDCPracticeScore(target Target) int {
+	if target.Value == dart.ValueRaw() && contains(target.multipliers, dart.Multiplier) {
+		return dart.GetScore()
+	}
+	return 0
+}
+
 // IsCheckoutAttempt checks if this dart was a checkout attempt
 func (dart Dart) IsCheckoutAttempt(currentScore int, num int) bool {
 	if !dart.Value.Valid {

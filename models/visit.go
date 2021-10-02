@@ -461,6 +461,39 @@ func (visit *Visit) CalculateGotchaScore(scores map[int]*Player2Leg, targetScore
 	return scored
 }
 
+// CalculateJDCPracticeScore will calculate the score for the given visit
+func (visit *Visit) CalculateJDCPracticeScore(round int) int {
+	score := 0
+
+	first := visit.FirstDart
+	second := visit.SecondDart
+	third := visit.ThirdDart
+
+	target := TargetsJDCPractice[round]
+	if target.Values == nil {
+		// Shanghai
+		score += first.GetJDCPracticeScore(target)
+		score += second.GetJDCPracticeScore(target)
+		score += third.GetJDCPracticeScore(target)
+		if first.ValueRaw() == target.Value && visit.IsShanghai() {
+			score += 100
+		}
+	} else {
+		// Doubles
+		values := target.Values
+		if first.IsDouble() && first.ValueRaw() == values[0] {
+			score += values[0]*2 + 50
+		}
+		if second.IsDouble() && second.ValueRaw() == values[1] {
+			score += values[1]*2 + 50
+		}
+		if third.IsDouble() && third.ValueRaw() == values[2] {
+			score += values[2]*2 + 50
+		}
+	}
+	return score
+}
+
 // IsShanghai will check if the given visit is a "Shanghai". A Shanghai visit is one where a single, double and triple multipler is hit with each dart
 func (visit *Visit) IsShanghai() bool {
 	first := visit.FirstDart
@@ -468,12 +501,12 @@ func (visit *Visit) IsShanghai() bool {
 	third := visit.ThirdDart
 
 	if first.ValueRaw() == second.ValueRaw() && first.ValueRaw() == third.ValueRaw() && first.ValueRaw() != 0 &&
-		((first.Multiplier == 1 && second.Multiplier == 2 && third.Multiplier == 3) ||
-			(first.Multiplier == 2 && second.Multiplier == 3 && third.Multiplier == 1) ||
-			(first.Multiplier == 3 && second.Multiplier == 1 && third.Multiplier == 2) ||
-			(first.Multiplier == 3 && second.Multiplier == 2 && third.Multiplier == 1) ||
-			(first.Multiplier == 1 && second.Multiplier == 3 && third.Multiplier == 2) ||
-			(first.Multiplier == 2 && second.Multiplier == 1 && third.Multiplier == 3)) {
+		((first.Multiplier == SINGLE && second.Multiplier == DOUBLE && third.Multiplier == TRIPLE) ||
+			(first.Multiplier == DOUBLE && second.Multiplier == TRIPLE && third.Multiplier == SINGLE) ||
+			(first.Multiplier == TRIPLE && second.Multiplier == SINGLE && third.Multiplier == DOUBLE) ||
+			(first.Multiplier == TRIPLE && second.Multiplier == DOUBLE && third.Multiplier == SINGLE) ||
+			(first.Multiplier == SINGLE && second.Multiplier == TRIPLE && third.Multiplier == DOUBLE) ||
+			(first.Multiplier == DOUBLE && second.Multiplier == SINGLE && third.Multiplier == TRIPLE)) {
 		return true
 	}
 	return false

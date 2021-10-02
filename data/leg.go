@@ -95,7 +95,8 @@ func FinishLeg(visit models.Visit) error {
 	// Update leg with winner
 	winnerID := null.IntFrom(int64(visit.PlayerID))
 	if match.MatchType.ID == models.SHOOTOUT || match.MatchType.ID == models.DARTSATX || match.MatchType.ID == models.AROUNDTHEWORLD ||
-		(match.MatchType.ID == models.SHANGHAI && !visit.IsShanghai()) || match.MatchType.ID == models.BERMUDATRIANGLE {
+		(match.MatchType.ID == models.SHANGHAI && !visit.IsShanghai()) || match.MatchType.ID == models.BERMUDATRIANGLE ||
+		match.MatchType.ID == models.JDCPRACTICE {
 		// For certain game types we need to check the scores of each player to determine which player won the leg with the highest score
 		scores, err := GetPlayersScore(visit.LegID)
 		if err != nil {
@@ -313,6 +314,22 @@ func FinishLeg(visit models.Visit) error {
 			}
 			log.Printf("[%d] Inserting Gotcha statistics for player %d", visit.LegID, playerID)
 		}
+	} else if match.MatchType.ID == models.JDCPRACTICE {
+		statisticsMap, err := CalculateJDCPracticeStatistics(visit.LegID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+				INSERT INTO statistics_jdc_practice (leg_id, player_id, darts_thrown, score, mpr, shanghai_count, doubles_hitrate) VALUES (?,?,?,?,?,?,?)`,
+				visit.LegID, playerID, stats.DartsThrown, stats.Score, stats.MPR, stats.ShanghaiCount, stats.DoublesHitrate)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("[%d] Inserting JDC Practice statistics for player %d", visit.LegID, playerID)
+		}
 	} else {
 		statisticsMap, err := CalculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
 		if err != nil {
@@ -509,8 +526,12 @@ func UndoLegFinish(legID int) error {
 		tx.Rollback()
 		return err
 	}
-
 	_, err = tx.Exec("DELETE FROM statistics_gotcha WHERE leg_id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	_, err = tx.Exec("DELETE FROM statistics_jdc_practice WHERE leg_id = ?", legID)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -743,7 +764,7 @@ func GetLeg(id int) (*models.Leg, error) {
 		p2l := new(models.Player2Leg)
 		p2l.Hits = make(map[int]*models.Hits)
 		if matchType == models.DARTSATX || matchType == models.AROUNDTHECLOCK || matchType == models.AROUNDTHEWORLD || matchType == models.SHANGHAI ||
-			matchType == models.TICTACTOE || matchType == models.BERMUDATRIANGLE || matchType == models.GOTCHA {
+			matchType == models.TICTACTOE || matchType == models.BERMUDATRIANGLE || matchType == models.GOTCHA || matchType == models.JDCPRACTICE {
 			p2l.CurrentScore = 0
 		} else if matchType == models.X01HANDICAP {
 			// TODO
@@ -853,6 +874,9 @@ func GetLeg(id int) (*models.Leg, error) {
 				}
 			} else if matchType == models.GOTCHA {
 				score = visit.CalculateGotchaScore(scores, leg.StartingScore)
+				scores[visit.PlayerID].CurrentScore += score
+			} else if matchType == models.JDCPRACTICE {
+				score = visit.CalculateJDCPracticeScore(round - 1)
 				scores[visit.PlayerID].CurrentScore += score
 			} else {
 				scores[visit.PlayerID].CurrentScore -= score

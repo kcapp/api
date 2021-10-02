@@ -127,6 +127,8 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		if score == leg.StartingScore {
 			isFinished = true
 		}
+	} else if match.MatchType.ID == models.JDCPRACTICE {
+		isFinished = (len(leg.Visits)+1)%(19*len(leg.Players)) == 0
 	}
 
 	// Determine who the next player will be
