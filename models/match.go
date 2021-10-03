@@ -45,6 +45,8 @@ const (
 	GOTCHA = 13
 	// JDCPRACTICE constant representing type 14
 	JDCPRACTICE = 14
+	// KNOCKOUT constant representing type 15
+	KNOCKOUT = 15
 )
 
 // TargetsBermudaTriangle contains the target for each round of Bermuda Triangle

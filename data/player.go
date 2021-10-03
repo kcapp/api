@@ -294,7 +294,8 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 	for rows.Next() {
 		p2l := new(models.Player2Leg)
 		bc := new(models.BotConfig)
-		err := rows.Scan(&p2l.LegID, &p2l.PlayerID, &p2l.PlayerName, &p2l.Order, &p2l.Handicap, &p2l.IsCurrentPlayer, &p2l.CurrentScore, &p2l.StartingScore, &bc.PlayerID, &bc.Skill)
+		err := rows.Scan(&p2l.LegID, &p2l.PlayerID, &p2l.PlayerName, &p2l.Order, &p2l.Handicap, &p2l.IsCurrentPlayer,
+			&p2l.CurrentScore, &p2l.StartingScore, &bc.PlayerID, &bc.Skill)
 		if err != nil {
 			return nil, err
 		}
@@ -479,6 +480,35 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 				round++
 			}
 			scores[visit.PlayerID].CurrentScore += visit.CalculateJDCPracticeScore(round - 1)
+		}
+	} else if m.MatchType.ID == models.KNOCKOUT {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+		params, err := GetLegParameters(legID)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, player := range scores {
+			player.CurrentScore = 0
+			player.Lives = params.StartingLives
+		}
+
+		for i, visit := range visits {
+			player := scores[visit.PlayerID]
+			player.CurrentScore = visit.GetScore()
+
+			idx := i - 1
+			if idx < 0 {
+				continue
+			}
+			prev := visits[idx]
+			if prev.GetScore() > visit.GetScore() {
+				player.Lives = null.IntFrom(player.Lives.Int64 - 1)
+			}
+			scores[prev.PlayerID].CurrentScore = 0
 		}
 	}
 	return scores, nil

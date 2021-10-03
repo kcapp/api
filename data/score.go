@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"math"
+	"sort"
 	"sync"
 
 	"github.com/guregu/null"
@@ -129,18 +130,45 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		}
 	} else if match.MatchType.ID == models.JDCPRACTICE {
 		isFinished = (len(leg.Visits)+1)%(19*len(leg.Players)) == 0
+	} else if match.MatchType.ID == models.KNOCKOUT {
+		idx := len(leg.Visits) - 1
+		if idx > 0 {
+			if leg.Visits[idx].Score > visit.GetScore() {
+				players[visit.PlayerID].Lives = null.IntFrom(players[visit.PlayerID].Lives.Int64 - 1)
+			}
+			playersAlive := 0
+			for _, player := range players {
+				if player.Lives.Int64 > 0 {
+					playersAlive++
+				}
+			}
+			isFinished = playersAlive < 2
+		}
 	}
 
-	// Determine who the next player will be
-	currentPlayerOrder := 1
+	// Determine who will be the next player
 	order := make(map[int]int)
 	for _, player := range players {
-		if player.PlayerID == visit.PlayerID {
+		if !player.IsOut(match.MatchType.ID, visit) {
+			order[player.Order] = player.PlayerID
+		}
+	}
+
+	// Set new player order on remaining players, from 1 to n
+	for i, key := range getKeys(order) {
+		players[order[key]].Order = i + 1
+	}
+
+	newOrder := make(map[int]int)
+	currentPlayerOrder := 1
+	for _, playerID := range order {
+		player := players[playerID]
+		if playerID == visit.PlayerID {
 			currentPlayerOrder = player.Order
 		}
-		order[player.Order] = player.PlayerID
+		newOrder[player.Order] = player.PlayerID
 	}
-	nextPlayerID := order[(currentPlayerOrder%len(players))+1]
+	nextPlayerID := newOrder[(currentPlayerOrder%len(newOrder))+1]
 
 	tx, err := models.DB.Begin()
 	if err != nil {
@@ -595,4 +623,16 @@ func isCricketLegFinished(visit models.Visit) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+// getKeys will return all keys as a sorted slice for the given map
+func getKeys(m map[int]int) []int {
+	keys := make([]int, len(m))
+	i := 0
+	for key := range m {
+		keys[i] = key
+		i++
+	}
+	sort.Ints(keys)
+	return keys
 }

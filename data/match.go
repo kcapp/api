@@ -47,6 +47,13 @@ func NewMatch(match models.Match) (*models.Match, error) {
 			tx.Rollback()
 			return nil, err
 		}
+	} else if match.MatchType.ID == models.KNOCKOUT {
+		params := match.Legs[0].Parameters
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, starting_lives) VALUES (?, ?)", legID, params.StartingLives)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	tx.Exec("UPDATE matches SET current_leg_id = ? WHERE id = ?", legID, matchID)

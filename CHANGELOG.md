@@ -3,6 +3,8 @@
 ## [unreleased] - TBD
 #### Feature
 - Support for new game type `JDC Practice Routine`
+- Support for new game type `Knockout`
+- Returning `X01 Handicap` statistics`
 
 ## [2.0.0] - 2021-09-19
 #### Feature
