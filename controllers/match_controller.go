@@ -59,25 +59,6 @@ func ReMatch(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(match)
 }
 
-// ContinueMatch will either return the current leg id or create a new leg
-func ContinueMatch(w http.ResponseWriter, r *http.Request) {
-	SetHeaders(w)
-	params := mux.Vars(r)
-	id, err := strconv.Atoi(params["id"])
-	if err != nil {
-		log.Println("Invalid id parameter")
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	match, err := data.ContinueMatch(id)
-	if err != nil {
-		log.Println("Unable to continue match: ", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(match)
-}
-
 // GetMatches will return a list of all matches
 func GetMatches(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

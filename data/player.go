@@ -253,10 +253,6 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 	if err != nil {
 		return nil, err
 	}
-	m, err := GetMatchForLeg(legID)
-	if err != nil {
-		return nil, err
-	}
 	rows, err := models.DB.Query(`
 			SELECT
 				p2l.leg_id,
@@ -309,15 +305,32 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		return nil, err
 	}
 
+	mt, err := GetLegMatchType(legID)
+	if err != nil {
+		return nil, err
+	}
+	matchType := *mt
 	// Get score for other game types
-	if m.MatchType.ID == models.CRICKET {
+	if matchType == models.SHOOTOUT {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
 		}
 
+		for _, player := range scores {
+			player.CurrentScore = 0
+		}
+
+		for _, visit := range visits {
+			scores[visit.PlayerID].CurrentScore += visit.GetScore()
+		}
+	} else if matchType == models.CRICKET {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
 		cricketScores := make(map[int]*models.Player2Leg)
-		for _, id := range m.Players {
+		for id := range scores {
 			p2l := new(models.Player2Leg)
 			p2l.Hits = make(map[int]*models.Hits)
 			cricketScores[id] = p2l
@@ -326,13 +339,12 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		for _, visit := range visits {
 			visit.CalculateCricketScore(cricketScores)
 		}
-
 		for _, player := range scores {
-			player.CurrentScore = cricketScores[player.PlayerID].CurrentScore
+			player.CurrentScore = scores[player.PlayerID].CurrentScore
 		}
 
 		return scores, nil
-	} else if m.MatchType.ID == models.DARTSATX {
+	} else if matchType == models.DARTSATX {
 		rows, err := models.DB.Query(`
 			SELECT
 				player_id,
@@ -360,7 +372,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		if err = rows.Err(); err != nil {
 			return nil, err
 		}
-	} else if m.MatchType.ID == models.AROUNDTHECLOCK {
+	} else if matchType == models.AROUNDTHECLOCK {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -373,7 +385,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			score := visit.CalculateAroundTheClockScore(scores[visit.PlayerID].CurrentScore)
 			scores[visit.PlayerID].CurrentScore += score
 		}
-	} else if m.MatchType.ID == models.AROUNDTHEWORLD || m.MatchType.ID == models.SHANGHAI {
+	} else if matchType == models.AROUNDTHEWORLD || matchType == models.SHANGHAI {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -390,11 +402,11 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			score := visit.CalculateAroundTheWorldScore(round)
 			scores[visit.PlayerID].CurrentScore += score
 		}
-	} else if m.MatchType.ID == models.TICTACTOE {
+	} else if matchType == models.TICTACTOE {
 		for _, player := range scores {
 			player.CurrentScore = 0
 		}
-	} else if m.MatchType.ID == models.BERMUDATRIANGLE {
+	} else if matchType == models.BERMUDATRIANGLE {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -415,7 +427,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 				scores[visit.PlayerID].CurrentScore += score
 			}
 		}
-	} else if m.MatchType.ID == models.FOURTWENTY {
+	} else if matchType == models.FOURTWENTY {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -432,7 +444,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			score := visit.Calculate420Score(round - 1)
 			scores[visit.PlayerID].CurrentScore -= score
 		}
-	} else if m.MatchType.ID == models.KILLBULL {
+	} else if matchType == models.KILLBULL {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -449,7 +461,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 				scores[visit.PlayerID].CurrentScore -= score
 			}
 		}
-	} else if m.MatchType.ID == models.GOTCHA {
+	} else if matchType == models.GOTCHA {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -465,7 +477,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			score := visit.CalculateGotchaScore(scores, targetScore)
 			scores[visit.PlayerID].CurrentScore += score
 		}
-	} else if m.MatchType.ID == models.JDCPRACTICE {
+	} else if matchType == models.JDCPRACTICE {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -481,7 +493,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			}
 			scores[visit.PlayerID].CurrentScore += visit.CalculateJDCPracticeScore(round - 1)
 		}
-	} else if m.MatchType.ID == models.KNOCKOUT {
+	} else if matchType == models.KNOCKOUT {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err

@@ -40,14 +40,19 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		return nil, err
 	}
 
+	matchType := match.MatchType.ID
+	if leg.LegType != nil {
+		matchType = leg.LegType.ID
+	}
+
 	isFinished := false
 	// Invalidate extra darts not thrown, and check if leg is finished
-	if match.MatchType.ID == models.X01 || match.MatchType.ID == models.X01HANDICAP {
+	if matchType == models.X01 || matchType == models.X01HANDICAP {
 		visit.SetIsBust(players[visit.PlayerID].CurrentScore)
 		isFinished = !visit.IsBust && visit.IsCheckout(players[visit.PlayerID].CurrentScore)
-	} else if match.MatchType.ID == models.SHOOTOUT {
+	} else if matchType == models.SHOOTOUT {
 		isFinished = ((len(leg.Visits)+1)*3)%(9*len(leg.Players)) == 0
-	} else if match.MatchType.ID == models.CRICKET {
+	} else if matchType == models.CRICKET {
 		isFinished, err = isCricketLegFinished(visit)
 		if err != nil {
 			return nil, err
@@ -60,11 +65,11 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 				visit.SecondDart.Value = null.IntFromPtr(nil)
 			}
 		}
-	} else if match.MatchType.ID == models.DARTSATX {
+	} else if matchType == models.DARTSATX {
 		isFinished = ((len(leg.Visits)+1)*3)%(99*len(leg.Players)) == 0
-	} else if match.MatchType.ID == models.AROUNDTHEWORLD {
+	} else if matchType == models.AROUNDTHEWORLD {
 		isFinished = (len(leg.Visits)+1)%(21*len(leg.Players)) == 0
-	} else if match.MatchType.ID == models.AROUNDTHECLOCK {
+	} else if matchType == models.AROUNDTHECLOCK {
 		players[visit.PlayerID].CurrentScore += visit.CalculateAroundTheClockScore(players[visit.PlayerID].CurrentScore)
 		if players[visit.PlayerID].CurrentScore == 21 {
 			if visit.FirstDart.IsBull() {
@@ -75,10 +80,10 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 			}
 		}
 		isFinished = players[visit.PlayerID].CurrentScore == 21 && (visit.FirstDart.IsBull() || visit.SecondDart.IsBull() || visit.ThirdDart.IsBull())
-	} else if match.MatchType.ID == models.SHANGHAI {
+	} else if matchType == models.SHANGHAI {
 		round := int(math.Floor(float64(len(leg.Visits))/float64(len(leg.Players))) + 1)
 		isFinished = (len(leg.Visits)+1)%(20*len(leg.Players)) == 0 || (visit.IsShanghai() && visit.FirstDart.ValueRaw() == round)
-	} else if match.MatchType.ID == models.TICTACTOE {
+	} else if matchType == models.TICTACTOE {
 		numbers := leg.Parameters.Numbers
 		hits := leg.Parameters.Hits
 
@@ -107,11 +112,11 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		} else if leg.Parameters.IsTicTacToeDraw() || len(hits) == 9 {
 			isFinished = true
 		}
-	} else if match.MatchType.ID == models.BERMUDATRIANGLE {
+	} else if matchType == models.BERMUDATRIANGLE {
 		isFinished = ((len(leg.Visits)+1)*3)%(39*len(leg.Players)) == 0
-	} else if match.MatchType.ID == models.FOURTWENTY {
+	} else if matchType == models.FOURTWENTY {
 		isFinished = ((len(leg.Visits)+1)*3)%(63*len(leg.Players)) == 0
-	} else if match.MatchType.ID == models.KILLBULL {
+	} else if matchType == models.KILLBULL {
 		score := players[visit.PlayerID].CurrentScore - visit.CalculateKillBullScore()
 		if score <= 0 {
 			if !visit.ThirdDart.IsBull() {
@@ -122,15 +127,15 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 			}
 			isFinished = true
 		}
-	} else if match.MatchType.ID == models.GOTCHA {
+	} else if matchType == models.GOTCHA {
 		visit.SetIsBustAbove(players[visit.PlayerID].CurrentScore, leg.StartingScore)
 		score := players[visit.PlayerID].CurrentScore + visit.CalculateGotchaScore(players, leg.StartingScore)
 		if score == leg.StartingScore {
 			isFinished = true
 		}
-	} else if match.MatchType.ID == models.JDCPRACTICE {
+	} else if matchType == models.JDCPRACTICE {
 		isFinished = (len(leg.Visits)+1)%(19*len(leg.Players)) == 0
-	} else if match.MatchType.ID == models.KNOCKOUT {
+	} else if matchType == models.KNOCKOUT {
 		idx := len(leg.Visits) - 1
 		if idx > 0 {
 			if leg.Visits[idx].Score > visit.GetScore() {
@@ -149,7 +154,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 	// Determine who will be the next player
 	order := make(map[int]int)
 	for _, player := range players {
-		if !player.IsOut(match.MatchType.ID, visit) {
+		if !player.IsOut(matchType, visit) {
 			order[player.Order] = player.PlayerID
 		}
 	}

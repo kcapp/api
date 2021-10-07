@@ -17,6 +17,7 @@ type Leg struct {
 	IsFinished         bool                `json:"is_finished"`
 	CurrentPlayerID    int                 `json:"current_player_id"`
 	WinnerPlayerID     null.Int            `json:"winner_player_id"`
+	LegType            *MatchType          `json:"leg_type"`
 	CreatedAt          string              `json:"created_at"`
 	UpdatedAt          string              `json:"updated_at"`
 	BoardStreamURL     null.String         `json:"board_stream_url,omitempty"`
@@ -158,6 +159,7 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 		IsFinished         bool                `json:"is_finished"`
 		CurrentPlayerID    int                 `json:"current_player_id"`
 		WinnerPlayerID     null.Int            `json:"winner_player_id"`
+		LegType            *MatchType          `json:"leg_type"`
 		CreatedAt          string              `json:"created_at"`
 		UpdatedAt          string              `json:"updated_at"`
 		BoardStreamURL     null.String         `json:"board_stream_url,omitempty"`
@@ -181,6 +183,7 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 		IsFinished:         leg.IsFinished,
 		CurrentPlayerID:    leg.CurrentPlayerID,
 		WinnerPlayerID:     leg.WinnerPlayerID,
+		LegType:            leg.LegType,
 		CreatedAt:          leg.CreatedAt,
 		UpdatedAt:          leg.UpdatedAt,
 		BoardStreamURL:     leg.BoardStreamURL,

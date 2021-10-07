@@ -230,11 +230,12 @@ type OutshotType struct {
 
 // MatchMode struct used for storing match modes
 type MatchMode struct {
-	ID           int      `json:"id"`
-	Name         string   `json:"name"`
-	ShortName    string   `json:"short_name"`
-	WinsRequired int      `json:"wins_required"`
-	LegsRequired null.Int `json:"legs_required"`
+	ID                  int      `json:"id"`
+	Name                string   `json:"name"`
+	ShortName           string   `json:"short_name"`
+	WinsRequired        int      `json:"wins_required"`
+	LegsRequired        null.Int `json:"legs_required"`
+	TieBreakMatchTypeID null.Int `json:"tiebreak_match_type_id,omitempty"`
 }
 
 // MatchTournament struct for storing tournament information
