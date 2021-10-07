@@ -482,13 +482,17 @@ func (visit *Visit) CalculateJDCPracticeScore(round int) int {
 		// Doubles
 		values := target.Values
 		if first.IsDouble() && first.ValueRaw() == values[0] {
-			score += values[0]*2 + 50
+			score += 50
 		}
 		if second.IsDouble() && second.ValueRaw() == values[1] {
-			score += values[1]*2 + 50
+			score += 50
 		}
 		if third.IsDouble() && third.ValueRaw() == values[2] {
-			score += values[2]*2 + 50
+			score += 50
+			// 50 Bonus points for Bull
+			if third.ValueRaw() == 50 {
+				score += 50
+			}
 		}
 	}
 	return score
