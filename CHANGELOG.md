@@ -7,6 +7,9 @@
 - Returning `X01 Handicap` statistics`
 - Support for modes with a different tie break game type
 
+#### Changed
+- Set matches as abandoned when legs are cancelled
+
 ## [2.0.0] - 2021-09-19
 #### Feature
 - Support for new game type `Kill Bull`

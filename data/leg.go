@@ -1099,7 +1099,7 @@ func DeleteLeg(legID int) error {
 			}
 			log.Printf("Delete match without any leg %d", match.ID)
 		} else {
-			_, err = tx.Exec("UPDATE matches SET current_leg_id = ? WHERE id = ?", previousLeg, match.ID)
+			_, err = tx.Exec("UPDATE matches SET current_leg_id = ?, is_abandoned = 1, is_finished = 1 WHERE id = ?", previousLeg, match.ID)
 			if err != nil {
 				return err
 			}
