@@ -490,7 +490,7 @@ func (visit *Visit) CalculateJDCPracticeScore(round int) int {
 		if third.IsDouble() && third.ValueRaw() == values[2] {
 			score += 50
 			// 50 Bonus points for Bull
-			if third.ValueRaw() == 50 {
+			if third.ValueRaw() == 25 {
 				score += 50
 			}
 		}
