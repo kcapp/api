@@ -677,7 +677,7 @@ func GetLegsOfType(matchType int, loadVisits bool) ([]*models.Leg, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			l.id, l.end_time, l.starting_score, l.is_finished,
-			l.current_player_id, l.winner_id, l.leg_type_id, l.created_at, l.updated_at,
+			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
 			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
 		FROM leg l
 			JOIN matches m on m.id = l.match_id
