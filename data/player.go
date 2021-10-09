@@ -340,7 +340,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			visit.CalculateCricketScore(cricketScores)
 		}
 		for _, player := range scores {
-			player.CurrentScore = scores[player.PlayerID].CurrentScore
+			player.CurrentScore = cricketScores[player.PlayerID].CurrentScore
 		}
 
 		return scores, nil
