@@ -51,7 +51,21 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		visit.SetIsBust(players[visit.PlayerID].CurrentScore)
 		isFinished = !visit.IsBust && visit.IsCheckout(players[visit.PlayerID].CurrentScore)
 	} else if matchType == models.SHOOTOUT {
-		isFinished = ((len(leg.Visits)+1)*3)%(9*len(leg.Players)) == 0
+		isFinished = ((len(leg.Visits) + 1) * 3) >= (9 * len(leg.Players))
+		if isFinished {
+			// Handle draw in legs with two players
+			players[visit.PlayerID].CurrentScore += visit.GetScore()
+			players[visit.PlayerID].DartsThrown += 3
+
+			if len(players) == 2 {
+				scores := make([]*models.Player2Leg, 0, len(players))
+				for _, player := range players {
+					scores = append(scores, player)
+				}
+				// If both players have thrown the same amount of darts, and have different scores, game is finished
+				isFinished = scores[0].DartsThrown == scores[1].DartsThrown && scores[0].CurrentScore != scores[1].CurrentScore
+			}
+		}
 	} else if matchType == models.CRICKET {
 		isFinished, err = isCricketLegFinished(visit)
 		if err != nil {

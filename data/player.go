@@ -316,13 +316,14 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		for _, player := range scores {
 			player.CurrentScore = 0
+			player.DartsThrown = 0
 		}
-
 		for _, visit := range visits {
-			scores[visit.PlayerID].CurrentScore += visit.GetScore()
+			player := scores[visit.PlayerID]
+			player.CurrentScore += visit.GetScore()
+			player.DartsThrown += 3
 		}
 	} else if matchType == models.CRICKET {
 		visits, err := GetLegVisits(legID)

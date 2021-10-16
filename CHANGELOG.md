@@ -9,6 +9,7 @@
 
 #### Changed
 - Set matches as abandoned when legs are cancelled
+- Correctly handle draw of 9 Dart Shootout between two players
 
 ## [2.0.0] - 2021-09-19
 #### Feature
