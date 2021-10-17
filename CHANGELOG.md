@@ -1,6 +1,6 @@
 # Changelog
 
-## [unreleased] - TBD
+## [2.1.0] - 2021-10-17
 #### Feature
 - Support for new game type `JDC Practice Routine`
 - Support for new game type `Knockout`
@@ -58,7 +58,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
-[unreleased]: https://github.com/kcapp/api/compare/v2.0.0...develop
+[2.1.0]: https://github.com/kcapp/api/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/kcapp/api/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/kcapp/api/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/kcapp/api/compare/v1.0.0...v1.1.0
