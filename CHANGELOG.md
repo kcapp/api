@@ -6,6 +6,7 @@
 - Support for new game type `Knockout`
 - Returning `X01 Handicap` statistics`
 - Support for modes with a different tie break game type
+- Return `active` flag on players
 
 #### Changed
 - Set matches as abandoned when legs are cancelled
