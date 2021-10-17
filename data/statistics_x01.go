@@ -11,7 +11,7 @@ import (
 )
 
 // GetX01Statistics will return statistics for all players active duing the given period
-func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.StatisticsX01, error) {
+func GetX01Statistics(from string, to string, matchType int, startingScores ...int) ([]*models.StatisticsX01, error) {
 	q, args, err := sqlx.In(`
 		SELECT
 			p.id AS 'player_id',
@@ -41,10 +41,10 @@ func GetX01Statistics(from string, to string, startingScores ...int) ([]*models.
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND l.starting_score IN (?)
 			AND l.is_finished = 1 AND m.is_abandoned = 0
-			AND m.match_type_id = 1
+			AND m.match_type_id = ?
 		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC,
-			(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100) DESC`, from, to, startingScores)
+			(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100) DESC`, from, to, startingScores, matchType)
 	if err != nil {
 		return nil, err
 	}
@@ -413,7 +413,7 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 }
 
 // GetX01StatisticsForPlayer will return X01 statistics for the given player
-func GetX01StatisticsForPlayer(id int) (*models.StatisticsX01, error) {
+func GetX01StatisticsForPlayer(id int, matchType int) (*models.StatisticsX01, error) {
 	s := new(models.StatisticsX01)
 	err := models.DB.QueryRow(`
 		SELECT
@@ -442,8 +442,8 @@ func GetX01StatisticsForPlayer(id int) (*models.StatisticsX01, error) {
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE s.player_id = ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
-			AND m.match_type_id = 1
-		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg,
+			AND m.match_type_id = ?
+		GROUP BY p.id`, id, matchType).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg,
 		&s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19,
 		&s.AccuracyOverall, &s.CheckoutPercentage)
 	if err != nil {
@@ -456,8 +456,8 @@ func GetX01StatisticsForPlayer(id int) (*models.StatisticsX01, error) {
 }
 
 // GetX01HistoryForPlayer will return history of X01 statistics for the given player
-func GetX01HistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.X01, false)
+func GetX01HistoryForPlayer(id int, limit int, matchType int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(matchType, false)
 	if err != nil {
 		return nil, err
 	}
@@ -490,9 +490,9 @@ func GetX01HistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 			LEFT JOIN matches m ON m.id = l.match_id
 		WHERE s.player_id = ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
-			AND m.match_type_id = 1
+			AND m.match_type_id = ?
 		ORDER BY l.id DESC
-		LIMIT ?`, id, limit)
+		LIMIT ?`, id, matchType, limit)
 	if err != nil {
 		return nil, err
 	}

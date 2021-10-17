@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.0] - 2021-10-17
+#### Feature
+- Support for new game type `JDC Practice Routine`
+- Support for new game type `Knockout`
+- Returning `X01 Handicap` statistics`
+- Support for modes with a different tie break game type
+- Return `active` flag on players
+
+#### Changed
+- Set matches as abandoned when legs are cancelled
+- Correctly handle draw of 9 Dart Shootout between two players
+
 ## [2.0.0] - 2021-09-19
 #### Feature
 - Support for new game type `Kill Bull`
@@ -46,6 +58,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
+[2.1.0]: https://github.com/kcapp/api/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/kcapp/api/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/kcapp/api/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/kcapp/api/compare/v1.0.0...v1.1.0

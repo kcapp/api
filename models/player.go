@@ -24,6 +24,7 @@ type Player struct {
 	BoardStreamURL null.String `json:"board_stream_url,omitempty"`
 	BoardStreamCSS null.String `json:"board_stream_css,omitempty"`
 	OfficeID       null.Int    `json:"office_id,omitempty"`
+	IsActive       bool        `json:"is_active"`
 	IsBot          bool        `json:"is_bot"`
 	CreatedAt      string      `json:"created_at"`
 	UpdatedAt      string      `json:"updated_at,omitempty"`
@@ -59,6 +60,7 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		BoardStreamURL null.String `json:"board_stream_url,omitempty"`
 		BoardStreamCSS null.String `json:"board_stream_css,omitempty"`
 		OfficeID       null.Int    `json:"office_id,omitempty"`
+		IsActive       bool        `json:"is_active"`
 		IsBot          bool        `json:"is_bot"`
 		CreatedAt      string      `json:"created_at"`
 		UpdatedAt      string      `json:"updated_at,omitempty"`
@@ -82,6 +84,7 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		BoardStreamURL: player.BoardStreamURL,
 		BoardStreamCSS: player.BoardStreamCSS,
 		OfficeID:       player.OfficeID,
+		IsActive:       player.IsActive,
 		IsBot:          player.IsBot,
 		CreatedAt:      player.CreatedAt,
 		UpdatedAt:      player.UpdatedAt,

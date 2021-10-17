@@ -24,7 +24,7 @@ func GetStatistics(w http.ResponseWriter, r *http.Request) {
 
 	switch matchType {
 	case models.X01:
-		statistics, err := data.GetX01Statistics(params["from"], params["to"], 301, 501)
+		statistics, err := data.GetX01Statistics(params["from"], params["to"], matchType, 301, 501)
 		if err != nil {
 			log.Println("Unable to get X01 statistics", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -41,6 +41,16 @@ func GetStatistics(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.X01HANDICAP:
+		statistics, err := data.GetX01Statistics(params["from"], params["to"], matchType, 301, 501)
+		if err != nil {
+			log.Println("Unable to get X01 handicap statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(statistics)
 		return
 
 	case models.CRICKET:
@@ -137,6 +147,26 @@ func GetStatistics(w http.ResponseWriter, r *http.Request) {
 		stats, err := data.GetGotchaStatistics(params["from"], params["to"])
 		if err != nil {
 			log.Println("Unable to get Gotcha Statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.JDCPRACTICE:
+		stats, err := data.GetJDCPracticeStatistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get JDC Practice Statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.KNOCKOUT:
+		stats, err := data.GetKnockoutStatistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get Knockout Statistics", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

@@ -22,7 +22,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color,
-			p.profile_pic_url, p.board_stream_url, p.board_stream_css, p.office_id, p.is_bot, p.created_at
+			p.profile_pic_url, p.board_stream_url, p.board_stream_css, p.active, p.office_id, p.is_bot, p.created_at
 		FROM player p`)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
-			&p.Color, &p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsBot, &p.CreatedAt)
+			&p.Color, &p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.IsActive, &p.OfficeID, &p.IsBot, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -63,7 +63,7 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color,
-			p.profile_pic_url, p.board_stream_url, p.board_stream_css, p.office_id, p.is_bot, p.created_at
+			p.profile_pic_url, p.board_stream_url, p.board_stream_css, p.office_id, p.active, p.is_bot, p.created_at
 		FROM player p
 		WHERE active = 1`)
 	if err != nil {
@@ -75,7 +75,7 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
-			&p.Color, &p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsBot, &p.CreatedAt)
+			&p.Color, &p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -102,13 +102,13 @@ func GetPlayer(id int) (*models.Player, error) {
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname,
 			p.slack_handle, p.color, p.profile_pic_url, p.board_stream_url, p.board_stream_css,
-			p.office_id, p.is_bot, p.created_at, pe.current_elo, pe.tournament_elo
+			p.office_id, p.active, p.is_bot, p.created_at, pe.current_elo, pe.tournament_elo
 		FROM player p
 		JOIN player_elo pe on pe.player_id = p.id
 		WHERE p.id = ?`, id).
 		Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
-			&p.Color, &p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsBot, &p.CreatedAt,
-			&p.CurrentElo, &p.TournamentElo)
+			&p.Color, &p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive,
+			&p.IsBot, &p.CreatedAt, &p.CurrentElo, &p.TournamentElo)
 	if err != nil {
 		return nil, err
 	}
@@ -253,10 +253,6 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 	if err != nil {
 		return nil, err
 	}
-	m, err := GetMatchForLeg(legID)
-	if err != nil {
-		return nil, err
-	}
 	rows, err := models.DB.Query(`
 			SELECT
 				p2l.leg_id,
@@ -294,7 +290,8 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 	for rows.Next() {
 		p2l := new(models.Player2Leg)
 		bc := new(models.BotConfig)
-		err := rows.Scan(&p2l.LegID, &p2l.PlayerID, &p2l.PlayerName, &p2l.Order, &p2l.Handicap, &p2l.IsCurrentPlayer, &p2l.CurrentScore, &p2l.StartingScore, &bc.PlayerID, &bc.Skill)
+		err := rows.Scan(&p2l.LegID, &p2l.PlayerID, &p2l.PlayerName, &p2l.Order, &p2l.Handicap, &p2l.IsCurrentPlayer,
+			&p2l.CurrentScore, &p2l.StartingScore, &bc.PlayerID, &bc.Skill)
 		if err != nil {
 			return nil, err
 		}
@@ -308,15 +305,33 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		return nil, err
 	}
 
+	mt, err := GetLegMatchType(legID)
+	if err != nil {
+		return nil, err
+	}
+	matchType := *mt
 	// Get score for other game types
-	if m.MatchType.ID == models.CRICKET {
+	if matchType == models.SHOOTOUT {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
 		}
-
+		for _, player := range scores {
+			player.CurrentScore = 0
+			player.DartsThrown = 0
+		}
+		for _, visit := range visits {
+			player := scores[visit.PlayerID]
+			player.CurrentScore += visit.GetScore()
+			player.DartsThrown += 3
+		}
+	} else if matchType == models.CRICKET {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
 		cricketScores := make(map[int]*models.Player2Leg)
-		for _, id := range m.Players {
+		for id := range scores {
 			p2l := new(models.Player2Leg)
 			p2l.Hits = make(map[int]*models.Hits)
 			cricketScores[id] = p2l
@@ -325,13 +340,12 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		for _, visit := range visits {
 			visit.CalculateCricketScore(cricketScores)
 		}
-
 		for _, player := range scores {
 			player.CurrentScore = cricketScores[player.PlayerID].CurrentScore
 		}
 
 		return scores, nil
-	} else if m.MatchType.ID == models.DARTSATX {
+	} else if matchType == models.DARTSATX {
 		rows, err := models.DB.Query(`
 			SELECT
 				player_id,
@@ -359,7 +373,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		if err = rows.Err(); err != nil {
 			return nil, err
 		}
-	} else if m.MatchType.ID == models.AROUNDTHECLOCK {
+	} else if matchType == models.AROUNDTHECLOCK {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -372,7 +386,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			score := visit.CalculateAroundTheClockScore(scores[visit.PlayerID].CurrentScore)
 			scores[visit.PlayerID].CurrentScore += score
 		}
-	} else if m.MatchType.ID == models.AROUNDTHEWORLD || m.MatchType.ID == models.SHANGHAI {
+	} else if matchType == models.AROUNDTHEWORLD || matchType == models.SHANGHAI {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -389,11 +403,11 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			score := visit.CalculateAroundTheWorldScore(round)
 			scores[visit.PlayerID].CurrentScore += score
 		}
-	} else if m.MatchType.ID == models.TICTACTOE {
+	} else if matchType == models.TICTACTOE {
 		for _, player := range scores {
 			player.CurrentScore = 0
 		}
-	} else if m.MatchType.ID == models.BERMUDATRIANGLE {
+	} else if matchType == models.BERMUDATRIANGLE {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -414,7 +428,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 				scores[visit.PlayerID].CurrentScore += score
 			}
 		}
-	} else if m.MatchType.ID == models.FOURTWENTY {
+	} else if matchType == models.FOURTWENTY {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -431,7 +445,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			score := visit.Calculate420Score(round - 1)
 			scores[visit.PlayerID].CurrentScore -= score
 		}
-	} else if m.MatchType.ID == models.KILLBULL {
+	} else if matchType == models.KILLBULL {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -448,7 +462,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 				scores[visit.PlayerID].CurrentScore -= score
 			}
 		}
-	} else if m.MatchType.ID == models.GOTCHA {
+	} else if matchType == models.GOTCHA {
 		visits, err := GetLegVisits(legID)
 		if err != nil {
 			return nil, err
@@ -463,6 +477,51 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 		for _, visit := range visits {
 			score := visit.CalculateGotchaScore(scores, targetScore)
 			scores[visit.PlayerID].CurrentScore += score
+		}
+	} else if matchType == models.JDCPRACTICE {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			player.CurrentScore = 0
+		}
+
+		round := 1
+		for i, visit := range visits {
+			if i > 0 && i%len(players) == 0 {
+				round++
+			}
+			scores[visit.PlayerID].CurrentScore += visit.CalculateJDCPracticeScore(round - 1)
+		}
+	} else if matchType == models.KNOCKOUT {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+		params, err := GetLegParameters(legID)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, player := range scores {
+			player.CurrentScore = 0
+			player.Lives = params.StartingLives
+		}
+
+		for i, visit := range visits {
+			player := scores[visit.PlayerID]
+			player.CurrentScore = visit.GetScore()
+
+			idx := i - 1
+			if idx < 0 {
+				continue
+			}
+			prev := visits[idx]
+			if prev.GetScore() > visit.GetScore() {
+				player.Lives = null.IntFrom(player.Lives.Int64 - 1)
+			}
+			scores[prev.PlayerID].CurrentScore = 0
 		}
 	}
 	return scores, nil
@@ -483,6 +542,7 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 			p.board_stream_url,
 			p.board_stream_css,
 			p.office_id,
+			p.active,
 			p.is_bot
 		FROM player2leg p2l
 		LEFT JOIN player p ON p.id = p2l.player_id WHERE p2l.leg_id = ?`, legID)
@@ -495,7 +555,7 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color,
-			&p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsBot)
+			&p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot)
 		if err != nil {
 			return nil, err
 		}

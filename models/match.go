@@ -43,6 +43,10 @@ const (
 	KILLBULL = 12
 	// GOTCHA constant representing type 13
 	GOTCHA = 13
+	// JDCPRACTICE constant representing type 14
+	JDCPRACTICE = 14
+	// KNOCKOUT constant representing type 15
+	KNOCKOUT = 15
 )
 
 // TargetsBermudaTriangle contains the target for each round of Bermuda Triangle
@@ -82,6 +86,28 @@ var Targets420 = [21]Target{Target{Value: 1, multipliers: []int64{2}},
 	{Value: 5, multipliers: []int64{2}},
 	{Value: 20, multipliers: []int64{2}},
 	{Value: 25, multipliers: []int64{2}}}
+
+// TargetsJDCPractice contains the target for each round of JDC Practice
+var TargetsJDCPractice = [19]Target{
+	Target{Value: 10, multipliers: []int64{1, 2, 3}},
+	Target{Value: 11, multipliers: []int64{1, 2, 3}},
+	Target{Value: 12, multipliers: []int64{1, 2, 3}},
+	Target{Value: 13, multipliers: []int64{1, 2, 3}},
+	Target{Value: 14, multipliers: []int64{1, 2, 3}},
+	Target{Value: 15, multipliers: []int64{1, 2, 3}},
+	Target{Values: []int{1, 2, 3}, multipliers: []int64{2}},
+	Target{Values: []int{4, 5, 6}, multipliers: []int64{2}},
+	Target{Values: []int{7, 8, 9}, multipliers: []int64{2}},
+	Target{Values: []int{10, 11, 12}, multipliers: []int64{2}},
+	Target{Values: []int{13, 14, 15}, multipliers: []int64{2}},
+	Target{Values: []int{16, 17, 18}, multipliers: []int64{2}},
+	Target{Values: []int{19, 20, 25}, multipliers: []int64{2}},
+	Target{Value: 15, multipliers: []int64{1, 2, 3}},
+	Target{Value: 16, multipliers: []int64{1, 2, 3}},
+	Target{Value: 17, multipliers: []int64{1, 2, 3}},
+	Target{Value: 18, multipliers: []int64{1, 2, 3}},
+	Target{Value: 19, multipliers: []int64{1, 2, 3}},
+	Target{Value: 20, multipliers: []int64{1, 2, 3}}}
 
 // Match struct used for storing matches
 type Match struct {
@@ -204,11 +230,12 @@ type OutshotType struct {
 
 // MatchMode struct used for storing match modes
 type MatchMode struct {
-	ID           int      `json:"id"`
-	Name         string   `json:"name"`
-	ShortName    string   `json:"short_name"`
-	WinsRequired int      `json:"wins_required"`
-	LegsRequired null.Int `json:"legs_required"`
+	ID                  int      `json:"id"`
+	Name                string   `json:"name"`
+	ShortName           string   `json:"short_name"`
+	WinsRequired        int      `json:"wins_required"`
+	LegsRequired        null.Int `json:"legs_required"`
+	TieBreakMatchTypeID null.Int `json:"tiebreak_match_type_id,omitempty"`
 }
 
 // MatchTournament struct for storing tournament information
@@ -245,6 +272,7 @@ type MatchMetadata struct {
 // Target contains information about value and multipler required to hit for a given round
 type Target struct {
 	Value       int
+	Values      []int
 	multipliers []int64
 	score       int
 }

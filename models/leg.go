@@ -17,6 +17,7 @@ type Leg struct {
 	IsFinished         bool                `json:"is_finished"`
 	CurrentPlayerID    int                 `json:"current_player_id"`
 	WinnerPlayerID     null.Int            `json:"winner_player_id"`
+	LegType            *MatchType          `json:"leg_type"`
 	CreatedAt          string              `json:"created_at"`
 	UpdatedAt          string              `json:"updated_at"`
 	BoardStreamURL     null.String         `json:"board_stream_url,omitempty"`
@@ -33,10 +34,11 @@ type Leg struct {
 
 // LegParameters struct used for storing leg parameters
 type LegParameters struct {
-	LegID       int          `json:"leg_id,omitempty"`
-	OutshotType *OutshotType `json:"outshot_type,omitempty"`
-	Numbers     []int        `json:"numbers"`
-	Hits        map[int]int  `json:"hits"`
+	LegID         int          `json:"leg_id,omitempty"`
+	OutshotType   *OutshotType `json:"outshot_type,omitempty"`
+	Numbers       []int        `json:"numbers"`
+	Hits          map[int]int  `json:"hits"`
+	StartingLives null.Int     `json:"starting_lives,omitempty"`
 }
 
 // IsTicTacToeWinner will check if the given player has won a game of Tic Tac Toe
@@ -157,6 +159,7 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 		IsFinished         bool                `json:"is_finished"`
 		CurrentPlayerID    int                 `json:"current_player_id"`
 		WinnerPlayerID     null.Int            `json:"winner_player_id"`
+		LegType            *MatchType          `json:"leg_type"`
 		CreatedAt          string              `json:"created_at"`
 		UpdatedAt          string              `json:"updated_at"`
 		BoardStreamURL     null.String         `json:"board_stream_url,omitempty"`
@@ -180,6 +183,7 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 		IsFinished:         leg.IsFinished,
 		CurrentPlayerID:    leg.CurrentPlayerID,
 		WinnerPlayerID:     leg.WinnerPlayerID,
+		LegType:            leg.LegType,
 		CreatedAt:          leg.CreatedAt,
 		UpdatedAt:          leg.UpdatedAt,
 		BoardStreamURL:     leg.BoardStreamURL,
@@ -208,6 +212,7 @@ type Player2Leg struct {
 	Wins            int              `json:"wins,omitempty"`
 	VisitStatistics *VisitStatistics `json:"visit_statistics,omitempty"`
 	Handicap        null.Int         `json:"handicap,omitempty"`
+	Lives           null.Int         `json:"lives,omitempty"`
 	Modifiers       *PlayerModifiers `json:"modifiers,omitempty"`
 	Player          *Player          `json:"player,omitempty"`
 	BotConfig       *BotConfig       `json:"bot_config,omitempty"`
@@ -248,4 +253,14 @@ func (p2l *Player2Leg) AddVisitStatistics(leg Leg) {
 			p2l.DartsThrown = visit.DartsThrown
 		}
 	}
+}
+
+// IsOut will check if the given player is out of the current match
+func (player *Player2Leg) IsOut(matchType int, visit Visit) bool {
+	if matchType == KNOCKOUT {
+		// If player has less than 1 life, and is not the current player
+		return player.Lives.Int64 < 1 && player.PlayerID != visit.PlayerID
+	}
+	// For all other types players are never out
+	return false
 }

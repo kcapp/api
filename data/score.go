@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"math"
+	"sort"
 	"sync"
 
 	"github.com/guregu/null"
@@ -39,14 +40,33 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		return nil, err
 	}
 
+	matchType := match.MatchType.ID
+	if leg.LegType != nil {
+		matchType = leg.LegType.ID
+	}
+
 	isFinished := false
 	// Invalidate extra darts not thrown, and check if leg is finished
-	if match.MatchType.ID == models.X01 || match.MatchType.ID == models.X01HANDICAP {
+	if matchType == models.X01 || matchType == models.X01HANDICAP {
 		visit.SetIsBust(players[visit.PlayerID].CurrentScore)
 		isFinished = !visit.IsBust && visit.IsCheckout(players[visit.PlayerID].CurrentScore)
-	} else if match.MatchType.ID == models.SHOOTOUT {
-		isFinished = ((len(leg.Visits)+1)*3)%(9*len(leg.Players)) == 0
-	} else if match.MatchType.ID == models.CRICKET {
+	} else if matchType == models.SHOOTOUT {
+		isFinished = ((len(leg.Visits) + 1) * 3) >= (9 * len(leg.Players))
+		if isFinished {
+			// Handle draw in legs with two players
+			players[visit.PlayerID].CurrentScore += visit.GetScore()
+			players[visit.PlayerID].DartsThrown += 3
+
+			if len(players) == 2 {
+				scores := make([]*models.Player2Leg, 0, len(players))
+				for _, player := range players {
+					scores = append(scores, player)
+				}
+				// If both players have thrown the same amount of darts, and have different scores, game is finished
+				isFinished = scores[0].DartsThrown == scores[1].DartsThrown && scores[0].CurrentScore != scores[1].CurrentScore
+			}
+		}
+	} else if matchType == models.CRICKET {
 		isFinished, err = isCricketLegFinished(visit)
 		if err != nil {
 			return nil, err
@@ -59,11 +79,11 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 				visit.SecondDart.Value = null.IntFromPtr(nil)
 			}
 		}
-	} else if match.MatchType.ID == models.DARTSATX {
+	} else if matchType == models.DARTSATX {
 		isFinished = ((len(leg.Visits)+1)*3)%(99*len(leg.Players)) == 0
-	} else if match.MatchType.ID == models.AROUNDTHEWORLD {
+	} else if matchType == models.AROUNDTHEWORLD {
 		isFinished = (len(leg.Visits)+1)%(21*len(leg.Players)) == 0
-	} else if match.MatchType.ID == models.AROUNDTHECLOCK {
+	} else if matchType == models.AROUNDTHECLOCK {
 		players[visit.PlayerID].CurrentScore += visit.CalculateAroundTheClockScore(players[visit.PlayerID].CurrentScore)
 		if players[visit.PlayerID].CurrentScore == 21 {
 			if visit.FirstDart.IsBull() {
@@ -74,10 +94,10 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 			}
 		}
 		isFinished = players[visit.PlayerID].CurrentScore == 21 && (visit.FirstDart.IsBull() || visit.SecondDart.IsBull() || visit.ThirdDart.IsBull())
-	} else if match.MatchType.ID == models.SHANGHAI {
+	} else if matchType == models.SHANGHAI {
 		round := int(math.Floor(float64(len(leg.Visits))/float64(len(leg.Players))) + 1)
 		isFinished = (len(leg.Visits)+1)%(20*len(leg.Players)) == 0 || (visit.IsShanghai() && visit.FirstDart.ValueRaw() == round)
-	} else if match.MatchType.ID == models.TICTACTOE {
+	} else if matchType == models.TICTACTOE {
 		numbers := leg.Parameters.Numbers
 		hits := leg.Parameters.Hits
 
@@ -106,11 +126,11 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		} else if leg.Parameters.IsTicTacToeDraw() || len(hits) == 9 {
 			isFinished = true
 		}
-	} else if match.MatchType.ID == models.BERMUDATRIANGLE {
+	} else if matchType == models.BERMUDATRIANGLE {
 		isFinished = ((len(leg.Visits)+1)*3)%(39*len(leg.Players)) == 0
-	} else if match.MatchType.ID == models.FOURTWENTY {
+	} else if matchType == models.FOURTWENTY {
 		isFinished = ((len(leg.Visits)+1)*3)%(63*len(leg.Players)) == 0
-	} else if match.MatchType.ID == models.KILLBULL {
+	} else if matchType == models.KILLBULL {
 		score := players[visit.PlayerID].CurrentScore - visit.CalculateKillBullScore()
 		if score <= 0 {
 			if !visit.ThirdDart.IsBull() {
@@ -121,24 +141,53 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 			}
 			isFinished = true
 		}
-	} else if match.MatchType.ID == models.GOTCHA {
+	} else if matchType == models.GOTCHA {
 		visit.SetIsBustAbove(players[visit.PlayerID].CurrentScore, leg.StartingScore)
 		score := players[visit.PlayerID].CurrentScore + visit.CalculateGotchaScore(players, leg.StartingScore)
 		if score == leg.StartingScore {
 			isFinished = true
 		}
+	} else if matchType == models.JDCPRACTICE {
+		isFinished = (len(leg.Visits)+1)%(19*len(leg.Players)) == 0
+	} else if matchType == models.KNOCKOUT {
+		idx := len(leg.Visits) - 1
+		if idx > 0 {
+			if leg.Visits[idx].Score > visit.GetScore() {
+				players[visit.PlayerID].Lives = null.IntFrom(players[visit.PlayerID].Lives.Int64 - 1)
+			}
+			playersAlive := 0
+			for _, player := range players {
+				if player.Lives.Int64 > 0 {
+					playersAlive++
+				}
+			}
+			isFinished = playersAlive < 2
+		}
 	}
 
-	// Determine who the next player will be
-	currentPlayerOrder := 1
+	// Determine who will be the next player
 	order := make(map[int]int)
 	for _, player := range players {
-		if player.PlayerID == visit.PlayerID {
+		if !player.IsOut(matchType, visit) {
+			order[player.Order] = player.PlayerID
+		}
+	}
+
+	// Set new player order on remaining players, from 1 to n
+	for i, key := range getKeys(order) {
+		players[order[key]].Order = i + 1
+	}
+
+	newOrder := make(map[int]int)
+	currentPlayerOrder := 1
+	for _, playerID := range order {
+		player := players[playerID]
+		if playerID == visit.PlayerID {
 			currentPlayerOrder = player.Order
 		}
-		order[player.Order] = player.PlayerID
+		newOrder[player.Order] = player.PlayerID
 	}
-	nextPlayerID := order[(currentPlayerOrder%len(players))+1]
+	nextPlayerID := newOrder[(currentPlayerOrder%len(newOrder))+1]
 
 	tx, err := models.DB.Begin()
 	if err != nil {
@@ -593,4 +642,16 @@ func isCricketLegFinished(visit models.Visit) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+// getKeys will return all keys as a sorted slice for the given map
+func getKeys(m map[int]int) []int {
+	keys := make([]int, len(m))
+	i := 0
+	for key := range m {
+		keys[i] = key
+		i++
+	}
+	sort.Ints(keys)
+	return keys
 }

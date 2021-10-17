@@ -163,7 +163,7 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 
 	switch matchType {
 	case models.X01:
-		stats, err := data.GetX01StatisticsForPlayer(id)
+		stats, err := data.GetX01StatisticsForPlayer(id, models.X01)
 		if err != nil {
 			log.Println("Unable to get X01 statistics for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -176,6 +176,16 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 		stats, err := data.GetShootoutStatisticsForPlayer(id)
 		if err != nil {
 			log.Println("Unable to get Cricket statistics for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.X01HANDICAP:
+		stats, err := data.GetX01StatisticsForPlayer(id, models.X01HANDICAP)
+		if err != nil {
+			log.Println("Unable to get X01 handicap statistics for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -282,6 +292,26 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(stats)
 		return
 
+	case models.JDCPRACTICE:
+		stats, err := data.GetJDCPracticeStatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get JDC Practice Statistics for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
+	case models.KNOCKOUT:
+		stats, err := data.GetKnockoutStatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get Knockout Statistics for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
 	default:
 		log.Println("Unknown match type parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -314,7 +344,7 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 
 	switch matchType {
 	case models.X01:
-		legs, err := data.GetX01HistoryForPlayer(id, limit)
+		legs, err := data.GetX01HistoryForPlayer(id, limit, models.X01)
 		if err != nil {
 			log.Println("Unable to get X01 history for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -327,6 +357,16 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 		legs, err := data.GetShootoutHistoryForPlayer(id, limit)
 		if err != nil {
 			log.Println("Unable to get Shootout history for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	case models.X01HANDICAP:
+		legs, err := data.GetX01HistoryForPlayer(id, limit, models.X01HANDICAP)
+		if err != nil {
+			log.Println("Unable to get X01 handicap history for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -432,6 +472,26 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewEncoder(w).Encode(legs)
 		return
+	case models.JDCPRACTICE:
+		legs, err := data.GetJDCPracticeHistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get JDC Practice history for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	case models.KNOCKOUT:
+		legs, err := data.GetKnockoutHistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get Knockout history for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
 	default:
 		log.Println("Unknown match type parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)

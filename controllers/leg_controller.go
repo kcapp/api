@@ -108,7 +108,11 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if match.MatchType.ID == models.SHOOTOUT {
+	matchType := match.MatchType.ID
+	if leg.LegType != nil {
+		matchType = leg.LegType.ID
+	}
+	if matchType == models.SHOOTOUT {
 		stats, err := data.GetShootoutStatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get shootout statistics", err)
@@ -116,7 +120,7 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
-	} else if match.MatchType.ID == models.CRICKET {
+	} else if matchType == models.CRICKET {
 		stats, err := data.GetCricketStatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get cricket statistics", err)
@@ -124,7 +128,7 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
-	} else if match.MatchType.ID == models.DARTSATX {
+	} else if matchType == models.DARTSATX {
 		stats, err := data.GetDartsAtXStatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get Darts At X statistics", err)
@@ -132,7 +136,7 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
-	} else if match.MatchType.ID == models.AROUNDTHECLOCK {
+	} else if matchType == models.AROUNDTHECLOCK {
 		stats, err := data.GetAroundTheClockStatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get Around the Clock statistics", err)
@@ -140,7 +144,7 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
-	} else if match.MatchType.ID == models.AROUNDTHEWORLD {
+	} else if matchType == models.AROUNDTHEWORLD {
 		stats, err := data.GetAroundTheWorldStatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get Around the World statistics", err)
@@ -148,7 +152,7 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
-	} else if match.MatchType.ID == models.SHANGHAI {
+	} else if matchType == models.SHANGHAI {
 		stats, err := data.GetShanghaiStatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get Shanghai statistics", err)
@@ -156,7 +160,7 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
-	} else if match.MatchType.ID == models.TICTACTOE {
+	} else if matchType == models.TICTACTOE {
 		stats, err := data.GetTicTacToeStatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get Tic Tac Toe statistics", err)
@@ -164,7 +168,7 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
-	} else if match.MatchType.ID == models.BERMUDATRIANGLE {
+	} else if matchType == models.BERMUDATRIANGLE {
 		stats, err := data.GetBermudaTriangleStatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get Bermuda Triangle statistics", err)
@@ -172,7 +176,7 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
-	} else if match.MatchType.ID == models.FOURTWENTY {
+	} else if matchType == models.FOURTWENTY {
 		stats, err := data.Get420StatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get 420 statistics", err)
@@ -180,7 +184,7 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
-	} else if match.MatchType.ID == models.KILLBULL {
+	} else if matchType == models.KILLBULL {
 		stats, err := data.GetKillBullStatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get Kill Bull statistics", err)
@@ -188,10 +192,26 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
-	} else if match.MatchType.ID == models.GOTCHA {
+	} else if matchType == models.GOTCHA {
 		stats, err := data.GetGotchaStatisticsForLeg(legID)
 		if err != nil {
 			log.Println("Unable to get Gotcha statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if matchType == models.JDCPRACTICE {
+		stats, err := data.GetJDCPracticeStatisticsForLeg(legID)
+		if err != nil {
+			log.Println("Unable to get JDC Practice statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if matchType == models.KNOCKOUT {
+		stats, err := data.GetKnockoutStatisticsForLeg(legID)
+		if err != nil {
+			log.Println("Unable to get Knockout statistics", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
