@@ -151,7 +151,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		isFinished = (len(leg.Visits)+1)%(19*len(leg.Players)) == 0
 	} else if matchType == models.KNOCKOUT {
 		idx := len(leg.Visits) - 1
-		if idx > 0 {
+		if idx >= 0 {
 			if leg.Visits[idx].Score > visit.GetScore() {
 				players[visit.PlayerID].Lives = null.IntFrom(players[visit.PlayerID].Lives.Int64 - 1)
 			}

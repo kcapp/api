@@ -43,31 +43,32 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 	}
 
 	handicaps := make(map[int]null.Int)
-	if matchType != nil {
-		if *matchType == models.X01HANDICAP {
-			scores, err := GetPlayersScore(int(match.CurrentLegID.Int64))
-			if err != nil {
-				return nil, err
-			}
-			for _, player := range scores {
-				handicaps[player.PlayerID] = player.Handicap
-			}
-		} else if *matchType == models.TICTACTOE {
-			params := match.Legs[0].Parameters
-			params.GenerateTicTacToeNumbers(startingScore)
-			_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-				legID, params.OutshotType.ID, params.Numbers[0], params.Numbers[1], params.Numbers[2], params.Numbers[3], params.Numbers[4], params.Numbers[5], params.Numbers[6], params.Numbers[7], params.Numbers[8])
-			if err != nil {
-				tx.Rollback()
-				return nil, err
-			}
-		} else if *matchType == models.KNOCKOUT {
-			params := match.Legs[0].Parameters
-			_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, starting_lives) VALUES (?, ?)", legID, params.StartingLives)
-			if err != nil {
-				tx.Rollback()
-				return nil, err
-			}
+	if matchType == nil {
+		matchType = &match.MatchType.ID
+	}
+	if *matchType == models.X01HANDICAP {
+		scores, err := GetPlayersScore(int(match.CurrentLegID.Int64))
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			handicaps[player.PlayerID] = player.Handicap
+		}
+	} else if *matchType == models.TICTACTOE {
+		params := match.Legs[0].Parameters
+		params.GenerateTicTacToeNumbers(startingScore)
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			legID, params.OutshotType.ID, params.Numbers[0], params.Numbers[1], params.Numbers[2], params.Numbers[3], params.Numbers[4], params.Numbers[5], params.Numbers[6], params.Numbers[7], params.Numbers[8])
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	} else if *matchType == models.KNOCKOUT {
+		params := match.Legs[0].Parameters
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, starting_lives) VALUES (?, ?)", legID, params.StartingLives)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
 		}
 	}
 

@@ -1,6 +1,9 @@
 # Changelog
 
 ## [unreleased] - TBD
+#### Fixed
+- Bug where multiple legs of `Knockout` and `Tic-Tac-Toe` did not work correctly
+- Correctly calculate score if `Knockout` is won in 1 visit
 
 ## [2.1.0] - 2021-10-17
 #### Feature
