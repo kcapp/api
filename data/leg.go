@@ -446,7 +446,7 @@ func FinishLeg(visit models.Visit) error {
 			return err
 		}
 		log.Printf("Match %d finished with a Draw", match.ID)
-	} else if playedLegs == match.MatchMode.WinsRequired && match.MatchMode.TieBreakMatchTypeID.Valid {
+	} else if playedLegs == (int(match.MatchMode.LegsRequired.Int64)-1) && match.MatchMode.TieBreakMatchTypeID.Valid {
 		isTieBreak = true
 	}
 	tx.Commit()

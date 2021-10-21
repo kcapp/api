@@ -3,6 +3,7 @@
 ## [unreleased] - TBD
 #### Feature
 - New endpoint for setting leg warmup started
+- Support for `BO4-NDS` mode
 
 #### Fixed
 - Bug where multiple legs of `Knockout` and `Tic-Tac-Toe` did not work correctly
