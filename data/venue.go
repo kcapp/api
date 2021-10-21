@@ -148,7 +148,7 @@ func SpectateVenue(venueID int) ([]*models.Match, error) {
 			LEFT JOIN player2leg p2l ON p2l.match_id = m.id
 		WHERE m.venue_id = ? AND m.is_finished = 0
 		GROUP BY m.id
-		ORDER BY m.id
+		ORDER BY l.updated_at DESC
 		LIMIT 1`, venueID)
 	if err != nil {
 		return nil, err

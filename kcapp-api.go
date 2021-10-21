@@ -47,6 +47,7 @@ func main() {
 	router.HandleFunc("/leg/{id}/statistics", controllers.GetStatisticsForLeg).Methods("GET")
 	router.HandleFunc("/leg/{id}/players", controllers.GetLegPlayers).Methods("GET")
 	router.HandleFunc("/leg/{id}/order", controllers.ChangePlayerOrder).Methods("PUT")
+	router.HandleFunc("/leg/{id}/warmup", controllers.StartWarmup).Methods("PUT")
 	router.HandleFunc("/leg/{id}/undo", controllers.UndoFinishLeg).Methods("PUT")
 
 	router.HandleFunc("/visit", controllers.AddVisit).Methods("POST")

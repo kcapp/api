@@ -1071,6 +1071,23 @@ func ChangePlayerOrder(legID int, orderMap map[string]int) error {
 	return nil
 }
 
+// StartWarmup will set the updated_at of a leg to now
+func StartWarmup(legID int) error {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("UPDATE leg SET updated_at = NOW() WHERE id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+
+	log.Printf("[%d] Started warmup", legID)
+	return nil
+}
+
 // DeleteLeg will delete the current leg and update match with previous leg
 func DeleteLeg(legID int) error {
 	leg, err := GetLeg(legID)

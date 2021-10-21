@@ -253,6 +253,24 @@ func ChangePlayerOrder(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// StartWarmup will set the leg as warm up
+func StartWarmup(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	legID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = data.StartWarmup(legID)
+	if err != nil {
+		log.Println("Unable to start warmup", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 // DeleteLeg will delete a leg
 func DeleteLeg(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
