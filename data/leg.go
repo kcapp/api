@@ -809,6 +809,8 @@ func GetLeg(id int) (*models.Leg, error) {
 		} else if matchType == models.KNOCKOUT {
 			p2l.CurrentScore = 0
 			p2l.Lives = null.IntFrom(leg.Parameters.StartingLives.Int64)
+		} else if matchType == models.FOURTWENTY {
+			p2l.CurrentScore = 420
 		} else if matchType == models.X01HANDICAP {
 			// TODO
 		} else {
@@ -887,6 +889,9 @@ func GetLeg(id int) (*models.Leg, error) {
 				} else {
 					scores[visit.PlayerID].CurrentScore += score
 				}
+			} else if matchType == models.FOURTWENTY {
+				score = visit.Calculate420Score(round - 1)
+				scores[visit.PlayerID].CurrentScore -= score
 			} else if matchType == models.KILLBULL {
 				score = visit.CalculateKillBullScore()
 				if score == 0 {
