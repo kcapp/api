@@ -804,7 +804,8 @@ func GetLeg(id int) (*models.Leg, error) {
 		p2l := new(models.Player2Leg)
 		p2l.Hits = make(map[int]*models.Hits)
 		if matchType == models.DARTSATX || matchType == models.AROUNDTHECLOCK || matchType == models.AROUNDTHEWORLD || matchType == models.SHANGHAI ||
-			matchType == models.TICTACTOE || matchType == models.BERMUDATRIANGLE || matchType == models.GOTCHA || matchType == models.JDCPRACTICE {
+			matchType == models.TICTACTOE || matchType == models.BERMUDATRIANGLE || matchType == models.GOTCHA || matchType == models.JDCPRACTICE ||
+			matchType == models.SHOOTOUT {
 			p2l.CurrentScore = 0
 		} else if matchType == models.KNOCKOUT {
 			p2l.CurrentScore = 0
