@@ -20,6 +20,12 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 	// Shift players to get correct order
 	id, players := players[0], players[1:]
 	players = append(players, id)
+	if matchType != nil && *matchType == models.SHOOTOUT {
+		// This is a tie break for SHOOTOUT, so reverse the order of players to make sure the original "closes to bull" counts
+		for i, j := 0, len(players)-1; i < j; i, j = i+1, j-1 {
+			players[i], players[j] = players[j], players[i]
+		}
+	}
 	res, err := tx.Exec("INSERT INTO leg (starting_score, current_player_id, leg_type_id, match_id, created_at) VALUES (?, ?, ?, ?, NOW()) ",
 		startingScore, players[0], matchType, matchID)
 	if err != nil {

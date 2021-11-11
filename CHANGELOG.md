@@ -5,6 +5,9 @@
 - New endpoint for setting leg warmup started
 - Support for `BO4-NDS` mode
 
+#### Changed
+- Set reverse starting order on Shootout tie breaker legs
+
 #### Fixed
 - Bug where multiple legs of `Knockout` and `Tic-Tac-Toe` did not work correctly
 - Correctly calculate score if `Knockout` is won in 1 visit
