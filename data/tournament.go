@@ -372,7 +372,7 @@ func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic
 			player_id,
 			leg_id,
 			MAX(checkout) AS 'checkout'
-		FROM (SELECT
+			FROM (SELECT
 				s.player_id,
 				s.leg_id,
 				IFNULL(s.first_dart * s.first_dart_multiplier, 0) +
@@ -380,12 +380,14 @@ func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic
 					IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
 			FROM score s
 			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m on l.match_id = m.id
 			WHERE l.winner_id = s.player_id
 				AND s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))
 				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id WHERE l.winner_id = s.player_id GROUP BY leg_id)
+				AND IFNULL(l.leg_type_id, m.match_type_id) = 1 -- X01
 			GROUP BY s.player_id, s.id
 			ORDER BY checkout DESC) checkouts
-		GROUP BY player_id
+			GROUP BY player_id
 		ORDER BY checkout DESC`, tournamentID)
 	if err != nil {
 		return nil, err
