@@ -241,8 +241,9 @@ func CalculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout,
 		}
 	}
 
-	for _, stats := range statisticsMap {
-		stats.PPD = stats.PPD / float32(9)
+	for playerID, stats := range statisticsMap {
+		player := players[playerID]
+		stats.PPD = stats.PPD / float32(player.DartsThrown)
 	}
 	return statisticsMap, nil
 }

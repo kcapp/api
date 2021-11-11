@@ -14,6 +14,7 @@
 - Correctly calculate score if `Knockout` is won in 1 visit
 - Calculation of `420` scores per visit
 - Don't show `9 Dart Shootout` as checkout statistics for Tournament
+- Correctly calculate `PPD` for `9 Dart Shootout` where more than 9 darts are thrown
 
 ## [2.1.0] - 2021-10-17
 #### Feature
