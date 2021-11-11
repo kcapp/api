@@ -308,6 +308,23 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 	return statistics, nil
 }
 
+// GetNextTournamentMatch will return the next tournament match
+func GetNextTournamentMatch(matchID int) (*models.Match, error) {
+	var nextMatchID null.Int
+	err := models.DB.QueryRow(`
+		SELECT match_id FROM match_metadata mm
+            JOIN matches m ON mm.match_id = m.id
+		WHERE (order_of_play = (SELECT order_of_play FROM match_metadata mm WHERE match_id = ?) + 1)
+            AND m.tournament_id = (SELECT tournament_id FROM matches where id = ?)`, matchID, matchID).Scan(&nextMatchID)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return GetMatch(int(nextMatchID.Int64))
+}
+
 // GetTournamentStandings will return statistics for the given tournament
 func GetTournamentStandings() ([]*models.TournamentStanding, error) {
 	rows, err := models.DB.Query(`

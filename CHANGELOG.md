@@ -4,6 +4,7 @@
 #### Feature
 - New endpoint for setting leg warmup started
 - Support for `BO4-NDS` mode
+- Endpoint for getting the next tournament match
 
 #### Changed
 - Set reverse starting order on Shootout tie breaker legs
