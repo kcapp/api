@@ -622,7 +622,7 @@ func isCricketLegFinished(visit models.Visit) (bool, error) {
 	// Did current player close all numbers?
 	player := allPlayers[visit.PlayerID]
 	closed := true
-	for _, dart := range []int{15, 16, 17, 18, 19, 20, 25} {
+	for _, dart := range models.CRICKETDARTS {
 		if player.Hits[dart] == nil || player.Hits[dart].Total < 3 {
 			closed = false
 			break

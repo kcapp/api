@@ -5,6 +5,7 @@
 - New endpoint for setting leg warmup started
 - Support for `BO4-NDS` mode
 - Endpoint for getting the next tournament match
+- Return number of `marks` hit per visit for `Cricket`
 
 #### Changed
 - Set reverse starting order on Shootout tie breaker legs
@@ -15,6 +16,7 @@
 - Calculation of `420` scores per visit
 - Don't show `9 Dart Shootout` as checkout statistics for Tournament
 - Correctly calculate `PPD` for `9 Dart Shootout` where more than 9 darts are thrown
+- Misc code smells
 
 ## [2.1.0] - 2021-10-17
 #### Feature

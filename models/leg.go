@@ -60,12 +60,11 @@ func (params *LegParameters) GenerateTicTacToeNumbers(startingScore int) {
 
 	bogey := []int{169, 168, 166, 165, 163, 162, 159}
 	numbers := make([]int, 9)
-	min := 21 + startingScore
 
 	// Get 9 random numbers between the given range
 	iteration := 1
 	for i := range numbers {
-		min = 21 + startingScore + ((startingScore / 4) * (iteration - 1))
+		min := 21 + startingScore + ((startingScore / 4) * (iteration - 1))
 		max := min + 10
 
 		valid := true
