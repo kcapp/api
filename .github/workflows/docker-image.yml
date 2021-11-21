@@ -16,6 +16,10 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Docker Setup QEMU
+      uses: docker/setup-qemu-action@v1.2.0
+      with:
+        platforms: arm,arm64,amd64
     - name: Docker Setup Buildx
       uses: docker/setup-buildx-action@v1.6.0
     - name: Build the Docker image
