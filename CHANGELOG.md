@@ -2,8 +2,9 @@
 
 ## [unreleased] - TBD
 #### Feature
+- Smartcard `UID` support for each player
+- Support for `BO4-NDS` and `BO2-NDS` mode
 - New endpoint for setting leg warmup started
-- Support for `BO4-NDS` mode
 - Endpoint for getting the next tournament match
 - Return number of `marks` hit per visit for `Cricket`
 
