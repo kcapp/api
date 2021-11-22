@@ -7,6 +7,7 @@
 - New endpoint for setting leg warmup started
 - Endpoint for getting the next tournament match
 - Return number of `marks` hit per visit for `Cricket`
+- Configured `GitHub Actions`
 
 #### Changed
 - Set reverse starting order on Shootout tie breaker legs
