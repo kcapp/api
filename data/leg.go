@@ -123,11 +123,19 @@ func FinishLeg(visit models.Visit) error {
 			return err
 		}
 		highScore := 0
+		isDraw := false
 		for playerID, player := range scores {
+			if player.CurrentScore == highScore {
+				isDraw = true
+			}
 			if player.CurrentScore > highScore {
 				highScore = player.CurrentScore
 				winnerID = null.IntFrom(int64(playerID))
+				isDraw = false
 			}
+		}
+		if isDraw {
+			winnerID = null.IntFromPtr(nil)
 		}
 	} else if matchType == models.FOURTWENTY {
 		scores, err := GetPlayersScore(visit.LegID)

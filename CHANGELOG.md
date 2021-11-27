@@ -11,6 +11,7 @@
 
 #### Changed
 - Set reverse starting order on Shootout tie breaker legs
+- Handle draw for a lot of game types
 
 #### Fixed
 - Bug where multiple legs of `Knockout` and `Tic-Tac-Toe` did not work correctly
