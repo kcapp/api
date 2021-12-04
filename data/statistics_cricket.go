@@ -252,7 +252,7 @@ func CalculateCricketStatistics(legID int) (map[int]*models.StatisticsCricket, e
 	}
 
 	round := 1
-	darts := []int{15, 16, 17, 18, 19, 20, 25}
+	darts := models.CRICKETDARTS
 	for i := 0; i < len(visits); i++ {
 		visit := visits[i]
 		stats := statisticsMap[visit.PlayerID]

@@ -50,22 +50,24 @@ const (
 )
 
 // TargetsBermudaTriangle contains the target for each round of Bermuda Triangle
-var TargetsBermudaTriangle = [13]Target{Target{Value: 12, multipliers: []int64{1, 2, 3}},
-	Target{Value: 13, multipliers: []int64{1, 2, 3}},
-	Target{Value: 14, multipliers: []int64{1, 2, 3}},
-	Target{Value: -1, multipliers: []int64{2}},
-	Target{Value: 15, multipliers: []int64{1, 2, 3}},
-	Target{Value: 16, multipliers: []int64{1, 2, 3}},
-	Target{Value: 17, multipliers: []int64{1, 2, 3}},
-	Target{Value: -1, multipliers: []int64{3}},
-	Target{Value: 18, multipliers: []int64{1, 2, 3}},
-	Target{Value: 19, multipliers: []int64{1, 2, 3}},
-	Target{Value: 20, multipliers: []int64{1, 2, 3}},
-	Target{Value: 25, multipliers: []int64{1, 2}, score: 25},
-	Target{Value: 25, multipliers: []int64{2}}}
+var TargetsBermudaTriangle = [13]Target{
+	{Value: 12, multipliers: []int64{1, 2, 3}},
+	{Value: 13, multipliers: []int64{1, 2, 3}},
+	{Value: 14, multipliers: []int64{1, 2, 3}},
+	{Value: -1, multipliers: []int64{2}},
+	{Value: 15, multipliers: []int64{1, 2, 3}},
+	{Value: 16, multipliers: []int64{1, 2, 3}},
+	{Value: 17, multipliers: []int64{1, 2, 3}},
+	{Value: -1, multipliers: []int64{3}},
+	{Value: 18, multipliers: []int64{1, 2, 3}},
+	{Value: 19, multipliers: []int64{1, 2, 3}},
+	{Value: 20, multipliers: []int64{1, 2, 3}},
+	{Value: 25, multipliers: []int64{1, 2}, score: 25},
+	{Value: 25, multipliers: []int64{2}}}
 
 // Targets420 contains the target for each round of 420
-var Targets420 = [21]Target{Target{Value: 1, multipliers: []int64{2}},
+var Targets420 = [21]Target{
+	{Value: 1, multipliers: []int64{2}},
 	{Value: 18, multipliers: []int64{2}},
 	{Value: 4, multipliers: []int64{2}},
 	{Value: 13, multipliers: []int64{2}},
@@ -89,25 +91,25 @@ var Targets420 = [21]Target{Target{Value: 1, multipliers: []int64{2}},
 
 // TargetsJDCPractice contains the target for each round of JDC Practice
 var TargetsJDCPractice = [19]Target{
-	Target{Value: 10, multipliers: []int64{1, 2, 3}},
-	Target{Value: 11, multipliers: []int64{1, 2, 3}},
-	Target{Value: 12, multipliers: []int64{1, 2, 3}},
-	Target{Value: 13, multipliers: []int64{1, 2, 3}},
-	Target{Value: 14, multipliers: []int64{1, 2, 3}},
-	Target{Value: 15, multipliers: []int64{1, 2, 3}},
-	Target{Values: []int{1, 2, 3}, multipliers: []int64{2}},
-	Target{Values: []int{4, 5, 6}, multipliers: []int64{2}},
-	Target{Values: []int{7, 8, 9}, multipliers: []int64{2}},
-	Target{Values: []int{10, 11, 12}, multipliers: []int64{2}},
-	Target{Values: []int{13, 14, 15}, multipliers: []int64{2}},
-	Target{Values: []int{16, 17, 18}, multipliers: []int64{2}},
-	Target{Values: []int{19, 20, 25}, multipliers: []int64{2}},
-	Target{Value: 15, multipliers: []int64{1, 2, 3}},
-	Target{Value: 16, multipliers: []int64{1, 2, 3}},
-	Target{Value: 17, multipliers: []int64{1, 2, 3}},
-	Target{Value: 18, multipliers: []int64{1, 2, 3}},
-	Target{Value: 19, multipliers: []int64{1, 2, 3}},
-	Target{Value: 20, multipliers: []int64{1, 2, 3}}}
+	{Value: 10, multipliers: []int64{1, 2, 3}},
+	{Value: 11, multipliers: []int64{1, 2, 3}},
+	{Value: 12, multipliers: []int64{1, 2, 3}},
+	{Value: 13, multipliers: []int64{1, 2, 3}},
+	{Value: 14, multipliers: []int64{1, 2, 3}},
+	{Value: 15, multipliers: []int64{1, 2, 3}},
+	{Values: []int{1, 2, 3}, multipliers: []int64{2}},
+	{Values: []int{4, 5, 6}, multipliers: []int64{2}},
+	{Values: []int{7, 8, 9}, multipliers: []int64{2}},
+	{Values: []int{10, 11, 12}, multipliers: []int64{2}},
+	{Values: []int{13, 14, 15}, multipliers: []int64{2}},
+	{Values: []int{16, 17, 18}, multipliers: []int64{2}},
+	{Values: []int{19, 20, 25}, multipliers: []int64{2}},
+	{Value: 15, multipliers: []int64{1, 2, 3}},
+	{Value: 16, multipliers: []int64{1, 2, 3}},
+	{Value: 17, multipliers: []int64{1, 2, 3}},
+	{Value: 18, multipliers: []int64{1, 2, 3}},
+	{Value: 19, multipliers: []int64{1, 2, 3}},
+	{Value: 20, multipliers: []int64{1, 2, 3}}}
 
 // Match struct used for storing matches
 type Match struct {

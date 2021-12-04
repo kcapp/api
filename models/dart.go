@@ -60,11 +60,11 @@ func (dart *Dart) IsBustAbove(currentScore int, targetScore int) bool {
 // ValidateInput will verify that the dart contains valid values
 func (dart *Dart) ValidateInput() error {
 	if dart.Value.Int64 < 0 {
-		return errors.New("Value cannot be less than 0")
+		return errors.New("value cannot be less than 0")
 	} else if dart.Value.Int64 > 25 || (dart.Value.Int64 > 20 && dart.Value.Int64 < 25) {
-		return errors.New("Value has to be less than 21 (or 25 (bull))")
+		return errors.New("value has to be less than 21 (or 25 (bull))")
 	} else if dart.Multiplier > 3 || dart.Multiplier < 1 {
-		return errors.New("Multiplier has to be one of 1 (single), 2 (douhle), 3 (triple)")
+		return errors.New("multiplier has to be one of 1 (single), 2 (douhle), 3 (triple)")
 	}
 
 	// Make sure multiplier is 1 on miss
@@ -152,23 +152,17 @@ func (dart Dart) IsTriple() bool {
 
 // IsBull will check if this dart was a bullseye (single or double)
 func (dart Dart) IsBull() bool {
-	if dart.ValueRaw() == 25 {
-		return true
-	}
-	return false
+	return dart.ValueRaw() == 25
 }
 
 // IsMiss will check if this dart was a miss
 func (dart Dart) IsMiss() bool {
-	if dart.ValueRaw() == 0 {
-		return true
-	}
-	return false
+	return dart.ValueRaw() == 0
 }
 
 // IsCricketMiss will check if this dart was a miss on cricket numbers
 func (dart Dart) IsCricketMiss() bool {
-	for _, num := range []int{15, 16, 17, 18, 19, 20, 25} {
+	for _, num := range CRICKETDARTS {
 		if dart.ValueRaw() == num {
 			return false
 		}
@@ -210,19 +204,11 @@ func (dart *Dart) CalculateCricketScore(playerID int, scores map[int]*Player2Leg
 	if !dart.Value.Valid {
 		return 0
 	}
-
-	score := int(dart.Value.Int64)
-	darts := []int{15, 16, 17, 18, 19, 20, 25}
-	found := false
-	for _, val := range darts {
-		if val == score {
-			found = true
-		}
-	}
-	if !found {
+	if !dart.IsHit(CRICKETDARTS) {
 		return 0
 	}
 
+	score := int(dart.Value.Int64)
 	hitsMap := scores[playerID].Hits
 	if _, ok := hitsMap[score]; !ok {
 		hitsMap[score] = new(Hits)
@@ -235,6 +221,7 @@ func (dart *Dart) CalculateCricketScore(playerID int, scores map[int]*Player2Leg
 	}
 	points := int(dart.Value.Int64) * multiplier
 
+	pointsGiven := false
 	if hitsMap[score].Total > 3 {
 		for id, p2l := range scores {
 			if id == playerID {
@@ -243,16 +230,24 @@ func (dart *Dart) CalculateCricketScore(playerID int, scores map[int]*Player2Leg
 			if val, ok := p2l.Hits[score]; ok {
 				if val.Total < 3 {
 					p2l.CurrentScore += points
+					pointsGiven = true
 				}
 			} else {
 				p2l.CurrentScore += points
+				pointsGiven = true
 			}
 		}
 	}
-	if points < 0 {
+	if points < 0 || !pointsGiven {
 		points = 0
 	}
 	return points
+}
+
+// IsHit will return true if the given dart hit one of the supplied targets
+func (dart *Dart) IsHit(targets []int) bool {
+	score := int(dart.Value.Int64)
+	return containsInt(targets, score)
 }
 
 func contains(s []int64, e int64) bool {

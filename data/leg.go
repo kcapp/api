@@ -20,6 +20,12 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 	// Shift players to get correct order
 	id, players := players[0], players[1:]
 	players = append(players, id)
+	if matchType != nil && *matchType == models.SHOOTOUT {
+		// This is a tie break for SHOOTOUT, so reverse the order of players to make sure the original "closes to bull" counts
+		for i, j := 0, len(players)-1; i < j; i, j = i+1, j-1 {
+			players[i], players[j] = players[j], players[i]
+		}
+	}
 	res, err := tx.Exec("INSERT INTO leg (starting_score, current_player_id, leg_type_id, match_id, created_at) VALUES (?, ?, ?, ?, NOW()) ",
 		startingScore, players[0], matchType, matchID)
 	if err != nil {
@@ -43,31 +49,32 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 	}
 
 	handicaps := make(map[int]null.Int)
-	if matchType != nil {
-		if *matchType == models.X01HANDICAP {
-			scores, err := GetPlayersScore(int(match.CurrentLegID.Int64))
-			if err != nil {
-				return nil, err
-			}
-			for _, player := range scores {
-				handicaps[player.PlayerID] = player.Handicap
-			}
-		} else if *matchType == models.TICTACTOE {
-			params := match.Legs[0].Parameters
-			params.GenerateTicTacToeNumbers(startingScore)
-			_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-				legID, params.OutshotType.ID, params.Numbers[0], params.Numbers[1], params.Numbers[2], params.Numbers[3], params.Numbers[4], params.Numbers[5], params.Numbers[6], params.Numbers[7], params.Numbers[8])
-			if err != nil {
-				tx.Rollback()
-				return nil, err
-			}
-		} else if *matchType == models.KNOCKOUT {
-			params := match.Legs[0].Parameters
-			_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, starting_lives) VALUES (?, ?)", legID, params.StartingLives)
-			if err != nil {
-				tx.Rollback()
-				return nil, err
-			}
+	if matchType == nil {
+		matchType = &match.MatchType.ID
+	}
+	if *matchType == models.X01HANDICAP {
+		scores, err := GetPlayersScore(int(match.CurrentLegID.Int64))
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			handicaps[player.PlayerID] = player.Handicap
+		}
+	} else if *matchType == models.TICTACTOE {
+		params := match.Legs[0].Parameters
+		params.GenerateTicTacToeNumbers(startingScore)
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			legID, params.OutshotType.ID, params.Numbers[0], params.Numbers[1], params.Numbers[2], params.Numbers[3], params.Numbers[4], params.Numbers[5], params.Numbers[6], params.Numbers[7], params.Numbers[8])
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	} else if *matchType == models.KNOCKOUT {
+		params := match.Legs[0].Parameters
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, starting_lives) VALUES (?, ?)", legID, params.StartingLives)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
 		}
 	}
 
@@ -116,11 +123,19 @@ func FinishLeg(visit models.Visit) error {
 			return err
 		}
 		highScore := 0
+		isDraw := false
 		for playerID, player := range scores {
+			if player.CurrentScore == highScore {
+				isDraw = true
+			}
 			if player.CurrentScore > highScore {
 				highScore = player.CurrentScore
 				winnerID = null.IntFrom(int64(playerID))
+				isDraw = false
 			}
+		}
+		if isDraw {
+			winnerID = null.IntFromPtr(nil)
 		}
 	} else if matchType == models.FOURTWENTY {
 		scores, err := GetPlayersScore(visit.LegID)
@@ -445,7 +460,7 @@ func FinishLeg(visit models.Visit) error {
 			return err
 		}
 		log.Printf("Match %d finished with a Draw", match.ID)
-	} else if playedLegs == match.MatchMode.WinsRequired && match.MatchMode.TieBreakMatchTypeID.Valid {
+	} else if playedLegs == (int(match.MatchMode.LegsRequired.Int64)-1) && match.MatchMode.TieBreakMatchTypeID.Valid {
 		isTieBreak = true
 	}
 	tx.Commit()
@@ -809,6 +824,8 @@ func GetLeg(id int) (*models.Leg, error) {
 		} else if matchType == models.KNOCKOUT {
 			p2l.CurrentScore = 0
 			p2l.Lives = null.IntFrom(leg.Parameters.StartingLives.Int64)
+		} else if matchType == models.FOURTWENTY {
+			p2l.CurrentScore = 420
 		} else if matchType == models.X01HANDICAP {
 			// TODO
 		} else {
@@ -887,6 +904,9 @@ func GetLeg(id int) (*models.Leg, error) {
 				} else {
 					scores[visit.PlayerID].CurrentScore += score
 				}
+			} else if matchType == models.FOURTWENTY {
+				score = visit.Calculate420Score(round - 1)
+				scores[visit.PlayerID].CurrentScore -= score
 			} else if matchType == models.KILLBULL {
 				score = visit.CalculateKillBullScore()
 				if score == 0 {
@@ -1068,6 +1088,23 @@ func ChangePlayerOrder(legID int, orderMap map[string]int) error {
 
 	log.Printf("[%d] Changed player order to %v", legID, orderMap)
 
+	return nil
+}
+
+// StartWarmup will set the updated_at of a leg to now
+func StartWarmup(legID int) error {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("UPDATE leg SET updated_at = NOW() WHERE id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+
+	log.Printf("[%d] Started warmup", legID)
 	return nil
 }
 

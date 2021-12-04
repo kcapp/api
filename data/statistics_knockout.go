@@ -225,6 +225,7 @@ func CalculateKnockoutStatistics(legID int) (map[int]*models.StatisticsKnockout,
 	for i, visit := range leg.Visits {
 		stats := statisticsMap[visit.PlayerID]
 		stats.AvgScore += float64(visit.GetScore())
+		stats.DartsThrown = visit.DartsThrown
 
 		idx := i - 1
 		if idx < 0 {
@@ -240,7 +241,6 @@ func CalculateKnockoutStatistics(legID int) (map[int]*models.StatisticsKnockout,
 			stats.FinalPosition = finalPosition
 			finalPosition--
 		}
-		stats.DartsThrown = visit.DartsThrown
 	}
 
 	for _, stats := range statisticsMap {

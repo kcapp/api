@@ -21,6 +21,7 @@ type Player struct {
 	LegsWon        int         `json:"legs_won"`
 	Color          null.String `json:"color,omitempty"`
 	ProfilePicURL  null.String `json:"profile_pic_url,omitempty"`
+	SmartcardUID   null.String `json:"smartcard_uid,omitempty"`
 	BoardStreamURL null.String `json:"board_stream_url,omitempty"`
 	BoardStreamCSS null.String `json:"board_stream_css,omitempty"`
 	OfficeID       null.Int    `json:"office_id,omitempty"`
@@ -57,6 +58,7 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		LegsWon        int         `json:"legs_won"`
 		Color          null.String `json:"color,omitempty"`
 		ProfilePicURL  null.String `json:"profile_pic_url,omitempty"`
+		SmartcardUID   null.String `json:"smartcard_uid,omitempty"`
 		BoardStreamURL null.String `json:"board_stream_url,omitempty"`
 		BoardStreamCSS null.String `json:"board_stream_css,omitempty"`
 		OfficeID       null.Int    `json:"office_id,omitempty"`
@@ -81,6 +83,7 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		LegsWon:        player.LegsWon,
 		Color:          player.Color,
 		ProfilePicURL:  player.ProfilePicURL,
+		SmartcardUID:   player.SmartcardUID,
 		BoardStreamURL: player.BoardStreamURL,
 		BoardStreamCSS: player.BoardStreamCSS,
 		OfficeID:       player.OfficeID,

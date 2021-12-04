@@ -22,6 +22,7 @@ type Visit struct {
 	Count       int         `json:"count,omitempty"`
 	DartsThrown int         `json:"darts_thrown,omitempty"`
 	Score       int         `json:"score"`
+	Marks       int         `json:"marks"`
 	Scores      map[int]int `json:"scores"`
 }
 
@@ -47,7 +48,7 @@ func (visit Visit) GetLastDart() *Dart {
 // ValidateInput will verify the input does not containg any errors
 func (visit Visit) ValidateInput() error {
 	if visit.FirstDart == nil {
-		return errors.New("First dart cannot be null")
+		return errors.New("first dart cannot be null")
 	}
 	err := visit.FirstDart.ValidateInput()
 	if err != nil {
@@ -356,8 +357,19 @@ func isMarkOpen(playerID int, dart *Dart, darts []int, hitsMap map[int]map[int]i
 // CalculateCricketScore will calculate the score for each player for the given visit
 func (visit *Visit) CalculateCricketScore(scores map[int]*Player2Leg) int {
 	points := visit.FirstDart.CalculateCricketScore(visit.PlayerID, scores)
+	if visit.FirstDart.IsHit(CRICKETDARTS) {
+		visit.Marks = int(visit.FirstDart.Multiplier)
+	}
+
 	points += visit.SecondDart.CalculateCricketScore(visit.PlayerID, scores)
+	if visit.SecondDart.IsHit(CRICKETDARTS) {
+		visit.Marks += int(visit.SecondDart.Multiplier)
+	}
+
 	points += visit.ThirdDart.CalculateCricketScore(visit.PlayerID, scores)
+	if visit.ThirdDart.IsHit(CRICKETDARTS) {
+		visit.Marks += int(visit.ThirdDart.Multiplier)
+	}
 	return points
 }
 

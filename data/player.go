@@ -21,8 +21,8 @@ func GetPlayers() (map[int]*models.Player, error) {
 
 	rows, err := models.DB.Query(`
 		SELECT
-			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color,
-			p.profile_pic_url, p.board_stream_url, p.board_stream_css, p.active, p.office_id, p.is_bot, p.created_at
+			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color, p.profile_pic_url, p.smartcard_uid,
+			 p.board_stream_url, p.board_stream_css, p.active, p.office_id, p.is_bot, p.created_at
 		FROM player p`)
 	if err != nil {
 		return nil, err
@@ -32,8 +32,8 @@ func GetPlayers() (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
-			&p.Color, &p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.IsActive, &p.OfficeID, &p.IsBot, &p.CreatedAt)
+		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.IsActive, &p.OfficeID, &p.IsBot, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -63,7 +63,7 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color,
-			p.profile_pic_url, p.board_stream_url, p.board_stream_css, p.office_id, p.active, p.is_bot, p.created_at
+			p.profile_pic_url, p.smartcard_uid, p.board_stream_url, p.board_stream_css, p.office_id, p.active, p.is_bot, p.created_at
 		FROM player p
 		WHERE active = 1`)
 	if err != nil {
@@ -74,8 +74,8 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
-			&p.Color, &p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.CreatedAt)
+		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -101,13 +101,13 @@ func GetPlayer(id int) (*models.Player, error) {
 	err := models.DB.QueryRow(`
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname,
-			p.slack_handle, p.color, p.profile_pic_url, p.board_stream_url, p.board_stream_css,
+			p.slack_handle, p.color, p.profile_pic_url, p.smartcard_uid, p.board_stream_url, p.board_stream_css,
 			p.office_id, p.active, p.is_bot, p.created_at, pe.current_elo, pe.tournament_elo
 		FROM player p
 		JOIN player_elo pe on pe.player_id = p.id
 		WHERE p.id = ?`, id).
 		Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
-			&p.Color, &p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive,
+			&p.Color, &p.ProfilePicURL, &p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive,
 			&p.IsBot, &p.CreatedAt, &p.CurrentElo, &p.TournamentElo)
 	if err != nil {
 		return nil, err
@@ -192,10 +192,10 @@ func AddPlayer(player models.Player) error {
 
 	// Prepare statement for inserting data
 	res, err := tx.Exec(`INSERT INTO player (first_name, last_name, vocal_name, nickname, slack_handle, color,
-			profile_pic_url, board_stream_url, board_stream_css, office_id, is_bot)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+			profile_pic_url, smartcard_uid, board_stream_url, board_stream_css, office_id, is_bot)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
 		player.FirstName, player.LastName, player.VocalName, player.Nickname, player.SlackHandle, player.Color, player.ProfilePicURL,
-		player.BoardStreamURL, player.BoardStreamCSS, player.OfficeID)
+		player.SmartcardUID, player.BoardStreamURL, player.BoardStreamCSS, player.OfficeID)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -222,7 +222,7 @@ func UpdatePlayer(playerID int, player models.Player) error {
 	stmt, err := models.DB.Prepare(`
 		UPDATE player SET
 			first_name = ?, last_name = ?, vocal_name = ?, nickname = ?, slack_handle = ?,
-			color = ?, profile_pic_url = ?, board_stream_url = ?, board_stream_css = ?, office_id = ?
+			color = ?, profile_pic_url = ?, smartcard_uid = ?, board_stream_url = ?, board_stream_css = ?, office_id = ?
 		WHERE id = ?`)
 	if err != nil {
 		return err
@@ -230,7 +230,7 @@ func UpdatePlayer(playerID int, player models.Player) error {
 	defer stmt.Close()
 
 	_, err = stmt.Exec(player.FirstName, player.LastName, player.VocalName, player.Nickname, player.SlackHandle, player.Color,
-		player.ProfilePicURL, player.BoardStreamURL, player.BoardStreamCSS, player.OfficeID, playerID)
+		player.ProfilePicURL, player.SmartcardUID, player.BoardStreamURL, player.BoardStreamCSS, player.OfficeID, playerID)
 	if err != nil {
 		return err
 	}
@@ -539,6 +539,7 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 			p.slack_handle,
 			p.color,
 			p.profile_pic_url,
+			p.smartcard_uid,
 			p.board_stream_url,
 			p.board_stream_css,
 			p.office_id,
@@ -555,7 +556,7 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color,
-			&p.ProfilePicURL, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot)
+			&p.ProfilePicURL, &p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot)
 		if err != nil {
 			return nil, err
 		}

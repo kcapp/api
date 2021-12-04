@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.2.0] - 2021-12-04
+#### Feature
+- Smartcard `UID` support for each player
+- Support for `BO4-NDS` and `BO2-NDS` mode
+- New endpoint for setting leg warmup started
+- Endpoint for getting the next tournament match
+- Return number of `marks` hit per visit for `Cricket`
+- Configured `GitHub Actions`
+
+#### Changed
+- Set reverse starting order on Shootout tie breaker legs
+- Handle draw for a lot of game types
+
+#### Fixed
+- Bug where multiple legs of `Knockout` and `Tic-Tac-Toe` did not work correctly
+- Correctly calculate score if `Knockout` is won in 1 visit
+- Calculation of `420` scores per visit
+- Don't show `9 Dart Shootout` as checkout statistics for Tournament
+- Correctly calculate `PPD` for `9 Dart Shootout` where more than 9 darts are thrown
+- Misc code smells
+
 ## [2.1.0] - 2021-10-17
 #### Feature
 - Support for new game type `JDC Practice Routine`
@@ -58,6 +79,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
+[2.2.0]: https://github.com/kcapp/api/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/kcapp/api/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/kcapp/api/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/kcapp/api/compare/v1.1.0...v1.2.0

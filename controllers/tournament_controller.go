@@ -150,6 +150,29 @@ func GetTournamentStatistics(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
+// GetNextTournamentMatch will return the next tournament match
+func GetNextTournamentMatch(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	match, err := data.GetNextTournamentMatch(id)
+	if err != nil {
+		log.Println("Unable to get next tournament match", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if match == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	json.NewEncoder(w).Encode(match)
+}
+
 // GetTournamentStandings will return statistics for the given tournament
 func GetTournamentStandings(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

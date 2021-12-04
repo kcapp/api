@@ -27,4 +27,4 @@ jobs:
       run: docker buildx build . --file Dockerfile -t kcapp/api:latest --platform=linux/arm,linux/arm64,linux/amd64 --push
     - name: Tag release version
       if:   github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-      run: docker tag kcapp/api:latest kcapp/api:${{ env.RELEASE_VERSION }} --push
+      run: docker tag kcapp/api:latest kcapp/api:${${{ env.RELEASE_VERSION }}:1} --push

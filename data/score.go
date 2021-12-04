@@ -151,7 +151,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		isFinished = (len(leg.Visits)+1)%(19*len(leg.Players)) == 0
 	} else if matchType == models.KNOCKOUT {
 		idx := len(leg.Visits) - 1
-		if idx > 0 {
+		if idx >= 0 {
 			if leg.Visits[idx].Score > visit.GetScore() {
 				players[visit.PlayerID].Lives = null.IntFrom(players[visit.PlayerID].Lives.Int64 - 1)
 			}
@@ -622,7 +622,7 @@ func isCricketLegFinished(visit models.Visit) (bool, error) {
 	// Did current player close all numbers?
 	player := allPlayers[visit.PlayerID]
 	closed := true
-	for _, dart := range []int{15, 16, 17, 18, 19, 20, 25} {
+	for _, dart := range models.CRICKETDARTS {
 		if player.Hits[dart] == nil || player.Hits[dart].Total < 3 {
 			closed = false
 			break
