@@ -1,6 +1,6 @@
 # Changelog
 
-## [unreleased] - TBD
+## [2.2.0] - 2021-12-04
 #### Feature
 - Smartcard `UID` support for each player
 - Support for `BO4-NDS` and `BO2-NDS` mode
@@ -79,7 +79,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
-[unreleased]: https://github.com/kcapp/api/compare/v2.1.0...develop
+[2.2.0]: https://github.com/kcapp/api/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/kcapp/api/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/kcapp/api/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/kcapp/api/compare/v1.1.0...v1.2.0
