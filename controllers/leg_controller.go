@@ -251,6 +251,14 @@ func ChangePlayerOrder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	players, err := data.GetLegPlayers(legID)
+	if err != nil {
+		log.Printf("[%d] Unable to get players for leg: %s", legID, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(players)
 }
 
 // StartWarmup will set the leg as warm up
