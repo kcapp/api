@@ -4,6 +4,9 @@
 #### Feature
 - Support for match presets
 
+### Changed
+- Reverse order of players on rematch
+
 ## [2.2.0] - 2021-12-04
 #### Feature
 - Smartcard `UID` support for each player

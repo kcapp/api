@@ -785,7 +785,7 @@ func GetPlayerCalendar(w http.ResponseWriter, r *http.Request) {
 	goics.NewICalEncode(&b).Encode(result)
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(b.String()))
+	w.Write(b.Bytes())
 }
 
 // GetRandomLegForPlayer will return a random leg for a given player and starting score
