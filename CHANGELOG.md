@@ -1,6 +1,8 @@
 # Changelog
 
 ## [2.3.0] - TBD
+#### Feature
+- Support for match presets
 
 ## [2.2.0] - 2021-12-04
 #### Feature
