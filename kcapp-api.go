@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/kcapp/api/controllers"
+	controllers_v2 "github.com/kcapp/api/controllers/v2"
 	"github.com/kcapp/api/models"
 )
 
@@ -73,6 +74,9 @@ func main() {
 	router.HandleFunc("/player/{id}/random/{starting_score}", controllers.GetRandomLegForPlayer).Methods("GET")
 	router.HandleFunc("/player/{id}/statistics/{match_type}", controllers.GetPlayerMatchTypeStatistics).Methods("GET")
 	router.HandleFunc("/player/{id}/statistics/{match_type}/history/{limit}", controllers.GetPlayerMatchTypeHistory).Methods("GET")
+
+	// v2
+	router.HandleFunc("/players", controllers_v2.GetPlayers).Methods("GET")
 
 	router.HandleFunc("/preset", controllers.AddPreset).Methods("POST")
 	router.HandleFunc("/preset", controllers.GetPresets).Methods("GET")
