@@ -339,8 +339,7 @@ func GetTournamentStandings() ([]*models.TournamentStanding, error) {
 					pe.current_elo_matches
 				FROM player_elo pe
 				JOIN player p ON p.id = pe.player_id
-				WHERE (pe.current_elo_matches > 5 OR pe.tournament_elo_matches > 0)
-					AND p.active = 1
+				WHERE pe.current_elo_matches > 5 AND p.active = 1
 				ORDER BY tournament_elo DESC
 		) elo, (SELECT @curRank := 0) r`)
 	if err != nil {
