@@ -4,8 +4,11 @@
 #### Feature
 - Support for match presets
 
-### Changed
+#### Changed
 - Reverse order of players on rematch
+
+#### Fixed
+- Don't allow numbers to be stolen for Tic-Tac-Toe
 
 ## [2.2.0] - 2021-12-04
 #### Feature
