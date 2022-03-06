@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.4.0] - TBD
+#### Feature
+
 ## [2.3.0] - 2022-03-06
 #### Feature
 - Support for match presets
@@ -90,6 +93,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
+[2.4.0]: https://github.com/kcapp/api/compare/v2.3.0...develop
 [2.3.0]: https://github.com/kcapp/api/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/kcapp/api/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/kcapp/api/compare/v2.0.0...v2.1.0
