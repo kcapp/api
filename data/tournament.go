@@ -39,6 +39,29 @@ func GetTournaments() ([]*models.Tournament, error) {
 	return tournaments, nil
 }
 
+// AddTournamentGroup will add a new tournament group
+func AddTournamentGroup(group models.TournamentGroup) error {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Prepare statement for inserting data
+	res, err := tx.Exec("INSERT INTO tournament_group (name, division) VALUES (?, ?)", group.Name, group.Division)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	groupID, err := res.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	log.Printf("Created new tournament group (%d) %s", groupID, group.Name)
+	tx.Commit()
+	return nil
+}
+
 // GetTournamentGroups will return all tournament groups
 func GetTournamentGroups() (map[int]*models.TournamentGroup, error) {
 	rows, err := models.DB.Query("SELECT id, name, division FROM tournament_group")

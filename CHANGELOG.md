@@ -3,6 +3,7 @@
 ## [2.3.0] - TBD
 #### Feature
 - Support for match presets
+- Endpoint for adding tournament groups
 
 #### Changed
 - Reverse order of players on rematch
