@@ -23,6 +23,24 @@ func GetTournaments(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tournaments)
 }
 
+// AddTournamentGroup will add a new tournament group
+func AddTournamentGroup(w http.ResponseWriter, r *http.Request) {
+	var group models.TournamentGroup
+	err := json.NewDecoder(r.Body).Decode(&group)
+	if err != nil {
+		log.Println("Unable to deserialize group json", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = data.AddTournamentGroup(group)
+	if err != nil {
+		log.Println("Unable to add group", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 // GetTournamentGroups will return all tournaments
 func GetTournamentGroups(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

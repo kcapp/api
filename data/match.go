@@ -3,6 +3,7 @@ package data
 import (
 	"database/sql"
 	"log"
+	"time"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
@@ -15,8 +16,11 @@ func NewMatch(match models.Match) (*models.Match, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := tx.Exec("INSERT INTO matches (match_type_id, match_mode_id, owe_type_id, venue_id, office_id, is_practice, tournament_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())",
-		match.MatchType.ID, match.MatchMode.ID, match.OweTypeID, match.VenueID, match.OfficeID, match.IsPractice, match.TournamentID)
+	if match.CreatedAt == "" {
+		match.CreatedAt = time.Now().UTC().Format("2006-01-02 15:04:05")
+	}
+	res, err := tx.Exec("INSERT INTO matches (match_type_id, match_mode_id, owe_type_id, venue_id, office_id, is_practice, tournament_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		match.MatchType.ID, match.MatchMode.ID, match.OweTypeID, match.VenueID, match.OfficeID, match.IsPractice, match.TournamentID, match.CreatedAt)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -27,7 +31,7 @@ func NewMatch(match models.Match) (*models.Match, error) {
 		return nil, err
 	}
 	startingScore := match.Legs[0].StartingScore
-	res, err = tx.Exec("INSERT INTO leg (starting_score, current_player_id, match_id, created_at) VALUES (?, ?, ?, NOW()) ", match.Legs[0].StartingScore, match.Players[0], matchID)
+	res, err = tx.Exec("INSERT INTO leg (starting_score, current_player_id, match_id, created_at) VALUES (?, ?, ?, ?) ", match.Legs[0].StartingScore, match.Players[0], matchID, match.CreatedAt)
 	if err != nil {
 		tx.Rollback()
 		return nil, err

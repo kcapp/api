@@ -116,7 +116,10 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 						visit.SecondDart.Value = null.IntFromPtr(nil)
 					}
 				}
-				hits[num] = visit.PlayerID
+				if _, ok := hits[num]; !ok {
+					// Don't allow other players to take numbers already scored by another player
+					hits[num] = visit.PlayerID
+				}
 				break
 			}
 		}

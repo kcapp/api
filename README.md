@@ -17,4 +17,4 @@ Configuration is done through `yaml`. All options can be set in `config/config.y
 ```
 
 ### Database
-Information about the database, and its configuration can be found in [kcapp-database](https://github.com/kcapp/database)
+Information about the database, and its configuration can be found in [kcapp/database](https://github.com/kcapp/database)

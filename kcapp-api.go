@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/kcapp/api/controllers"
+	controllers_v2 "github.com/kcapp/api/controllers/v2"
 	"github.com/kcapp/api/models"
 )
 
@@ -74,6 +75,15 @@ func main() {
 	router.HandleFunc("/player/{id}/statistics/{match_type}", controllers.GetPlayerMatchTypeStatistics).Methods("GET")
 	router.HandleFunc("/player/{id}/statistics/{match_type}/history/{limit}", controllers.GetPlayerMatchTypeHistory).Methods("GET")
 
+	// v2
+	router.HandleFunc("/players", controllers_v2.GetPlayers).Methods("GET")
+
+	router.HandleFunc("/preset", controllers.AddPreset).Methods("POST")
+	router.HandleFunc("/preset", controllers.GetPresets).Methods("GET")
+	router.HandleFunc("/preset/{id}", controllers.GetPreset).Methods("GET")
+	router.HandleFunc("/preset/{id}", controllers.UpdatePreset).Methods("PUT")
+	router.HandleFunc("/preset/{id}", controllers.DeletePreset).Methods("DELETE")
+
 	router.HandleFunc("/statistics/global", controllers.GetGlobalStatistics).Methods("GET")
 	router.HandleFunc("/statistics/global/fnc", controllers.GetGlobalStatisticsFnc).Methods("GET")
 	router.HandleFunc("/statistics/office/{from}/{to}", controllers.GetOfficeStatistics).Methods("GET")
@@ -103,6 +113,7 @@ func main() {
 	router.HandleFunc("/tournament", controllers.GetTournaments).Methods("GET")
 	router.HandleFunc("/tournament/current", controllers.GetCurrentTournament).Methods("GET")
 	router.HandleFunc("/tournament/current/{office_id}", controllers.GetCurrentTournamentForOffice).Methods("GET")
+	router.HandleFunc("/tournament/groups", controllers.AddTournamentGroup).Methods("POST")
 	router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
 	router.HandleFunc("/tournament/standings", controllers.GetTournamentStandings).Methods("GET")
 	router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")

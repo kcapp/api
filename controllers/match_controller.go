@@ -49,7 +49,13 @@ func ReMatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	match.CreatedAt = time.Now().Format("2006-01-02 15:04:05")
+
+	// Reverse order of players for rematch
+	for i := len(match.Players)/2 - 1; i >= 0; i-- {
+		opp := len(match.Players) - 1 - i
+		match.Players[i], match.Players[opp] = match.Players[opp], match.Players[i]
+	}
+	match.CreatedAt = time.Now().UTC().Format("2006-01-02 15:04:05")
 	match, err = data.NewMatch(*match)
 	if err != nil {
 		log.Println("Unable to rematch: ", err)
