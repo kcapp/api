@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/kcapp/api/models"
@@ -249,24 +250,38 @@ func CalculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout,
 }
 
 // ReCalculateShootoutStatistics will recaulcate statistics for Shootout matches
-func ReCalculateShootoutStatistics() (map[int]map[int]*models.StatisticsShootout, error) {
-	legs, err := GetLegsOfType(models.SHOOTOUT, true)
+func ReCalculateShootoutStatistics(since string, dryRun bool) error {
+	legs, err := GetLegsToRecalculate(models.SHOOTOUT, since)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	s := make(map[int]map[int]*models.StatisticsShootout)
+	queries := make([]string, 0)
 	for _, leg := range legs {
 		stats, err := CalculateShootoutStatistics(leg.ID)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE kcapp.statistics_shootout SET score = %d, ppd = %f, 60s_plus = %d, 100s_plus = %d, 140s_plus = %d, 180s = %d WHERE leg_id = %d AND player_id = %d;`,
-				stat.Score, stat.PPD, stat.Score60sPlus, stat.Score100sPlus, stat.Score140sPlus, stat.Score180s, leg.ID, playerID)
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_shootout SET score = %d, ppd = %f, 60s_plus = %d, 100s_plus = %d, 140s_plus = %d, 180s = %d WHERE leg_id = %d AND player_id = %d;`,
+				stat.Score, stat.PPD, stat.Score60sPlus, stat.Score100sPlus, stat.Score140sPlus, stat.Score180s, leg.ID, playerID))
 		}
-		s[leg.ID] = stats
+	}
+	if dryRun {
+		for _, query := range queries {
+			log.Print(query)
+		}
+	} else {
+		log.Printf("Executing %d UPDATE queries", len(queries))
+		tx, err := models.DB.Begin()
+		if err != nil {
+			return err
+		}
+		for _, query := range queries {
+			tx.Exec(query)
+		}
+		tx.Commit()
 	}
 
-	return s, err
+	return nil
 }

@@ -925,26 +925,5 @@ func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
 		}
 		m[leg.ID] = stats
 	}
-
-	/*s := make([]*models.CheckoutStatistics, 0)
-	for _, leg := range legs {
-		log.Printf("Getting statistics for %d", leg.ID)
-		stats, err := getCheckoutStatistics(leg.ID, leg.StartingScore)
-		if err != nil {
-			return nil, err
-		}
-		s = append(s, stats)
-	}
-
-	all := make(map[int]int)
-	for _, stats := range s {
-		log.Printf("Checkout: %d, Total: %d, Attempts: %d", stats.Checkout, stats.Count, stats.CheckoutAttempts)
-
-		for checkout, count := range stats.CheckoutAttempts {
-			all[checkout] += count
-		}
-	}
-	log.Printf("All: %v", all)*/
-
 	return m, err
 }
