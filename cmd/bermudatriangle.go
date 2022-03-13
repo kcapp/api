@@ -19,5 +19,5 @@ var bermudatriangleCmd = &cobra.Command{
 }
 
 func init() {
-	recalculateCmd.AddCommand(bermudatriangleCmd)
+	recalculateStatisticsCmd.AddCommand(bermudatriangleCmd)
 }

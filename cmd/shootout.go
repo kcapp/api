@@ -19,5 +19,5 @@ var shootoutCmd = &cobra.Command{
 }
 
 func init() {
-	recalculateCmd.AddCommand(shootoutCmd)
+	recalculateStatisticsCmd.AddCommand(shootoutCmd)
 }

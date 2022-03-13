@@ -14,7 +14,11 @@ func RecalculateStatistics(matchType int, legID int, since string, dryRun bool) 
 		log.Printf("Recalculating statistics for leg %d", legID)
 		legs = append(legs, legID)
 	} else {
-		log.Printf("Recalculating %s statistics since %s", models.MatchTypes[matchType], since)
+		s := since
+		if s == "" {
+			s = "(All Time)"
+		}
+		log.Printf("Recalculating %s statistics since=%s", models.MatchTypes[matchType], s)
 		ids, err := GetLegsToRecalculate(matchType, since)
 		if err != nil {
 			return err
@@ -75,10 +79,61 @@ func RecalculateStatistics(matchType int, legID int, since string, dryRun bool) 
 				return err
 			}
 			for _, query := range queries {
-				tx.Exec(query)
+				_, err = tx.Exec(query)
+				if err != nil {
+					tx.Rollback()
+					return err
+				}
 			}
 			tx.Commit()
 		}
 	}
+	return nil
+}
+
+// RecalculateElo will recalculate Elo for all players
+func RecalculateElo(dryRun bool) error {
+	rows, err := models.DB.Query(`
+		SELECT id FROM matches
+		WHERE is_finished = 1 AND is_practice = 0 AND is_abandoned = 0 AND match_type_id = 1
+		ORDER BY updated_at`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	matches := make([]int, 0)
+	for rows.Next() {
+		var id int
+		err := rows.Scan(&id)
+		if err != nil {
+			return err
+		}
+		matches = append(matches, id)
+	}
+	if err = rows.Err(); err != nil {
+		return err
+	}
+	if dryRun {
+		log.Print("Elo not reset because dry-run is enabled")
+	} else {
+		log.Printf("Recalculating elo for %d matches", len(matches))
+		tx, err := models.DB.Begin()
+		if err != nil {
+			return err
+		}
+		// Reset the Elo for all players back to initial values
+		tx.Exec(`UPDATE player_elo SET current_elo = 1500, current_elo_matches = 0, tournament_elo = 1500, tournament_elo_matches = 0;`)
+		tx.Exec(`DELETE FROM player_elo_changelog;`)
+		tx.Commit()
+
+		for _, id := range matches {
+			err = UpdateEloForMatch(id)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }

@@ -942,7 +942,6 @@ func UpdateEloForMatch(matchID int) error {
 		// matches which were walkovers
 		return nil
 	}
-	//log.Printf("Updating Elo for players %v in match %d", match.Players, matchID)
 
 	elos, err := GetPlayersElo(match.Players...)
 	if err != nil {
@@ -1068,36 +1067,6 @@ func updateElo(matchID int, player1 *models.PlayerElo, player2 *models.PlayerElo
 		return err
 	}
 	tx.Commit()
-	return nil
-}
-
-// RecalculateElo will recalculate Elo for all players
-func RecalculateElo() error {
-	rows, err := models.DB.Query(`SELECT id FROM matches ORDER BY updated_at`)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	matches := make([]int, 0)
-	for rows.Next() {
-		var id int
-		err := rows.Scan(&id)
-		if err != nil {
-			return err
-		}
-		matches = append(matches, id)
-	}
-	if err = rows.Err(); err != nil {
-		return err
-	}
-
-	for _, id := range matches {
-		err = UpdateEloForMatch(id)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

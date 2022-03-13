@@ -19,5 +19,5 @@ var aroundtheclockCmd = &cobra.Command{
 }
 
 func init() {
-	recalculateCmd.AddCommand(aroundtheclockCmd)
+	recalculateStatisticsCmd.AddCommand(aroundtheclockCmd)
 }

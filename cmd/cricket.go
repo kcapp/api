@@ -19,5 +19,5 @@ var cricketCmd = &cobra.Command{
 }
 
 func init() {
-	recalculateCmd.AddCommand(cricketCmd)
+	recalculateStatisticsCmd.AddCommand(cricketCmd)
 }

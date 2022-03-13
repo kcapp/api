@@ -19,5 +19,5 @@ var dartsatxCmd = &cobra.Command{
 }
 
 func init() {
-	recalculateCmd.AddCommand(dartsatxCmd)
+	recalculateStatisticsCmd.AddCommand(dartsatxCmd)
 }

@@ -19,5 +19,5 @@ var knockoutCmd = &cobra.Command{
 }
 
 func init() {
-	recalculateCmd.AddCommand(knockoutCmd)
+	recalculateStatisticsCmd.AddCommand(knockoutCmd)
 }

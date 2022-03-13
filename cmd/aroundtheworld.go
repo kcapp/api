@@ -19,5 +19,5 @@ var aroundtheworldCmd = &cobra.Command{
 }
 
 func init() {
-	recalculateCmd.AddCommand(aroundtheworldCmd)
+	recalculateStatisticsCmd.AddCommand(aroundtheworldCmd)
 }

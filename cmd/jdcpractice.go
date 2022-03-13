@@ -19,5 +19,5 @@ var jdcpracticeCmd = &cobra.Command{
 }
 
 func init() {
-	recalculateCmd.AddCommand(jdcpracticeCmd)
+	recalculateStatisticsCmd.AddCommand(jdcpracticeCmd)
 }

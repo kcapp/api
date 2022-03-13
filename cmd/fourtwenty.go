@@ -19,5 +19,5 @@ var fourtwentyCmd = &cobra.Command{
 }
 
 func init() {
-	recalculateCmd.AddCommand(fourtwentyCmd)
+	recalculateStatisticsCmd.AddCommand(fourtwentyCmd)
 }

@@ -9,8 +9,8 @@ var since string
 var dryRun bool
 var legID int
 
-// recalculateCmd represents the recalculate command
-var recalculateCmd = &cobra.Command{
+// recalculateStatisticsCmd represents the recalculate command
+var recalculateStatisticsCmd = &cobra.Command{
 	Use:   "recalculate",
 	Short: "Recalculate statistics",
 	Long:  `Recalculate statistics for the given match type`,
@@ -32,8 +32,8 @@ var recalculateCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(recalculateCmd)
-	recalculateCmd.PersistentFlags().Bool("dry-run", true, "Print queries instead of executing")
-	recalculateCmd.PersistentFlags().StringP("since", "s", "", "Only recalculate statistics newer than the given date")
-	recalculateCmd.PersistentFlags().IntP("leg", "l", 0, "Recalculate statistics for the given leg id")
+	statisticsCmd.AddCommand(recalculateStatisticsCmd)
+	recalculateStatisticsCmd.PersistentFlags().Bool("dry-run", true, "Print queries instead of executing")
+	recalculateStatisticsCmd.PersistentFlags().StringP("since", "s", "", "Only recalculate statistics newer than the given date")
+	recalculateStatisticsCmd.PersistentFlags().IntP("leg", "l", 0, "Recalculate statistics for the given leg id")
 }

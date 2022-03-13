@@ -19,5 +19,5 @@ var killbullCmd = &cobra.Command{
 }
 
 func init() {
-	recalculateCmd.AddCommand(killbullCmd)
+	recalculateStatisticsCmd.AddCommand(killbullCmd)
 }

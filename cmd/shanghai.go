@@ -19,5 +19,5 @@ var shanghaiCmd = &cobra.Command{
 }
 
 func init() {
-	recalculateCmd.AddCommand(shanghaiCmd)
+	recalculateStatisticsCmd.AddCommand(shanghaiCmd)
 }

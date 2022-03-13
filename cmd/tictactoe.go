@@ -19,5 +19,5 @@ var tictactoeCmd = &cobra.Command{
 }
 
 func init() {
-	recalculateCmd.AddCommand(tictactoeCmd)
+	recalculateStatisticsCmd.AddCommand(tictactoeCmd)
 }
