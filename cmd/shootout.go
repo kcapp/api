@@ -11,13 +11,9 @@ import (
 var shootoutCmd = &cobra.Command{
 	Use:   "shootout",
 	Short: "Recalculate 9 Dart Shootout statistics",
-	Long:  `Recalculate 9 Dart Shootout statistics`,
 	Run: func(cmd *cobra.Command, args []string) {
-		since, _ := cmd.Flags().GetString("since")
-		dryRun, _ := cmd.Flags().GetBool("dry-run")
-
 		log.Printf("Recalculating 9 Dart Shootout Statistics since=%s, dryRun=%t", since, dryRun)
-		err := data.ReCalculateShootoutStatistics(since, dryRun)
+		err := data.RecalculateShootoutStatistics(since, dryRun)
 		if err != nil {
 			panic(err)
 		}

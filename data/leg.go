@@ -748,10 +748,10 @@ func GetLegsToRecalculate(matchType int, since string) ([]*models.Leg, error) {
 			JOIN matches m on m.id = l.match_id
 			JOIN player2leg p2l ON p2l.leg_id = l.id
 		WHERE l.has_scores = 1 AND (m.match_type_id = ? OR l.leg_type_id = ?)
-			AND l.updated_at >= ?
+			AND l.updated_at >= DATE_FORMAT(STR_TO_DATE(?, '%Y-%m-%d %T'), "%Y-%m-%d %T")
 			AND m.is_abandoned = 0 AND l.is_finished = 1 AND l.has_scores = 1
 		GROUP BY l.id
-		ORDER BY l.id DESC`, matchType, matchType, since)
+		ORDER BY l.id ASC`, matchType, matchType, since)
 	if err != nil {
 		return nil, err
 	}

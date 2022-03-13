@@ -5,6 +5,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var since string
+var dryRun bool
+
 // recalculateCmd represents the recalculate command
 var recalculateCmd = &cobra.Command{
 	Use:   "recalculate",
@@ -20,6 +23,9 @@ var recalculateCmd = &cobra.Command{
 			panic(err)
 		}
 		models.InitDB(config.GetMysqlConnectionString())
+
+		since, _ = cmd.Flags().GetString("since")
+		dryRun, _ = cmd.Flags().GetBool("dry-run")
 	},
 }
 

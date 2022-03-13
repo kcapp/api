@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/kcapp/api/models"
@@ -307,25 +308,40 @@ func CalculateKillBullStatistics(legID int) (map[int]*models.StatisticsKillBull,
 	return statisticsMap, nil
 }
 
-// ReCalculateKillBullStatistics will recaulcate statistics for Kill Bull legs
-func ReCalculateKillBullStatistics() (map[int]map[int]*models.StatisticsKillBull, error) {
-	legs, err := GetLegsOfType(models.KILLBULL, true)
+// RecalculateKillBullStatistics will recaulcate statistics for Kill Bull legs
+func RecalculateKillBullStatistics(since string, dryRun bool) error {
+	legs, err := GetLegsToRecalculate(models.KILLBULL, since)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	s := make(map[int]map[int]*models.StatisticsKillBull)
+	queries := make([]string, 0)
 	for _, leg := range legs {
 		stats, err := CalculateKillBullStatistics(leg.ID)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_kill_bull SET darts_thrown = %d, score = %d, marks3 = %d, marks4 = %d, marks5 = %d, marks6 = %d, longest_streak = %d, times_busted = %d, total_hit_rate = %f
-			WHERE leg_id = %d AND player_id = %d;`, stat.DartsThrown, stat.Score, stat.Marks3, stat.Marks4, stat.Marks5, stat.Marks6, stat.LongestStreak, stat.TimesBusted, stat.TotalHitRate, leg.ID, playerID)
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_kill_bull SET darts_thrown = %d, score = %d, marks3 = %d, marks4 = %d, marks5 = %d, marks6 = %d, longest_streak = %d, times_busted = %d, total_hit_rate = %f
+			WHERE leg_id = %d AND player_id = %d;`, stat.DartsThrown, stat.Score, stat.Marks3, stat.Marks4, stat.Marks5, stat.Marks6, stat.LongestStreak, stat.TimesBusted, stat.TotalHitRate, leg.ID, playerID))
 		}
-		s[leg.ID] = stats
 	}
 
-	return s, err
+	if dryRun {
+		for _, query := range queries {
+			log.Print(query)
+		}
+	} else {
+		log.Printf("Executing %d UPDATE queries", len(queries))
+		tx, err := models.DB.Begin()
+		if err != nil {
+			return err
+		}
+		for _, query := range queries {
+			tx.Exec(query)
+		}
+		tx.Commit()
+	}
+
+	return nil
 }

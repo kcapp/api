@@ -249,8 +249,8 @@ func CalculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout,
 	return statisticsMap, nil
 }
 
-// ReCalculateShootoutStatistics will recaulcate statistics for Shootout matches
-func ReCalculateShootoutStatistics(since string, dryRun bool) error {
+// RecalculateShootoutStatistics will recaulcate statistics for Shootout matches
+func RecalculateShootoutStatistics(since string, dryRun bool) error {
 	legs, err := GetLegsToRecalculate(models.SHOOTOUT, since)
 	if err != nil {
 		return err

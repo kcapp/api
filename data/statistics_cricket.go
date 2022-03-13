@@ -291,8 +291,8 @@ func CalculateCricketStatistics(legID int) (map[int]*models.StatisticsCricket, e
 	return statisticsMap, nil
 }
 
-// ReCalculateCricketStatistics will recaulcate statistics for Cricket matches
-func ReCalculateCricketStatistics(since string, dryRun bool) error {
+// RecalculateCricketStatistics will recaulcate statistics for Cricket matches
+func RecalculateCricketStatistics(since string, dryRun bool) error {
 	legs, err := GetLegsToRecalculate(models.CRICKET, since)
 	if err != nil {
 		return err

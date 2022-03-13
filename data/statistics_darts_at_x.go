@@ -2,6 +2,8 @@ package data
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
@@ -310,6 +312,44 @@ func CalculateDartsAtXStatistics(legID int) (map[int]*models.StatisticsDartsAtX,
 		stat.HitRate = float32(stat.Singles+stat.Doubles+stat.Triples) / 99
 	}
 	return statisticsMap, nil
+}
+
+// RecalculateDartsAtXStatistics will recaulcate statistics for Darts at X legs
+func RecalculateDartsAtXStatistics(since string, dryRun bool) error {
+	legs, err := GetLegsToRecalculate(models.DARTSATX, since)
+	if err != nil {
+		return err
+	}
+
+	queries := make([]string, 0)
+	for _, leg := range legs {
+		stats, err := CalculateDartsAtXStatistics(leg.ID)
+		if err != nil {
+			return err
+		}
+		for playerID, stat := range stats {
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_darts_at_x SET score = %d, singles = %d, doubles = %d, triples = %d, hit_rate = %f, hits5 = %d, hits6 = %d, hits7 = %d, hits8 = %d, hits9 = %d WHERE leg_id = %d AND player_id = %d;`,
+				stat.Score.Int64, stat.Singles, stat.Doubles, stat.Triples, stat.HitRate, stat.Hits5, stat.Hits6, stat.Hits7, stat.Hits8, stat.Hits9, leg.ID, playerID))
+		}
+	}
+
+	if dryRun {
+		for _, query := range queries {
+			log.Print(query)
+		}
+	} else {
+		log.Printf("Executing %d UPDATE queries", len(queries))
+		tx, err := models.DB.Begin()
+		if err != nil {
+			return err
+		}
+		for _, query := range queries {
+			tx.Exec(query)
+		}
+		tx.Commit()
+	}
+
+	return nil
 }
 
 func addDart(number int, dart *models.Dart, stats *models.StatisticsDartsAtX) int {

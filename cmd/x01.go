@@ -11,13 +11,12 @@ import (
 var x01Cmd = &cobra.Command{
 	Use:   "x01",
 	Short: "Recalculate x01 statistics",
-	Long:  `Recalculate x01 statistics`,
 	Run: func(cmd *cobra.Command, args []string) {
-		since, _ := cmd.Flags().GetString("since")
-		dryRun, _ := cmd.Flags().GetBool("dry-run")
-
 		log.Printf("Recalculating x01 since=%s, dryRun=%t", since, dryRun)
-		data.RecalculateX01Statistics()
+		err := data.RecalculateX01Statistics(since, dryRun)
+		if err != nil {
+			panic(err)
+		}
 	},
 }
 
