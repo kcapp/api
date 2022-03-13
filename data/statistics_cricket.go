@@ -3,7 +3,6 @@ package data
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/guregu/null"
 
@@ -292,39 +291,18 @@ func CalculateCricketStatistics(legID int) (map[int]*models.StatisticsCricket, e
 }
 
 // RecalculateCricketStatistics will recaulcate statistics for Cricket matches
-func RecalculateCricketStatistics(since string, dryRun bool) error {
-	legs, err := GetLegsToRecalculate(models.CRICKET, since)
-	if err != nil {
-		return err
-	}
-
+func RecalculateCricketStatistics(legs []int) ([]string, error) {
 	queries := make([]string, 0)
-	for _, leg := range legs {
-		stats, err := CalculateCricketStatistics(leg.ID)
+	for _, legID := range legs {
+		stats, err := CalculateCricketStatistics(legID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for playerID, stat := range stats {
 
 			queries = append(queries, fmt.Sprintf(`UPDATE statistics_cricket SET total_marks = %d, rounds = %d, score = %d, first_nine_marks = %d mpr = %f, first_nine_mpr = %f, marks5 = %d, marks6 = %d, marks7 = %d, marks8 = %d, marks9 = %d, WHERE leg_id = %d AND player_id = %d;`,
-				stat.TotalMarks, stat.Rounds, stat.Score.Int64, stat.FirstNineMarks, stat.MPR, stat.FirstNineMPR, stat.Marks5, stat.Marks6, stat.Marks7, stat.Marks8, stat.Marks9, leg.ID, playerID))
+				stat.TotalMarks, stat.Rounds, stat.Score.Int64, stat.FirstNineMarks, stat.MPR, stat.FirstNineMPR, stat.Marks5, stat.Marks6, stat.Marks7, stat.Marks8, stat.Marks9, legID, playerID))
 		}
 	}
-	if dryRun {
-		for _, query := range queries {
-			log.Print(query)
-		}
-	} else {
-		log.Printf("Executing %d UPDATE queries", len(queries))
-		tx, err := models.DB.Begin()
-		if err != nil {
-			return err
-		}
-		for _, query := range queries {
-			tx.Exec(query)
-		}
-		tx.Commit()
-	}
-
-	return nil
+	return queries, nil
 }

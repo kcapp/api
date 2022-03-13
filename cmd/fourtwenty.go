@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	"log"
-
 	"github.com/kcapp/api/data"
+	"github.com/kcapp/api/models"
 	"github.com/spf13/cobra"
 )
 
@@ -12,8 +11,7 @@ var fourtwentyCmd = &cobra.Command{
 	Use:   "fourtwenty",
 	Short: "Recalculate 420 statistics",
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Printf("Recalculating 420 Statistics since=%s, dryRun=%t", since, dryRun)
-		err := data.Recalculate420Statistics(since, dryRun)
+		err := data.RecalculateStatistics(models.FOURTWENTY, legID, since, dryRun)
 		if err != nil {
 			panic(err)
 		}

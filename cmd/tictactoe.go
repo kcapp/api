@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	"log"
-
 	"github.com/kcapp/api/data"
+	"github.com/kcapp/api/models"
 	"github.com/spf13/cobra"
 )
 
@@ -12,8 +11,7 @@ var tictactoeCmd = &cobra.Command{
 	Use:   "tictactoe",
 	Short: "Recalculate Tic-Tac-Toe statistics",
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Printf("Recalculating Tic-Tac-Toe since=%s, dryRun=%t", since, dryRun)
-		err := data.RecalculateTicTacToeStatistics(since, dryRun)
+		err := data.RecalculateStatistics(models.TICTACTOE, legID, since, dryRun)
 		if err != nil {
 			panic(err)
 		}

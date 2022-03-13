@@ -49,6 +49,23 @@ const (
 	KNOCKOUT = 15
 )
 
+var MatchTypes = map[int]string{
+	X01:             "X01",
+	SHOOTOUT:        "9 Dart Shootout",
+	X01HANDICAP:     "X01 Handicap",
+	CRICKET:         "Cricket",
+	DARTSATX:        "Darts At X",
+	AROUNDTHEWORLD:  "Around the World",
+	SHANGHAI:        "Shanghai",
+	AROUNDTHECLOCK:  "Around the Clock",
+	TICTACTOE:       "Tic-Tac-Toe",
+	BERMUDATRIANGLE: "Bermuda Triangle",
+	FOURTWENTY:      "420",
+	KILLBULL:        "Kill Bull",
+	GOTCHA:          "Gotcha",
+	JDCPRACTICE:     "JDC Practice",
+	KNOCKOUT:        "Knockout"}
+
 // TargetsBermudaTriangle contains the target for each round of Bermuda Triangle
 var TargetsBermudaTriangle = [13]Target{
 	{Value: 12, multipliers: []int64{1, 2, 3}},

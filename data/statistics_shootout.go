@@ -3,7 +3,6 @@ package data
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/kcapp/api/models"
 )
@@ -250,38 +249,17 @@ func CalculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout,
 }
 
 // RecalculateShootoutStatistics will recaulcate statistics for Shootout matches
-func RecalculateShootoutStatistics(since string, dryRun bool) error {
-	legs, err := GetLegsToRecalculate(models.SHOOTOUT, since)
-	if err != nil {
-		return err
-	}
-
+func RecalculateShootoutStatistics(legs []int) ([]string, error) {
 	queries := make([]string, 0)
-	for _, leg := range legs {
-		stats, err := CalculateShootoutStatistics(leg.ID)
+	for _, legID := range legs {
+		stats, err := CalculateShootoutStatistics(legID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for playerID, stat := range stats {
 			queries = append(queries, fmt.Sprintf(`UPDATE statistics_shootout SET score = %d, ppd = %f, 60s_plus = %d, 100s_plus = %d, 140s_plus = %d, 180s = %d WHERE leg_id = %d AND player_id = %d;`,
-				stat.Score, stat.PPD, stat.Score60sPlus, stat.Score100sPlus, stat.Score140sPlus, stat.Score180s, leg.ID, playerID))
+				stat.Score, stat.PPD, stat.Score60sPlus, stat.Score100sPlus, stat.Score140sPlus, stat.Score180s, legID, playerID))
 		}
 	}
-	if dryRun {
-		for _, query := range queries {
-			log.Print(query)
-		}
-	} else {
-		log.Printf("Executing %d UPDATE queries", len(queries))
-		tx, err := models.DB.Begin()
-		if err != nil {
-			return err
-		}
-		for _, query := range queries {
-			tx.Exec(query)
-		}
-		tx.Commit()
-	}
-
-	return nil
+	return queries, nil
 }

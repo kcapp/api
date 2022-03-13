@@ -385,7 +385,7 @@ func FinishLeg(visit models.Visit) error {
 			log.Printf("[%d] Inserting Knockout statistics for player %d", visit.LegID, playerID)
 		}
 	} else {
-		statisticsMap, err := CalculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
+		statisticsMap, err := CalculateX01Statistics(visit.LegID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -738,15 +738,11 @@ func GetLegsOfType(matchType int, loadVisits bool) ([]*models.Leg, error) {
 }
 
 // GetLegsToRecalculate returns all legs since the given date which can be recalculated
-func GetLegsToRecalculate(matchType int, since string) ([]*models.Leg, error) {
+func GetLegsToRecalculate(matchType int, since string) ([]int, error) {
 	rows, err := models.DB.Query(`
-		SELECT
-			l.id, l.end_time, l.starting_score, l.is_finished,
-			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
-			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
+		SELECT l.id
 		FROM leg l
 			JOIN matches m on m.id = l.match_id
-			JOIN player2leg p2l ON p2l.leg_id = l.id
 		WHERE l.has_scores = 1 AND (m.match_type_id = ? OR l.leg_type_id = ?)
 			AND l.updated_at >= DATE_FORMAT(STR_TO_DATE(?, '%Y-%m-%d %T'), "%Y-%m-%d %T")
 			AND m.is_abandoned = 0 AND l.is_finished = 1 AND l.has_scores = 1
@@ -757,23 +753,14 @@ func GetLegsToRecalculate(matchType int, since string) ([]*models.Leg, error) {
 	}
 	defer rows.Close()
 
-	legs := make([]*models.Leg, 0)
+	legs := make([]int, 0)
 	for rows.Next() {
-		leg := new(models.Leg)
-		var players string
-		err := rows.Scan(&leg.ID, &leg.Endtime, &leg.StartingScore, &leg.IsFinished, &leg.CurrentPlayerID,
-			&leg.WinnerPlayerID, &leg.CreatedAt, &leg.UpdatedAt, &leg.MatchID, &leg.HasScores, &players)
+		var legId int
+		err := rows.Scan(&legId)
 		if err != nil {
 			return nil, err
 		}
-		leg.Players = util.StringToIntArray(players)
-		if matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
-			leg.Parameters, err = GetLegParameters(leg.ID)
-			if err != nil {
-				return nil, err
-			}
-		}
-		legs = append(legs, leg)
+		legs = append(legs, legId)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err

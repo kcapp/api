@@ -3,7 +3,6 @@ package data
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/guregu/null"
 	"github.com/jmoiron/sqlx"
@@ -515,11 +514,12 @@ func GetX01HistoryForPlayer(id int, limit int, matchType int) ([]*models.Leg, er
 }
 
 // CalculateX01Statistics will calculate x01 statistics for the given leg
-func CalculateX01Statistics(legID int, winnerID int, startingScore int) (map[int]*models.StatisticsX01, error) {
+func CalculateX01Statistics(legID int) (map[int]*models.StatisticsX01, error) {
 	visits, err := GetLegVisits(legID)
 	if err != nil {
 		return nil, err
 	}
+	winnerID := visits[len(visits)-1].PlayerID
 
 	players, err := GetPlayersScore(legID)
 	if err != nil {
@@ -533,7 +533,7 @@ func CalculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 		statisticsMap[player.PlayerID] = stats
 
 		playersMap[player.PlayerID] = player
-		player.CurrentScore = startingScore
+		player.CurrentScore = player.StartingScore
 		if player.Handicap.Valid {
 			player.CurrentScore += int(player.Handicap.Int64)
 		}
@@ -872,17 +872,12 @@ func GetOfficeStatisticsForOffice(officeID int, from string, to string) ([]*mode
 }
 
 // RecalculateX01Statistics will recalculate x01 statistics for all legs
-func RecalculateX01Statistics(since string, dryRun bool) error {
-	legs, err := GetLegsToRecalculate(models.X01, since)
-	if err != nil {
-		return err
-	}
-
+func RecalculateX01Statistics(legs []int) ([]string, error) {
 	queries := make([]string, 0)
-	for _, leg := range legs {
-		stats, err := CalculateX01Statistics(leg.ID, int(leg.WinnerPlayerID.Int64), leg.StartingScore)
+	for _, legID := range legs {
+		stats, err := CalculateX01Statistics(legID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for playerID, stat := range stats {
 			query := fmt.Sprintf("UPDATE statistics_x01 SET ppd = %f, ppd_score = %d, first_nine_ppd = %f, first_nine_ppd_score = %d, checkout_attempts = %d, darts_thrown = %d, `60s_plus` = %d, `100s_plus` = %d, `140s_plus` = %d, `180s` = %d, overall_accuracy = %f",
@@ -897,25 +892,9 @@ func RecalculateX01Statistics(since string, dryRun bool) error {
 			if stat.AccuracyStatistics.Accuracy20.Valid {
 				query += fmt.Sprintf(", accuracy_20 = %f", stat.AccuracyStatistics.Accuracy20.Float64)
 			}
-			query += fmt.Sprintf(" WHERE leg_id = %d AND player_id = %d;", leg.ID, playerID)
+			query += fmt.Sprintf(" WHERE leg_id = %d AND player_id = %d;", legID, playerID)
 			queries = append(queries, query)
 		}
 	}
-
-	if dryRun {
-		for _, query := range queries {
-			log.Print(query)
-		}
-	} else {
-		log.Printf("Executing %d UPDATE queries", len(queries))
-		tx, err := models.DB.Begin()
-		if err != nil {
-			return err
-		}
-		for _, query := range queries {
-			tx.Exec(query)
-		}
-		tx.Commit()
-	}
-	return nil
+	return queries, nil
 }

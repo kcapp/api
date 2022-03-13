@@ -3,7 +3,6 @@ package data
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/kcapp/api/models"
 )
@@ -383,42 +382,18 @@ func CalculateBermudaTriangleStatistics(legID int) (map[int]*models.StatisticsBe
 }
 
 // RecalculateBermudaTriangleStatistics will recaulcate statistics for Bermuda Triangle legs
-func RecalculateBermudaTriangleStatistics(since string, dryRun bool) error {
-	legs, err := GetLegsToRecalculate(models.BERMUDATRIANGLE, since)
-	if err != nil {
-		return err
-	}
-
+func RecalculateBermudaTriangleStatistics(legs []int) ([]string, error) {
 	queries := make([]string, 0)
-	for _, leg := range legs {
-		stats, err := CalculateBermudaTriangleStatistics(leg.ID)
+	for _, legID := range legs {
+		stats, err := CalculateBermudaTriangleStatistics(legID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for playerID, stat := range stats {
-			queries = append(queries, fmt.Sprintf(`UPDATE statistics_bermuda_triangle SET darts_thrown = %d, score = %d, mpr = %f, total_marks = %d, highest_score_reached = 22%d4, total_hit_rate = %f, hit_rate_1 = %f, hit_rate_2 = %f,
-			hit_rate_3 = %f, hit_rate_4 = %f, hit_rate_5 = %f, hit_rate_6 = %f, hit_rate_7 = %f, hit_rate_8 = %f, hit_rate_9 = %f, hit_rate_10 = %f, hit_rate_11 = %f, hit_rate_12 = %f,
-			hit_rate_13 = %f, hit_count = %d WHERE leg_id = %d AND player_id = %d;`,
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_bermuda_triangle SET darts_thrown = %d, score = %d, mpr = %f, total_marks = %d, highest_score_reached = 22%d4, total_hit_rate = %f, hit_rate_1 = %f, hit_rate_2 = %f, hit_rate_3 = %f, hit_rate_4 = %f, hit_rate_5 = %f, hit_rate_6 = %f, hit_rate_7 = %f, hit_rate_8 = %f, hit_rate_9 = %f, hit_rate_10 = %f, hit_rate_11 = %f, hit_rate_12 = %f, hit_rate_13 = %f, hit_count = %d WHERE leg_id = %d AND player_id = %d;`,
 				stat.DartsThrown, stat.Score, stat.MPR, stat.TotalMarks, stat.HighestScoreReached, stat.TotalHitRate, stat.Hitrates[0], stat.Hitrates[1], stat.Hitrates[2], stat.Hitrates[3], stat.Hitrates[4],
-				stat.Hitrates[5], stat.Hitrates[6], stat.Hitrates[7], stat.Hitrates[8], stat.Hitrates[9], stat.Hitrates[10], stat.Hitrates[11], stat.Hitrates[12], stat.HitCount, leg.ID, playerID))
+				stat.Hitrates[5], stat.Hitrates[6], stat.Hitrates[7], stat.Hitrates[8], stat.Hitrates[9], stat.Hitrates[10], stat.Hitrates[11], stat.Hitrates[12], stat.HitCount, legID, playerID))
 		}
 	}
-
-	if dryRun {
-		for _, query := range queries {
-			log.Print(query)
-		}
-	} else {
-		log.Printf("Executing %d UPDATE queries", len(queries))
-		tx, err := models.DB.Begin()
-		if err != nil {
-			return err
-		}
-		for _, query := range queries {
-			tx.Exec(query)
-		}
-		tx.Commit()
-	}
-
-	return nil
+	return queries, nil
 }
