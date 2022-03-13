@@ -26,14 +26,23 @@ var recalculateEloCmd = &cobra.Command{
 		models.InitDB(config.GetMysqlConnectionString())
 
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
-		err = data.RecalculateElo(dryRun)
-		if err != nil {
-			panic(err)
+		tournament, _ := cmd.Flags().GetInt("tournament")
+		if tournament != 0 {
+			err = data.CalculateEloForTournament(tournament)
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			err = data.RecalculateElo(dryRun)
+			if err != nil {
+				panic(err)
+			}
 		}
 	},
 }
 
 func init() {
 	eloCmd.AddCommand(recalculateEloCmd)
-	recalculateEloCmd.PersistentFlags().Bool("dry-run", true, "Print queries instead of executing")
+	recalculateEloCmd.Flags().Bool("dry-run", true, "Print queries instead of executing")
+	recalculateEloCmd.Flags().IntP("tournament", "t", 0, "Calculate elo for the given tournament")
 }
