@@ -28,5 +28,5 @@ func TestGetMysqlConnectionString(t *testing.T) {
 	config.DBConfig.Schema = "kcapp"
 
 	conn := config.GetMysqlConnectionString()
-	assert.Equal(t, conn, "developer:abcd1234@(localhost:3306)/kcapp")
+	assert.Equal(t, conn, "developer:abcd1234@(localhost:3306)/kcapp?parseTime=true")
 }
