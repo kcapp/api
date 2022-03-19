@@ -49,8 +49,9 @@ func GetConfig(configFileParam string) (*Config, error) {
 
 // GetMysqlConnectionString returns mysql connection string
 func (config *Config) GetMysqlConnectionString() string {
+	// Need to add ?parseTime=true here to support time.Time in queries
 	return fmt.Sprintf(
-		"%s:%s@(%s:%d)/%s",
+		"%s:%s@(%s:%d)/%s?parseTime=true",
 		config.DBConfig.Username,
 		config.DBConfig.Password,
 		config.DBConfig.Address,

@@ -12,14 +12,14 @@ import (
 // Leg struct used for storing legs
 type Leg struct {
 	ID                 int                 `json:"id"`
-	Endtime            null.String         `json:"end_time"`
+	Endtime            null.Time           `json:"end_time"`
 	StartingScore      int                 `json:"starting_score"`
 	IsFinished         bool                `json:"is_finished"`
 	CurrentPlayerID    int                 `json:"current_player_id"`
 	WinnerPlayerID     null.Int            `json:"winner_player_id"`
 	LegType            *MatchType          `json:"leg_type"`
-	CreatedAt          string              `json:"created_at"`
-	UpdatedAt          string              `json:"updated_at"`
+	CreatedAt          time.Time           `json:"created_at"`
+	UpdatedAt          time.Time           `json:"updated_at"`
 	BoardStreamURL     null.String         `json:"board_stream_url,omitempty"`
 	MatchID            int                 `json:"match_id"`
 	HasScores          bool                `json:"has_scores"`
@@ -153,14 +153,14 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 	// Use a type to get consistent order of JSON key-value pairs.
 	type legJSON struct {
 		ID                 int                 `json:"id"`
-		Endtime            null.String         `json:"end_time"`
+		Endtime            null.Time           `json:"end_time"`
 		StartingScore      int                 `json:"starting_score"`
 		IsFinished         bool                `json:"is_finished"`
 		CurrentPlayerID    int                 `json:"current_player_id"`
 		WinnerPlayerID     null.Int            `json:"winner_player_id"`
 		LegType            *MatchType          `json:"leg_type"`
-		CreatedAt          string              `json:"created_at"`
-		UpdatedAt          string              `json:"updated_at"`
+		CreatedAt          time.Time           `json:"created_at"`
+		UpdatedAt          time.Time           `json:"updated_at"`
 		BoardStreamURL     null.String         `json:"board_stream_url,omitempty"`
 		MatchID            int                 `json:"match_id"`
 		HasScores          bool                `json:"has_scores"`

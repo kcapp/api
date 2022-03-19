@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/guregu/null"
 )
@@ -27,8 +28,8 @@ type Player struct {
 	OfficeID       null.Int    `json:"office_id,omitempty"`
 	IsActive       bool        `json:"is_active"`
 	IsBot          bool        `json:"is_bot"`
-	CreatedAt      string      `json:"created_at"`
-	UpdatedAt      string      `json:"updated_at,omitempty"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at,omitempty"`
 	TournamentElo  int         `json:"tournament_elo,omitempty"`
 	CurrentElo     int         `json:"current_elo,omitempty"`
 }
@@ -64,8 +65,8 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		OfficeID       null.Int    `json:"office_id,omitempty"`
 		IsActive       bool        `json:"is_active"`
 		IsBot          bool        `json:"is_bot"`
-		CreatedAt      string      `json:"created_at"`
-		UpdatedAt      string      `json:"updated_at,omitempty"`
+		CreatedAt      time.Time   `json:"created_at"`
+		UpdatedAt      time.Time   `json:"updated_at"`
 		TournamentElo  int         `json:"tournament_elo,omitempty"`
 		CurrentElo     int         `json:"current_elo,omitempty"`
 	}

@@ -16,8 +16,8 @@ func NewMatch(match models.Match) (*models.Match, error) {
 	if err != nil {
 		return nil, err
 	}
-	if match.CreatedAt == "" {
-		match.CreatedAt = time.Now().UTC().Format("2006-01-02 15:04:05")
+	if match.CreatedAt.IsZero() {
+		match.CreatedAt = time.Now().UTC()
 	}
 	res, err := tx.Exec("INSERT INTO matches (match_type_id, match_mode_id, owe_type_id, venue_id, office_id, is_practice, tournament_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		match.MatchType.ID, match.MatchMode.ID, match.OweTypeID, match.VenueID, match.OfficeID, match.IsPractice, match.TournamentID, match.CreatedAt)
@@ -321,7 +321,7 @@ func GetMatch(id int) (*models.Match, error) {
 		return nil, err
 	}
 	if m.IsFinished {
-		m.EndTime = m.Legs[len(m.Legs)-1].Endtime.String
+		m.EndTime = *m.Legs[len(m.Legs)-1].Endtime.Ptr()
 	}
 
 	m.EloChange, err = GetMatchEloChange(id)

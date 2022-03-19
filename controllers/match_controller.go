@@ -55,7 +55,7 @@ func ReMatch(w http.ResponseWriter, r *http.Request) {
 		opp := len(match.Players) - 1 - i
 		match.Players[i], match.Players[opp] = match.Players[opp], match.Players[i]
 	}
-	match.CreatedAt = time.Now().UTC().Format("2006-01-02 15:04:05")
+	match.CreatedAt = time.Now().UTC()
 	match, err = data.NewMatch(*match)
 	if err != nil {
 		log.Println("Unable to rematch: ", err)

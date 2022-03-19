@@ -760,12 +760,7 @@ func GetPlayerCalendar(w http.ResponseWriter, r *http.Request) {
 		}
 		entry := new(models.Entry)
 
-		t, err := time.Parse("2006-01-02 15:04:05", match.CreatedAt)
-		if err != nil {
-			log.Println("Unable to parse time")
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+		t := match.CreatedAt
 		home := players[match.Players[0]]
 		away := players[match.Players[1]]
 

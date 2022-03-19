@@ -1,7 +1,8 @@
 # Changelog
 
 ## [2.4.0] - TBD
-#### Feature
+#### Changed
+- Switched from string to time for datetimes to correctly support timezones
 
 ## [2.3.0] - 2022-03-06
 #### Feature
