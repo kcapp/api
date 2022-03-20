@@ -1,6 +1,9 @@
 # Changelog
 
 ## [2.4.0] - TBD
+#### Feature
+- Change venue when match warmup starts
+
 #### Changed
 - Switched from string to time for datetimes to correctly support timezones
 
