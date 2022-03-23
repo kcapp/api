@@ -18,6 +18,9 @@ debug
 # Visual Studio Code files
 .vscode
 
+# GoLand
+.idea
+
 # Once pushed, ignore config directory
 config/config.yaml
 config/config.prod.yaml

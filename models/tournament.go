@@ -58,3 +58,6 @@ type PlayerTournamentStanding struct {
 	TournamentGroup *TournamentGroup `json:"tournament_group"`
 	Elo             int              `json:"elo,omitempty"`
 }
+
+type TournamentProbabilities struct {
+}

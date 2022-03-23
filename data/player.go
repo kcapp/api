@@ -919,8 +919,8 @@ func GetPlayerHeadToHead(player1 int, player2 int) (*models.StatisticsHead2Head,
 	}
 	p1Elo := elos[0].CurrentElo
 	p2Elo := elos[1].CurrentElo
-	elos[0].WinProbability = getPlayerWinProbability(p1Elo, p2Elo)
-	elos[1].WinProbability = getPlayerWinProbability(p2Elo, p1Elo)
+	elos[0].WinProbability = GetPlayerWinProbability(p1Elo, p2Elo)
+	elos[1].WinProbability = GetPlayerWinProbability(p2Elo, p1Elo)
 
 	playerElos := make(map[int]*models.PlayerElo)
 	for _, elo := range elos {
@@ -1155,7 +1155,7 @@ func calculateElo(winnerElo int, winnerMatches int, looserElo int, looserMatches
 	return calculatedWinner, calculatedLooser
 }
 
-func getPlayerWinProbability(player1Elo int, player2Elo int) float64 {
+func GetPlayerWinProbability(player1Elo int, player2Elo int) float64 {
 	// Pr(A) = 1 / (10^(-ELODIFF/400) + 1)
 	return 1 / (math.Pow(10, float64(-(player1Elo-player2Elo))/400) + 1)
 }

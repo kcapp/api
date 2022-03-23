@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/guregu/null"
@@ -223,6 +224,64 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 		return nil, err
 	}
 	return matches, nil
+}
+
+// GetTournamentProbabilities will return all matches for the given tournament with winning probabilities for players
+func GetTournamentProbabilities(id int) (map[int][]*models.Probability, error) {
+	rows, err := models.DB.Query(`
+		select m.id, m.created_at, m.updated_at, m.is_finished, m.is_abandoned, m.is_walkover, m.winner_id,
+		GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.player_id) AS 'players',
+		GROUP_CONCAT(DISTINCT pe.current_elo ORDER BY pe.player_id) AS 'elos'
+		from matches m
+		join player2leg p2l on p2l.match_id = m.id
+		left join player_elo pe on pe.player_id = p2l.player_id
+		where m.tournament_id = ?
+		group by m.id
+		ORDER BY m.id DESC`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	fmt.Println(rows)
+
+	probabilities := make(map[int][]*models.Probability)
+	for rows.Next() {
+		p := new(models.Probability)
+		var players string
+		var elos string
+		var pid int
+		err := rows.Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.IsFinished, &p.IsAbandoned, &p.IsWalkover, &p.WinnerID,
+			&players, &elos)
+		if err != nil {
+			return nil, err
+		}
+		pid = p.ID
+		p.Players = util.StringToIntArray(players)
+		playerElos := util.StringToIntArray(elos)
+
+		p.Elos = map[int]int{
+			p.Players[0]: playerElos[0],
+			p.Players[1]: playerElos[1],
+		}
+
+		p.PlayerWinningProbabilities = map[int]float64{
+			p.Players[0]: GetPlayerWinProbability(playerElos[0], playerElos[1]),
+			p.Players[1]: GetPlayerWinProbability(playerElos[1], playerElos[0]),
+		}
+		fmt.Println()
+
+		p.PlayerOdds = map[int]float32{
+			p.Players[0]: float32(1.0 / GetPlayerWinProbability(playerElos[0], playerElos[1])),
+			p.Players[1]: float32(1.0 / GetPlayerWinProbability(playerElos[1], playerElos[0])),
+		}
+
+		probabilities[pid] = append(probabilities[pid], p)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return probabilities, nil
 }
 
 // GetTournamentOverview will return an overview for a given tournament
