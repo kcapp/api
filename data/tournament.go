@@ -227,7 +227,7 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 }
 
 // GetTournamentProbabilities will return all matches for the given tournament with winning probabilities for players
-func GetTournamentProbabilities(id int) (map[int][]*models.Probability, error) {
+func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
 	rows, err := models.DB.Query(`
 		select m.id, m.created_at, m.updated_at, m.is_finished, m.is_abandoned, m.is_walkover, m.winner_id,
 		GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.player_id) AS 'players',
@@ -245,18 +245,16 @@ func GetTournamentProbabilities(id int) (map[int][]*models.Probability, error) {
 
 	fmt.Println(rows)
 
-	probabilities := make(map[int][]*models.Probability)
+	probabilities := make([]*models.Probability, 0)
 	for rows.Next() {
 		p := new(models.Probability)
 		var players string
 		var elos string
-		var pid int
 		err := rows.Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.IsFinished, &p.IsAbandoned, &p.IsWalkover, &p.WinnerID,
 			&players, &elos)
 		if err != nil {
 			return nil, err
 		}
-		pid = p.ID
 		p.Players = util.StringToIntArray(players)
 		playerElos := util.StringToIntArray(elos)
 
@@ -269,14 +267,13 @@ func GetTournamentProbabilities(id int) (map[int][]*models.Probability, error) {
 			p.Players[0]: GetPlayerWinProbability(playerElos[0], playerElos[1]),
 			p.Players[1]: GetPlayerWinProbability(playerElos[1], playerElos[0]),
 		}
-		fmt.Println()
 
 		p.PlayerOdds = map[int]float32{
 			p.Players[0]: float32(1.0 / GetPlayerWinProbability(playerElos[0], playerElos[1])),
 			p.Players[1]: float32(1.0 / GetPlayerWinProbability(playerElos[1], playerElos[0])),
 		}
 
-		probabilities[pid] = append(probabilities[pid], p)
+		probabilities = append(probabilities, p)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
