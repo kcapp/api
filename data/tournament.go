@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
@@ -263,14 +264,17 @@ func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
 			p.Players[1]: playerElos[1],
 		}
 
+		prob1 := math.Round(GetPlayerWinProbability(playerElos[0], playerElos[1])*1000) / 1000
+		prob2 := math.Round(GetPlayerWinProbability(playerElos[1], playerElos[0])*1000) / 1000
+
 		p.PlayerWinningProbabilities = map[int]float64{
-			p.Players[0]: GetPlayerWinProbability(playerElos[0], playerElos[1]),
-			p.Players[1]: GetPlayerWinProbability(playerElos[1], playerElos[0]),
+			p.Players[0]: prob1,
+			p.Players[1]: prob2,
 		}
 
 		p.PlayerOdds = map[int]float32{
-			p.Players[0]: float32(1.0 / GetPlayerWinProbability(playerElos[0], playerElos[1])),
-			p.Players[1]: float32(1.0 / GetPlayerWinProbability(playerElos[1], playerElos[0])),
+			p.Players[0]: float32(math.Round(1.0/GetPlayerWinProbability(playerElos[0], playerElos[1])*1000) / 1000),
+			p.Players[1]: float32(math.Round(1.0/GetPlayerWinProbability(playerElos[1], playerElos[0])*1000) / 1000),
 		}
 
 		probabilities = append(probabilities, p)
