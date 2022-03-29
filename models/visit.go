@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/guregu/null"
 )
@@ -17,8 +18,8 @@ type Visit struct {
 	SecondDart  *Dart       `json:"second_dart"`
 	ThirdDart   *Dart       `json:"third_dart"`
 	IsBust      bool        `json:"is_bust"`
-	CreatedAt   string      `json:"created_at"`
-	UpdatedAt   string      `json:"updated_at"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
 	Count       int         `json:"count,omitempty"`
 	DartsThrown int         `json:"darts_thrown,omitempty"`
 	Score       int         `json:"score"`

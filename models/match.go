@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"strconv"
+	"time"
 
 	"github.com/guregu/null"
 )
@@ -132,9 +133,9 @@ var TargetsJDCPractice = [19]Target{
 type Match struct {
 	ID              int                `json:"id"`
 	CurrentLegID    null.Int           `json:"current_leg_id"`
-	CreatedAt       string             `json:"created_at"`
-	UpdatedAt       string             `json:"updated_at"`
-	EndTime         string             `json:"end_time,omitempty"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+	EndTime         time.Time          `json:"end_time,omitempty"`
 	MatchType       *MatchType         `json:"match_type"`
 	MatchMode       *MatchMode         `json:"match_mode"`
 	WinnerID        null.Int           `json:"winner_id"`
@@ -165,9 +166,9 @@ func (match Match) MarshalJSON() ([]byte, error) {
 	type matchJSON struct {
 		ID               int                `json:"id"`
 		CurrentLegID     null.Int           `json:"current_leg_id"`
-		CreatedAt        string             `json:"created_at"`
-		UpdatedAt        string             `json:"updated_at"`
-		EndTime          string             `json:"end_time,omitempty"`
+		CreatedAt        time.Time          `json:"created_at"`
+		UpdatedAt        time.Time          `json:"updated_at"`
+		EndTime          time.Time          `json:"end_time,omitempty"`
 		MatchType        *MatchType         `json:"match_type"`
 		MatchMode        *MatchMode         `json:"match_mode"`
 		WinnerID         null.Int           `json:"winner_id"`

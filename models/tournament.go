@@ -12,8 +12,8 @@ type Tournament struct {
 	PlayoffsTournamentID null.Int              `json:"playoffs_tournament_id,omitempty"`
 	PlayoffsTournament   *Tournament           `json:"playoffs,omitempty"`
 	OfficeID             int                   `json:"office_id"`
-	StartTime            null.String           `json:"start_time"`
-	EndTime              null.String           `json:"end_time"`
+	StartTime            null.Time             `json:"start_time"`
+	EndTime              null.Time             `json:"end_time"`
 	Groups               []*TournamentGroup    `json:"groups,omitempty"`
 	Standings            []*TournamentStanding `json:"standings,omitempty"`
 	Players              []*Player2Tournament  `json:"players,omitempty"`

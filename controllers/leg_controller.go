@@ -271,7 +271,15 @@ func StartWarmup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = data.StartWarmup(legID)
+	venue := new(models.Venue)
+	err = json.NewDecoder(r.Body).Decode(&venue)
+	if err != nil {
+		log.Println("Unable to deserialize venue body", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = data.StartWarmup(legID, int(venue.ID.Int64))
 	if err != nil {
 		log.Println("Unable to start warmup", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

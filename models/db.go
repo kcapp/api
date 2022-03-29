@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"log"
+
 	// Blank import used to be able to register DB driver
 	_ "github.com/go-sql-driver/mysql"
 )

@@ -1124,7 +1124,7 @@ func ChangePlayerOrder(legID int, orderMap map[string]int) error {
 }
 
 // StartWarmup will set the updated_at of a leg to now
-func StartWarmup(legID int) error {
+func StartWarmup(legID int, venueID int) error {
 	tx, err := models.DB.Begin()
 	if err != nil {
 		return err
@@ -1133,6 +1133,15 @@ func StartWarmup(legID int) error {
 	if err != nil {
 		tx.Rollback()
 		return err
+	}
+	if venueID > 0 {
+		// Update the venue ID if this leg is being played at a different location than it was scheduled
+		_, err = tx.Exec("UPDATE matches SET venue_id = ? WHERE id = (SELECT match_id FROM leg WHERE id = ?)", venueID, legID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		log.Printf("[%d] Moved leg to new venue %d", legID, venueID)
 	}
 	tx.Commit()
 
