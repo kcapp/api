@@ -238,7 +238,7 @@ func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
 		left join player_elo pe on pe.player_id = p2l.player_id
 		where m.tournament_id = ?
 		group by m.id
-		ORDER BY m.id DESC`, id)
+		ORDER BY m.created_at DESC`, id)
 	if err != nil {
 		return nil, err
 	}
