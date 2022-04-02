@@ -7,6 +7,9 @@
 #### Changed
 - Switched from string to time for datetimes to correctly support timezones
 
+#### Fixed
+- Correctly rematch for matches with Bots
+
 ## [2.3.0] - 2022-03-06
 #### Feature
 - Support for match presets
