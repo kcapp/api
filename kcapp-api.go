@@ -113,6 +113,7 @@ func main() {
 	router.HandleFunc("/tournament", controllers.GetTournaments).Methods("GET")
 	router.HandleFunc("/tournament/current", controllers.GetCurrentTournament).Methods("GET")
 	router.HandleFunc("/tournament/current/{office_id}", controllers.GetCurrentTournamentForOffice).Methods("GET")
+	router.HandleFunc("/tournament/{office_id}", controllers.GetTournamentsForOffice).Methods("GET")
 	router.HandleFunc("/tournament/groups", controllers.AddTournamentGroup).Methods("POST")
 	router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
 	router.HandleFunc("/tournament/standings", controllers.GetTournamentStandings).Methods("GET")

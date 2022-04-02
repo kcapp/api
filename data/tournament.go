@@ -164,6 +164,36 @@ func GetCurrentTournamentForOffice(officeID int) (*models.Tournament, error) {
 	return GetTournament(tournamentID)
 }
 
+// GetTournamentsForOffice will return all tournaments for given office
+func GetTournamentsForOffice(officeID int) ([]*models.Tournament, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, office_id, start_time, end_time
+		FROM tournament
+		WHERE office_id = ?
+		ORDER BY start_time DESC`, officeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tournaments := make([]*models.Tournament, 0)
+	for rows.Next() {
+		tournament := new(models.Tournament)
+		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
+			&tournament.PlayoffsTournamentID, &tournament.OfficeID, &tournament.StartTime, &tournament.EndTime)
+		if err != nil {
+			return nil, err
+		}
+		tournaments = append(tournaments, tournament)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return tournaments, nil
+}
+
 // GetTournamentMatches will return all matches for the given tournament
 func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 	rows, err := models.DB.Query(`

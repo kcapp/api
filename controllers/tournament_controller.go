@@ -111,6 +111,29 @@ func GetCurrentTournamentForOffice(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tournament)
 }
 
+// GetTournamentsForOffice will return all tournaments for given office
+func GetTournamentsForOffice(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	officeID, err := strconv.Atoi(params["office_id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	tournament, err := data.GetTournamentsForOffice(officeID)
+	if err != nil {
+		log.Println("Unable to get tournaments for office", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tournament == nil {
+		http.Error(w, "No tournaments for office", http.StatusNotFound)
+		return
+	}
+	json.NewEncoder(w).Encode(tournament)
+}
+
 func GetTournamentProbabilities(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
