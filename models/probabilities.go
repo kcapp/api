@@ -9,6 +9,7 @@ type Probability struct {
 	UpdatedAt                  string          `json:"updated_at"`
 	IsFinished                 bool            `json:"is_finished"`
 	IsAbandoned                bool            `json:"is_abandoned"`
+	IsStarted                  bool            `json:"is_started"`
 	IsWalkover                 bool            `json:"is_walkover"`
 	WinnerID                   null.Int        `json:"winner_id"`
 	Players                    []int           `json:"players"`

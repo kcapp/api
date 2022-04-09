@@ -2,7 +2,6 @@ package data
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"math"
 
@@ -260,28 +259,29 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 // GetTournamentProbabilities will return all matches for the given tournament with winning probabilities for players
 func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
 	rows, err := models.DB.Query(`
-		select m.id, m.created_at, m.updated_at, m.is_finished, m.is_abandoned, m.is_walkover, m.winner_id,
-		GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.player_id) AS 'players',
-		GROUP_CONCAT(DISTINCT pe.current_elo ORDER BY pe.player_id) AS 'elos'
-		from matches m
-		join player2leg p2l on p2l.match_id = m.id
-		left join player_elo pe on pe.player_id = p2l.player_id
-		where m.tournament_id = ?
-		group by m.id
+		SELECT
+			m.id, m.created_at, m.updated_at, IF(TIMEDIFF(MAX(l.updated_at), NOW() - INTERVAL 15 MINUTE) > 0, 1, 0) AS 'is_started',
+			m.is_finished, m.is_abandoned, m.is_walkover, m.winner_id,
+			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.player_id) AS 'players',
+			GROUP_CONCAT(DISTINCT pe.current_elo ORDER BY pe.player_id) AS 'elos'
+		FROM matches m
+			JOIN player2leg p2l ON p2l.match_id = m.id
+			LEFT JOIN player_elo pe ON pe.player_id = p2l.player_id
+			LEFT JOIN leg l ON l.match_id = m.id
+		WHERE m.tournament_id = ?
+		GROUP by m.id
 		ORDER BY m.created_at DESC`, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	fmt.Println(rows)
-
 	probabilities := make([]*models.Probability, 0)
 	for rows.Next() {
 		p := new(models.Probability)
 		var players string
 		var elos string
-		err := rows.Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.IsFinished, &p.IsAbandoned, &p.IsWalkover, &p.WinnerID,
+		err := rows.Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.IsStarted, &p.IsFinished, &p.IsAbandoned, &p.IsWalkover, &p.WinnerID,
 			&players, &elos)
 		if err != nil {
 			return nil, err
