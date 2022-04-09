@@ -270,7 +270,7 @@ func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
 			LEFT JOIN leg l ON l.match_id = m.id
 		WHERE m.tournament_id = ?
 		GROUP by m.id
-		ORDER BY m.created_at DESC`, id)
+		ORDER BY m.is_finished, m.created_at ASC`, id)
 	if err != nil {
 		return nil, err
 	}
