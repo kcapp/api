@@ -101,6 +101,24 @@ func GetActiveMatches(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(matches)
 }
 
+func GetMatchProbabilities(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	prob, err := data.GetMatchProbabilities(id)
+	if err != nil {
+		log.Println("Unable to get match probabilities", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(prob)
+}
+
 // GetMatchesLimit will return N matches from the given starting point
 func GetMatchesLimit(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

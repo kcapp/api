@@ -3,6 +3,7 @@ package data
 import (
 	"database/sql"
 	"log"
+	"math"
 	"time"
 
 	"github.com/guregu/null"
@@ -195,6 +196,63 @@ func GetActiveMatches() ([]*models.Match, error) {
 	}
 
 	return matches, nil
+}
+
+// GetMatchProbabilities will return single match for given id with winning probabilities for players
+func GetMatchProbabilities(id int) (*models.Probability, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			m.id, m.created_at, m.updated_at, IF(TIMEDIFF(MAX(l.updated_at), NOW() - INTERVAL 15 MINUTE) > 0, 1, 0) AS 'is_started',
+			m.is_finished, m.is_abandoned, m.is_walkover, m.winner_id,
+			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.player_id) AS 'players',
+			GROUP_CONCAT(DISTINCT pe.current_elo ORDER BY pe.player_id) AS 'elos'
+		FROM matches m
+			JOIN player2leg p2l ON p2l.match_id = m.id
+			LEFT JOIN player_elo pe ON pe.player_id = p2l.player_id
+			LEFT JOIN leg l ON l.match_id = m.id
+		WHERE m.id = ?`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	probabilities := new(models.Probability)
+	for rows.Next() {
+		p := new(models.Probability)
+		var players string
+		var elos string
+		err := rows.Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.IsStarted, &p.IsFinished, &p.IsAbandoned, &p.IsWalkover, &p.WinnerID,
+			&players, &elos)
+		if err != nil {
+			return nil, err
+		}
+		p.Players = util.StringToIntArray(players)
+		playerElos := util.StringToIntArray(elos)
+
+		p.Elos = map[int]int{
+			p.Players[0]: playerElos[0],
+			p.Players[1]: playerElos[1],
+		}
+
+		prob1 := math.Round(GetPlayerWinProbability(playerElos[0], playerElos[1])*1000) / 1000
+		prob2 := math.Round(GetPlayerWinProbability(playerElos[1], playerElos[0])*1000) / 1000
+
+		p.PlayerWinningProbabilities = map[int]float64{
+			p.Players[0]: prob1,
+			p.Players[1]: prob2,
+		}
+
+		p.PlayerOdds = map[int]float32{
+			p.Players[0]: float32(math.Round(1.0/GetPlayerWinProbability(playerElos[0], playerElos[1])*1000) / 1000),
+			p.Players[1]: float32(math.Round(1.0/GetPlayerWinProbability(playerElos[1], playerElos[0])*1000) / 1000),
+		}
+
+		probabilities = p
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return probabilities, nil
 }
 
 // GetMatchesLimit returns the N matches from the given starting point
