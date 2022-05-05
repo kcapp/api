@@ -3,6 +3,7 @@
 ## [2.4.0] - TBD
 #### Feature
 - Change venue when match warmup starts
+- New endpoint `/tournament/<id>/matches/result` returning results for all matches in tournament
 
 #### Changed
 - Switched from string to time for datetimes to correctly support timezones

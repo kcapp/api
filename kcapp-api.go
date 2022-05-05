@@ -120,6 +120,7 @@ func main() {
 	router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")
 	router.HandleFunc("/tournament/{id}/player/{player_id}", controllers.GetTournamentPlayerMatches).Methods("GET")
 	router.HandleFunc("/tournament/{id}/matches", controllers.GetTournamentMatches).Methods("GET")
+	router.HandleFunc("/tournament/{id}/matches/result", controllers.GetTournamentMatchResults).Methods("GET")
 	router.HandleFunc("/tournament/{id}/metadata", controllers.GetMatchMetadataForTournament).Methods("GET")
 	router.HandleFunc("/tournament/{id}/overview", controllers.GetTournamentOverview).Methods("GET")
 	router.HandleFunc("/tournament/{id}/statistics", controllers.GetTournamentStatistics).Methods("GET")
