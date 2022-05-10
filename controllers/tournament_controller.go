@@ -215,6 +215,7 @@ func GetTournamentMatchResults(w http.ResponseWriter, r *http.Request) {
 				MatchID      int       `json:"match_id"`
 				IsFinished   bool      `json:"is_finished"`
 				IsWalkover   bool      `json:"is_walkover"`
+				IsStarted    bool      `json:"is_started"`
 				MatchTime    time.Time `json:"scheduled_time"`
 				WinnerID     null.Int  `json:"winner_id"`
 				HomeScore    int       `json:"home_score"`
@@ -227,6 +228,7 @@ func GetTournamentMatchResults(w http.ResponseWriter, r *http.Request) {
 				match.ID,
 				match.IsFinished,
 				match.IsWalkover,
+				match.IsStarted,
 				match.CreatedAt,
 				match.WinnerID,
 				homeWins,
