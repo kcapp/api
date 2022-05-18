@@ -94,6 +94,11 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		UpdatedAt:      player.UpdatedAt,
 		TournamentElo:  player.TournamentElo,
 		CurrentElo:     player.CurrentElo,
-		Name:           strings.Trim((player.FirstName + " " + player.LastName.ValueOrZero()), " "),
+		Name:           player.GetName(),
 	})
+}
+
+// GetName will get the full name for the given player
+func (player Player) GetName() string {
+	return strings.Trim((player.FirstName + " " + player.LastName.ValueOrZero()), " ")
 }

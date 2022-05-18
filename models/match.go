@@ -142,6 +142,7 @@ type Match struct {
 	IsFinished      bool               `json:"is_finished"`
 	IsAbandoned     bool               `json:"is_abandoned"`
 	IsWalkover      bool               `json:"is_walkover"`
+	IsStarted       bool               `json:"is_started"`
 	OfficeID        null.Int           `json:"office_id,omitempty"`
 	OweTypeID       null.Int           `json:"owe_type_id"`
 	VenueID         null.Int           `json:"venue_id"`

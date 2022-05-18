@@ -3,6 +3,7 @@ package data
 import (
 	"database/sql"
 	"log"
+	"math"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
@@ -162,11 +163,42 @@ func GetCurrentTournamentForOffice(officeID int) (*models.Tournament, error) {
 	return GetTournament(tournamentID)
 }
 
+// GetTournamentsForOffice will return all tournaments for given office
+func GetTournamentsForOffice(officeID int) ([]*models.Tournament, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, office_id, start_time, end_time
+		FROM tournament
+		WHERE office_id = ?
+		ORDER BY start_time DESC`, officeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tournaments := make([]*models.Tournament, 0)
+	for rows.Next() {
+		tournament := new(models.Tournament)
+		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
+			&tournament.PlayoffsTournamentID, &tournament.OfficeID, &tournament.StartTime, &tournament.EndTime)
+		if err != nil {
+			return nil, err
+		}
+		tournaments = append(tournaments, tournament)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return tournaments, nil
+}
+
 // GetTournamentMatches will return all matches for the given tournament
 func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id, m.is_finished, m.current_leg_id, m.winner_id, m.is_walkover, m.created_at, m.updated_at, m.owe_type_id, m.venue_id,
+			m.id, m.is_finished, m.current_leg_id, m.winner_id, m.is_walkover, IF(TIMEDIFF(MAX(l.updated_at), NOW() - INTERVAL 15 MINUTE) > 0, 1, 0) AS 'is_started',
+			m.created_at, m.updated_at, m.owe_type_id, m.venue_id,
 			mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required,
 			v.id, v.name, v.description, m.updated_at as 'last_throw', GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
 			m.tournament_id, tg.id, GROUP_CONCAT(legs.winner_id ORDER BY legs.id) AS 'legs_won', ot.item
@@ -199,8 +231,8 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 		var players string
 		var legsWon null.String
 		var ot null.String
-		err := rows.Scan(&m.ID, &m.IsFinished, &m.CurrentLegID, &m.WinnerID, &m.IsWalkover, &m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID,
-			&m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
+		err := rows.Scan(&m.ID, &m.IsFinished, &m.CurrentLegID, &m.WinnerID, &m.IsWalkover, &m.IsStarted, &m.CreatedAt, &m.UpdatedAt,
+			&m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
 			&venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players, &m.TournamentID, &groupID, &legsWon, &ot)
 		if err != nil {
@@ -254,6 +286,65 @@ func GetTournamentPlayers(id int) ([]*models.Player, error) {
 	}
 
 	return players, nil
+}
+
+// GetTournamentProbabilities will return all matches for the given tournament with winning probabilities for players
+func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			m.id, m.created_at, m.updated_at, IF(TIMEDIFF(MAX(l.updated_at), NOW() - INTERVAL 15 MINUTE) > 0, 1, 0) AS 'is_started',
+			m.is_finished, m.is_abandoned, m.is_walkover, m.winner_id,
+			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.player_id) AS 'players',
+			GROUP_CONCAT(pe.current_elo ORDER BY pe.player_id) AS 'elos'
+		FROM matches m
+			JOIN player2leg p2l ON p2l.match_id = m.id
+			LEFT JOIN player_elo pe ON pe.player_id = p2l.player_id
+			LEFT JOIN leg l ON l.match_id = m.id
+		WHERE m.tournament_id = ?
+		GROUP by m.id
+		ORDER BY m.is_finished, m.created_at ASC`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	probabilities := make([]*models.Probability, 0)
+	for rows.Next() {
+		p := new(models.Probability)
+		var players string
+		var elos string
+		err := rows.Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.IsStarted, &p.IsFinished, &p.IsAbandoned, &p.IsWalkover, &p.WinnerID,
+			&players, &elos)
+		if err != nil {
+			return nil, err
+		}
+		p.Players = util.StringToIntArray(players)
+		playerElos := util.StringToIntArray(elos)
+
+		p.Elos = map[int]int{
+			p.Players[0]: playerElos[0],
+			p.Players[1]: playerElos[1],
+		}
+
+		prob1 := math.Round(GetPlayerWinProbability(playerElos[0], playerElos[1])*1000) / 1000
+		prob2 := math.Round(GetPlayerWinProbability(playerElos[1], playerElos[0])*1000) / 1000
+
+		p.PlayerWinningProbabilities = map[int]float64{
+			p.Players[0]: prob1,
+			p.Players[1]: prob2,
+		}
+
+		p.PlayerOdds = map[int]float32{
+			p.Players[0]: float32(math.Round(1.0/GetPlayerWinProbability(playerElos[0], playerElos[1])*1000) / 1000),
+			p.Players[1]: float32(math.Round(1.0/GetPlayerWinProbability(playerElos[1], playerElos[0])*1000) / 1000),
+		}
+
+		probabilities = append(probabilities, p)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return probabilities, nil
 }
 
 // GetTournamentOverview will return an overview for a given tournament
