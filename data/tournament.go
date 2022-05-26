@@ -401,11 +401,11 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 	}
 	statistics.HighestCheckout = checkouts
 
-	a, err := getTournamentBestStatistics(tournamentID)
+	bestStatistics, err := getTournamentBestStatistics(tournamentID)
 	if err != nil {
 		return nil, err
 	}
-	for _, val := range a {
+	for _, val := range bestStatistics {
 		statistics.BestThreeDartAvg = append(statistics.BestThreeDartAvg, val.BestThreeDartAvg)
 		statistics.BestFirstNineAvg = append(statistics.BestFirstNineAvg, val.BestFirstNineAvg)
 		if val.Best301 != nil {
@@ -418,7 +418,11 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 			statistics.Best701DartsThrown = append(statistics.Best701DartsThrown, val.Best701)
 		}
 	}
-
+	generalStatistics, err := getTournamentGeneralStatistics(tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	statistics.GeneralStatistics = generalStatistics
 	return statistics, nil
 }
 
@@ -495,12 +499,12 @@ func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic
 			JOIN matches m on l.match_id = m.id
 			WHERE l.winner_id = s.player_id
 				AND s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))
-				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id WHERE l.winner_id = s.player_id GROUP BY leg_id)
+				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id JOIN matches m on l.match_id = m.id WHERE m.tournament_id = ? AND l.winner_id = s.player_id GROUP BY leg_id)
 				AND IFNULL(l.leg_type_id, m.match_type_id) = 1 -- X01
 			GROUP BY s.player_id, s.id
 			ORDER BY checkout DESC) checkouts
 			GROUP BY player_id
-		ORDER BY checkout DESC`, tournamentID)
+		ORDER BY checkout DESC`, tournamentID, tournamentID)
 	if err != nil {
 		return nil, err
 	}
@@ -521,7 +525,7 @@ func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic
 	return best, nil
 }
 
-// getBestStatistics will calculate Best PPD, Best First 9, Best 301 and Best 501 for the given players
+// getTournamentBestStatistics will calculate Best PPD, Best First 9, Best 301 and Best 501 for the given players
 func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, error) {
 	rows, err := models.DB.Query(`
 		SELECT
@@ -620,6 +624,72 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 	}
 
 	return s, nil
+}
+
+// getTournamentGeneralStatistics will return general statistics for a given tournament
+func getTournamentGeneralStatistics(tournamentID int) (*models.TournamentGeneralStatistics, error) {
+	tgs := new(models.TournamentGeneralStatistics)
+	err := models.DB.QueryRow(`
+		SELECT
+			SUM(60s_plus) AS '60s_plus',
+			SUM(100s_plus) AS '100s_plus',
+			SUM(140s_plus) AS '140s_plus',
+			SUM(180s) AS '180s',
+			SUM(fnc) AS 'fish-n-chips',
+			SUM(checkout_d1) AS 'checkout-d1',
+			SUM(bulls) as 'bulls',
+			SUM(double_bulls) as 'double_bulls'
+		FROM (
+			SELECT SUM(60s_plus)  AS '60s_plus',
+					SUM(100s_plus) AS '100s_plus',
+					SUM(140s_plus) AS '140s_plus',
+					SUM(180s)      AS '180s',
+					0 AS 'fnc',
+					0 AS 'checkout_d1',
+					0 AS 'bulls',
+					0 AS 'double_bulls'
+			FROM statistics_x01 s
+				LEFT JOIN leg l ON l.id = s.leg_id
+				LEFT JOIN matches m ON m.id = l.match_id
+			WHERE m.tournament_id = ?
+		UNION ALL
+			SELECT
+				0, 0, 0, 0, count(s.id) AS 'fnc', 0, 0, 0
+			FROM score s
+				LEFT JOIN leg l ON l.id = s.leg_id
+				LEFT JOIN matches m ON m.id = l.match_id
+			WHERE
+				first_dart IN (1, 20, 5) AND first_dart_multiplier = 1
+			AND second_dart IN (1, 20, 5) AND second_dart_multiplier = 1
+			AND third_dart IN (1, 20, 5) AND third_dart_multiplier = 1
+			AND first_dart + second_dart + third_dart = 26
+			AND m.tournament_id = ?
+		UNION ALL
+			SELECT
+				0, 0, 0, 0, 0, count(leg_id) as 'checkout_d1', 0, 0
+			FROM score s
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m on l.match_id = m.id
+			WHERE l.winner_id = s.player_id
+				AND s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))
+				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id JOIN matches m on l.match_id = m.id WHERE m.tournament_id = ? AND l.winner_id = s.player_id GROUP BY leg_id)
+				AND IFNULL(s.first_dart * s.first_dart_multiplier, 0) + IFNULL(s.second_dart * s.second_dart_multiplier, 0) + IFNULL(s.third_dart * s.third_dart_multiplier, 0) = 2
+				AND IFNULL(l.leg_type_id, m.match_type_id) = 1
+		UNION ALL
+			SELECT
+				0, 0, 0, 0, 0, 0,
+				SUM(IF(first_dart = 25 AND first_dart_multiplier = 1, 1, 0)+IF(second_dart = 25 AND second_dart_multiplier = 1, 1, 0)+IF(third_dart = 25 AND third_dart_multiplier = 1, 1, 0)) as 'bull',
+				SUM(IF(first_dart = 25 AND first_dart_multiplier = 2, 1, 0)+IF(second_dart = 25 AND second_dart_multiplier = 2, 1, 0)+IF(third_dart = 25 AND third_dart_multiplier = 2, 1, 0)) as 'double_bull'
+			FROM score s
+				LEFT JOIN leg l ON l.id = s.leg_id
+				LEFT JOIN matches m ON m.id = l.match_id
+			WHERE m.tournament_id = ?
+		) statistics`, tournamentID, tournamentID, tournamentID, tournamentID, tournamentID).Scan(&tgs.Score60sPlus, &tgs.Score100sPlus, &tgs.Score140sPlus,
+		&tgs.Score180s, &tgs.ScoreFishNChips, &tgs.ScoreBullseye, &tgs.ScoreDoubleBullseye, &tgs.D1Checkouts)
+	if err != nil {
+		return nil, err
+	}
+	return tgs, nil
 }
 
 // NewTournament will create a new tournament
