@@ -111,16 +111,20 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/tournament", controllers.GetTournaments).Methods("GET")
 		router.HandleFunc("/tournament/current", controllers.GetCurrentTournament).Methods("GET")
 		router.HandleFunc("/tournament/current/{office_id}", controllers.GetCurrentTournamentForOffice).Methods("GET")
+		router.HandleFunc("/tournament/office/{office_id}", controllers.GetTournamentsForOffice).Methods("GET")
 		router.HandleFunc("/tournament/groups", controllers.AddTournamentGroup).Methods("POST")
 		router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
 		router.HandleFunc("/tournament/standings", controllers.GetTournamentStandings).Methods("GET")
 		router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")
 		router.HandleFunc("/tournament/{id}/player/{player_id}", controllers.GetTournamentPlayerMatches).Methods("GET")
 		router.HandleFunc("/tournament/{id}/matches", controllers.GetTournamentMatches).Methods("GET")
+		router.HandleFunc("/tournament/{id}/matches/result", controllers.GetTournamentMatchResults).Methods("GET")
 		router.HandleFunc("/tournament/{id}/metadata", controllers.GetMatchMetadataForTournament).Methods("GET")
 		router.HandleFunc("/tournament/{id}/overview", controllers.GetTournamentOverview).Methods("GET")
 		router.HandleFunc("/tournament/{id}/statistics", controllers.GetTournamentStatistics).Methods("GET")
 		router.HandleFunc("/tournament/match/{id}/next", controllers.GetNextTournamentMatch).Methods("GET")
+		router.HandleFunc("/tournament/{id}/probabilities", controllers.GetTournamentProbabilities).Methods("GET")
+		router.HandleFunc("/tournament/match/{id}/probabilities", controllers.GetMatchProbabilities).Methods("GET")
 
 		log.Printf("Listening on port %d", config.APIConfig.Port)
 		log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.APIConfig.Port), router))
@@ -129,14 +133,4 @@ var serveCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// serveCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// serveCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
