@@ -233,7 +233,7 @@ func GetTournamentMatchResults(w http.ResponseWriter, r *http.Request) {
 			}
 			isLive := false
 			if !match.IsFinished && match.LastThrow.Valid {
-				now := time.Now().Unix() - 30
+				now := time.Now().Unix() - 600
 				if match.LastThrow.Time.UTC().Unix() > now {
 					isLive = true
 				}
