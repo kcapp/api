@@ -229,6 +229,10 @@ type BotConfig struct {
 type VisitStatistics struct {
 	FishAndChipsCounter int `json:"fish_and_chips_counter"`
 	ViliusVisitCounter  int `json:"vilius_visit_counter"`
+	Score60PlusCounter  int `json:"score_60_plus_counter"`
+	Score100PlusCounter int `json:"score_100_plus_counter"`
+	Score140PlusCounter int `json:"score_140_plus_counter"`
+	Score180Counter     int `json:"score_180_counter"`
 }
 
 // PlayerModifiers struct used for storing visit modifiers for a player
@@ -236,18 +240,29 @@ type PlayerModifiers struct {
 	IsViliusVisit  bool `json:"is_vilius_visit"`
 	IsBeerMatch    bool `json:"is_beer_match"`
 	IsFishAndChips bool `json:"is_fish_and_chips"`
+	IsScore60Plus  bool `json:"is_score_60_plus"`
+	IsScore100Plus bool `json:"is_score_100_plus"`
+	IsScore140Plus bool `json:"is_score_140_plus"`
+	IsScore180     bool `json:"is_score_180"`
 }
 
-// AddVisitStatistics adds information about
+// AddVisitStatistics adds information about the given visit
 func (p2l *Player2Leg) AddVisitStatistics(leg Leg) {
 	p2l.VisitStatistics = new(VisitStatistics)
 	for _, visit := range leg.Visits {
 		if visit.PlayerID == p2l.PlayerID {
 			if visit.IsFishAndChips() {
 				p2l.VisitStatistics.FishAndChipsCounter++
-			}
-			if visit.IsViliusVisit() {
+			} else if visit.IsViliusVisit() {
 				p2l.VisitStatistics.ViliusVisitCounter++
+			} else if visit.IsScore60Plus() {
+				p2l.VisitStatistics.Score60PlusCounter++
+			} else if visit.IsScore100Plus() {
+				p2l.VisitStatistics.Score100PlusCounter++
+			} else if visit.IsScore140Plus() {
+				p2l.VisitStatistics.Score140PlusCounter++
+			} else if visit.IsScore180() {
+				p2l.VisitStatistics.Score180Counter++
 			}
 			p2l.DartsThrown = visit.DartsThrown
 		}

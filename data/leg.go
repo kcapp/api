@@ -1050,6 +1050,10 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 		if visit, ok := lastVisits[player.PlayerID]; ok {
 			player.Modifiers.IsViliusVisit = visit.IsViliusVisit()
 			player.Modifiers.IsFishAndChips = visit.IsFishAndChips()
+			player.Modifiers.IsScore60Plus = visit.IsScore60Plus()
+			player.Modifiers.IsScore100Plus = visit.IsScore100Plus()
+			player.Modifiers.IsScore140Plus = visit.IsScore140Plus()
+			player.Modifiers.IsScore180 = visit.IsScore180()
 		}
 		if lowestScore < 171 && player.CurrentScore > 199 {
 			player.Modifiers.IsBeerMatch = true
