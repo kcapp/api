@@ -22,7 +22,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color, p.profile_pic_url, p.smartcard_uid,
-			 p.board_stream_url, p.board_stream_css, p.active, p.office_id, p.is_bot, p.created_at, p.updated_at
+			 p.board_stream_url, p.board_stream_css, p.active, p.office_id, p.is_bot, p.is_placeholder, p.created_at, p.updated_at
 		FROM player p`)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
-			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.IsActive, &p.OfficeID, &p.IsBot, &p.CreatedAt, &p.UpdatedAt)
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.IsActive, &p.OfficeID, &p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -62,8 +62,9 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 
 	rows, err := models.DB.Query(`
 		SELECT
-			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color,
-			p.profile_pic_url, p.smartcard_uid, p.board_stream_url, p.board_stream_css, p.office_id, p.active, p.is_bot, p.created_at, p.updateD_at
+			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color, p.profile_pic_url,
+			p.smartcard_uid, p.board_stream_url, p.board_stream_css, p.office_id, p.active, p.is_bot, p.is_placeholder,
+			p.created_at, p.updated_at
 		FROM player p
 		WHERE active = 1`)
 	if err != nil {
@@ -75,7 +76,7 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
-			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.CreatedAt, &p.UpdatedAt)
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -102,13 +103,13 @@ func GetPlayer(id int) (*models.Player, error) {
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname,
 			p.slack_handle, p.color, p.profile_pic_url, p.smartcard_uid, p.board_stream_url, p.board_stream_css,
-			p.office_id, p.active, p.is_bot, p.created_at, p.updated_at, pe.current_elo, pe.tournament_elo
+			p.office_id, p.active, p.is_bot, p.is_placeholder, p.created_at, p.updated_at, pe.current_elo, pe.tournament_elo
 		FROM player p
 		JOIN player_elo pe on pe.player_id = p.id
 		WHERE p.id = ?`, id).
 		Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
 			&p.Color, &p.ProfilePicURL, &p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive,
-			&p.IsBot, &p.CreatedAt, &p.UpdatedAt, &p.CurrentElo, &p.TournamentElo)
+			&p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt, &p.CurrentElo, &p.TournamentElo)
 	if err != nil {
 		return nil, err
 	}
@@ -545,7 +546,8 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 			p.board_stream_css,
 			p.office_id,
 			p.active,
-			p.is_bot
+			p.is_bot,
+			p.is_placeholder
 		FROM player2leg p2l
 		LEFT JOIN player p ON p.id = p2l.player_id WHERE p2l.leg_id = ?`, legID)
 	if err != nil {
@@ -556,8 +558,8 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color,
-			&p.ProfilePicURL, &p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot)
+		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.IsPlaceholder)
 		if err != nil {
 			return nil, err
 		}

@@ -28,6 +28,7 @@ type Player struct {
 	OfficeID       null.Int    `json:"office_id,omitempty"`
 	IsActive       bool        `json:"is_active"`
 	IsBot          bool        `json:"is_bot"`
+	IsPlaceholder  bool        `json:"is_placeholder"`
 	CreatedAt      time.Time   `json:"created_at"`
 	UpdatedAt      time.Time   `json:"updated_at,omitempty"`
 	TournamentElo  int         `json:"tournament_elo,omitempty"`
@@ -65,6 +66,7 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		OfficeID       null.Int    `json:"office_id,omitempty"`
 		IsActive       bool        `json:"is_active"`
 		IsBot          bool        `json:"is_bot"`
+		IsPlaceholder  bool        `json:"IsPlaceholder"`
 		CreatedAt      time.Time   `json:"created_at"`
 		UpdatedAt      time.Time   `json:"updated_at"`
 		TournamentElo  int         `json:"tournament_elo,omitempty"`
@@ -90,6 +92,7 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		OfficeID:       player.OfficeID,
 		IsActive:       player.IsActive,
 		IsBot:          player.IsBot,
+		IsPlaceholder:  player.IsPlaceholder,
 		CreatedAt:      player.CreatedAt,
 		UpdatedAt:      player.UpdatedAt,
 		TournamentElo:  player.TournamentElo,

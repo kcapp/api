@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -196,51 +197,72 @@ func GetTournamentMatchResults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	output := make([]interface{}, 0)
+	type matchResult struct {
+		MatchID          int       `json:"match_id"`
+		IsFinished       bool      `json:"is_finished"`
+		IsWalkover       bool      `json:"is_walkover"`
+		IsStarted        bool      `json:"is_started"`
+		IsLive           bool      `json:"is_live"`
+		IsPlayersDecided bool      `json:"is_players_decided"`
+		MatchTime        time.Time `json:"scheduled_time"`
+		WinnerID         null.Int  `json:"winner_id"`
+		HomeScore        int       `json:"home_score"`
+		HomePlayerID     int       `json:"home_player_id"`
+		HomePlayer       string    `json:"home_player_name"`
+		AwayScore        int       `json:"away_score"`
+		AWayPlayerID     int       `json:"away_player_id"`
+		AwayPlayer       string    `json:"away_player_name"`
+	}
+	output := make([]matchResult, 0)
 	for _, matches := range tournamentMatches {
 		for _, match := range matches {
-			homePlayer := match.Players[0]
-			awayPlayer := match.Players[1]
+			homePlayer := players[match.Players[0]]
+			awayPlayer := players[match.Players[1]]
 			homeWins := 0
 			awayWins := 0
 			for _, winnerID := range match.LegsWon {
-				if homePlayer == winnerID {
+				if homePlayer.ID == winnerID {
 					homeWins++
-				} else if awayPlayer == winnerID {
+				} else if awayPlayer.ID == winnerID {
 					awayWins++
 				}
 			}
-
-			output = append(output, struct {
-				MatchID      int       `json:"match_id"`
-				IsFinished   bool      `json:"is_finished"`
-				IsWalkover   bool      `json:"is_walkover"`
-				IsStarted    bool      `json:"is_started"`
-				MatchTime    time.Time `json:"scheduled_time"`
-				WinnerID     null.Int  `json:"winner_id"`
-				HomeScore    int       `json:"home_score"`
-				HomePlayerID int       `json:"home_player_id"`
-				HomePlayer   string    `json:"home_player_name"`
-				AwayScore    int       `json:"away_score"`
-				AWayPlayerID int       `json:"away_player_id"`
-				AwayPlayer   string    `json:"away_player_name"`
-			}{
+			isPlayersDecided := true
+			if homePlayer.IsPlaceholder || awayPlayer.IsPlaceholder {
+				isPlayersDecided = false
+			}
+			isLive := false
+			if !match.IsFinished && match.LastThrow.Valid {
+				now := time.Now().Unix() - 30
+				if match.LastThrow.Time.UTC().Unix() > now {
+					isLive = true
+				}
+			}
+			output = append(output, matchResult{
 				match.ID,
 				match.IsFinished,
 				match.IsWalkover,
 				match.IsStarted,
+				isLive,
+				isPlayersDecided,
 				match.CreatedAt,
 				match.WinnerID,
 				homeWins,
-				homePlayer,
-				players[homePlayer].GetName(),
+				homePlayer.ID,
+				homePlayer.GetName(),
 				awayWins,
-				awayPlayer,
-				players[awayPlayer].GetName(),
+				awayPlayer.ID,
+				awayPlayer.GetName(),
 			})
 		}
-
 	}
+
+	sort.Slice(output, func(i, j int) bool {
+		if output[i].MatchTime.Unix() != output[j].MatchTime.Unix() {
+			return output[i].MatchTime.Unix() < output[j].MatchTime.Unix()
+		}
+		return output[i].MatchID < output[j].MatchID
+	})
 
 	json.NewEncoder(w).Encode(output)
 }
