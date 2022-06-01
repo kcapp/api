@@ -155,8 +155,8 @@ type Match struct {
 	Legs            []*Leg             `json:"legs,omitempty"`
 	PlayerHandicaps map[int]int        `json:"player_handicaps,omitempty"`
 	BotPlayerConfig map[int]*BotConfig `json:"bot_player_config,omitempty"`
-	FirstThrow      null.String        `json:"first_throw_time,omitempty"`
-	LastThrow       null.String        `json:"last_throw_time,omitempty"`
+	FirstThrow      null.Time          `json:"first_throw_time,omitempty"`
+	LastThrow       null.Time          `json:"last_throw_time,omitempty"`
 	EloChange       map[int]*PlayerElo `json:"elo_change,omitempty"`
 	LegsWon         []int              `json:"legs_won,omitempty"`
 }
@@ -189,8 +189,8 @@ func (match Match) MarshalJSON() ([]byte, error) {
 		CurrentLegNumber string             `json:"current_leg_num"`
 		PlayerHandicaps  map[int]int        `json:"player_handicaps,omitempty"`
 		BotPlayerConfig  map[int]*BotConfig `json:"bot_player_config,omitempty"`
-		FirstThrow       null.String        `json:"first_throw_time,omitempty"`
-		LastThrow        null.String        `json:"last_throw_time,omitempty"`
+		FirstThrow       null.Time          `json:"first_throw_time,omitempty"`
+		LastThrow        null.Time          `json:"last_throw_time,omitempty"`
 		EloChange        map[int]*PlayerElo `json:"elo_change,omitempty"`
 		LegsWon          []int              `json:"legs_won,omitempty"`
 	}

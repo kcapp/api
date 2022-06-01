@@ -2,14 +2,27 @@ package models
 
 import "github.com/guregu/null"
 
-// TournamentStatistics struct for stroring tournament statistics
+// TournamentStatistics struct for storing tournament statistics
 type TournamentStatistics struct {
-	HighestCheckout    []*BestStatistic      `json:"checkout_highest,omitempty"`
-	BestThreeDartAvg   []*BestStatisticFloat `json:"best_three_dart_avg,omitempty"`
-	BestFirstNineAvg   []*BestStatisticFloat `json:"best_first_nine_avg,omitempty"`
-	Best301DartsThrown []*BestStatistic      `json:"best_301_darts_thrown,omitempty"`
-	Best501DartsThrown []*BestStatistic      `json:"best_501_darts_thrown,omitempty"`
-	Best701DartsThrown []*BestStatistic      `json:"best_701_darts_thrown,omitempty"`
+	GeneralStatistics  *TournamentGeneralStatistics `json:"general_statistics"`
+	HighestCheckout    []*BestStatistic             `json:"checkout_highest,omitempty"`
+	BestThreeDartAvg   []*BestStatisticFloat        `json:"best_three_dart_avg,omitempty"`
+	BestFirstNineAvg   []*BestStatisticFloat        `json:"best_first_nine_avg,omitempty"`
+	Best301DartsThrown []*BestStatistic             `json:"best_301_darts_thrown,omitempty"`
+	Best501DartsThrown []*BestStatistic             `json:"best_501_darts_thrown,omitempty"`
+	Best701DartsThrown []*BestStatistic             `json:"best_701_darts_thrown,omitempty"`
+}
+
+// TournamentGeneralStatistics struct for storing tournament statistics
+type TournamentGeneralStatistics struct {
+	Score60sPlus        int `json:"scores_60s_plus"`
+	Score100sPlus       int `json:"scores_100s_plus"`
+	Score140sPlus       int `json:"scores_140s_plus"`
+	Score180s           int `json:"scores_180s"`
+	ScoreFishNChips     int `json:"scores_fish_n_chips"`
+	ScoreBullseye       int `json:"scores_bullseye"`
+	ScoreDoubleBullseye int `json:"scores_double_bullseye"`
+	D1Checkouts         int `json:"checkout_d1"`
 }
 
 // TournamentOverview stuct for storing tournament overview

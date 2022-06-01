@@ -175,6 +175,35 @@ func (visit Visit) IsFishAndChips() bool {
 	return visit.isEqualTo(*fishAndChipsVisit)
 }
 
+// IsScore60Plus will check if a given visit counts as 60+
+func (visit Visit) IsScore60Plus() bool {
+	if visit.GetScore() >= 60 && visit.GetScore() < 100 {
+		return true
+	}
+	return false
+}
+
+// IsScore100Plus will check if a given visit counts as 100+
+func (visit Visit) IsScore100Plus() bool {
+	if visit.GetScore() >= 100 && visit.GetScore() < 140 {
+		return true
+	}
+	return false
+}
+
+// IsScore140Plus will check if a given visit counts as 140+
+func (visit Visit) IsScore140Plus() bool {
+	if visit.GetScore() >= 140 && visit.GetScore() < 180 {
+		return true
+	}
+	return false
+}
+
+// IsScore180 will check if a given visit count as 180
+func (visit Visit) IsScore180() bool {
+	return visit.GetScore() == 180
+}
+
 // checkIfEquivalent sees if the input visit is the same as this visit
 func (visit Visit) isEqualTo(comparingVisit Visit) bool {
 	return visit.GetScore() == comparingVisit.GetScore() && visit.makeComparingMatrix(comparingVisit).isMatrixEqual()

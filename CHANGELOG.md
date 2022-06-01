@@ -4,6 +4,9 @@
 #### Feature
 - Change venue when match warmup starts
 - New endpoint `/tournament/<id>/matches/result` returning results for all matches in tournament
+- Added more general statistics for each tournament to `/tournament/<id>/statistics`
+- Added visit statistics for 60+, 100+, 140+, and 180
+- Option to mark players as "Placeholder" to be used in tournaments before final players are known
 
 #### Changed
 - Switched from string to time for datetimes to correctly support timezones
