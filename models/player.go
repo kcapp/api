@@ -66,7 +66,7 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		OfficeID       null.Int    `json:"office_id,omitempty"`
 		IsActive       bool        `json:"is_active"`
 		IsBot          bool        `json:"is_bot"`
-		IsPlaceholder  bool        `json:"IsPlaceholder"`
+		IsPlaceholder  bool        `json:"is_placeholder"`
 		CreatedAt      time.Time   `json:"created_at"`
 		UpdatedAt      time.Time   `json:"updated_at"`
 		TournamentElo  int         `json:"tournament_elo,omitempty"`
