@@ -264,11 +264,13 @@ func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
 			m.id, m.created_at, m.updated_at, IF(TIMEDIFF(MAX(l.updated_at), NOW() - INTERVAL 15 MINUTE) > 0, 1, 0) AS 'is_started',
 			m.is_finished, m.is_abandoned, m.is_walkover, m.winner_id,
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
-			GROUP_CONCAT(pe.current_elo) AS 'elos'
+			GROUP_CONCAT(pe.current_elo) AS 'elos',
+			(MAX(p.is_placeholder) - 1) * -1 AS 'is_players_decided'
 		FROM matches m
 			JOIN player2leg p2l ON p2l.match_id = m.id
 			LEFT JOIN leg l ON l.match_id = m.id
 			LEFT JOIN player_elo pe ON pe.player_id = p2l.player_id AND p2l.leg_id = l.id
+			LEFT JOIN player p ON p.id = pe.player_id
 		WHERE m.tournament_id = ?
 		GROUP by m.id
 		ORDER BY m.is_finished, m.created_at ASC`, id)
@@ -283,7 +285,7 @@ func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
 		var players string
 		var elos string
 		err := rows.Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.IsStarted, &p.IsFinished, &p.IsAbandoned, &p.IsWalkover, &p.WinnerID,
-			&players, &elos)
+			&players, &elos, &p.IsPlayersDecided)
 		if err != nil {
 			return nil, err
 		}
