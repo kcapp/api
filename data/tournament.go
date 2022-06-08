@@ -688,7 +688,7 @@ func getTournamentGeneralStatistics(tournamentID int) (*models.TournamentGeneral
 				LEFT JOIN matches m ON m.id = l.match_id
 			WHERE m.tournament_id = ? AND l.is_finished
 		) statistics`, tournamentID, tournamentID, tournamentID, tournamentID, tournamentID).Scan(&tgs.Score60sPlus, &tgs.Score100sPlus, &tgs.Score140sPlus,
-		&tgs.Score180s, &tgs.ScoreFishNChips, &tgs.ScoreBullseye, &tgs.ScoreDoubleBullseye, &tgs.D1Checkouts)
+		&tgs.Score180s, &tgs.ScoreFishNChips, &tgs.D1Checkouts, &tgs.ScoreBullseye, &tgs.ScoreDoubleBullseye)
 	if err != nil {
 		return nil, err
 	}
