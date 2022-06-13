@@ -264,7 +264,7 @@ func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
 			m.id, m.created_at, m.updated_at, IF(TIMEDIFF(MAX(l.updated_at), NOW() - INTERVAL 15 MINUTE) > 0, 1, 0) AS 'is_started',
 			m.is_finished, m.is_abandoned, m.is_walkover, m.winner_id,
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
-			GROUP_CONCAT(pe.current_elo) AS 'elos',
+			GROUP_CONCAT(pe.current_elo ORDER BY p2l.order) AS 'elos',
 			(MAX(p.is_placeholder) - 1) * -1 AS 'is_players_decided'
 		FROM matches m
 			JOIN player2leg p2l ON p2l.match_id = m.id
