@@ -199,7 +199,7 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// Player2Leg struct used for stroring players in a leg
+// Player2Leg struct used for storing players in a leg
 type Player2Leg struct {
 	LegID           int              `json:"leg_id"`
 	PlayerID        int              `json:"player_id"`
@@ -215,8 +215,31 @@ type Player2Leg struct {
 	Modifiers       *PlayerModifiers `json:"modifiers,omitempty"`
 	Player          *Player          `json:"player,omitempty"`
 	BotConfig       *BotConfig       `json:"bot_config,omitempty"`
-	Hits            map[int]*Hits    `json:"hits"`
+	Hits            HitsMap          `json:"hits"`
 	DartsThrown     int              `json:"darts_thrown,omitempty"`
+	IsStopper       null.Bool        `json:"is_stopper,omitempty"`
+	IsScorer        null.Bool        `json:"is_scorer,omitempty"`
+}
+
+type HitsMap map[int]*Hits
+
+// Contains will check if the map contains all the given values
+func (m HitsMap) Contains(values ...int) bool {
+	for _, v := range values {
+		if _, ok := m[v]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// Add will add the given dart to the HitsMap, inserting it if needed or incrementing the existing value
+func (m HitsMap) Add(d *Dart) {
+	if _, ok := m[d.ValueRaw()]; !ok {
+		m[d.ValueRaw()] = new(Hits)
+	}
+	hits := m[d.ValueRaw()]
+	hits.Add(d)
 }
 
 // BotConfig struct used for storing bot configuration
@@ -277,4 +300,54 @@ func (player *Player2Leg) IsOut(matchType int, visit Visit) bool {
 	}
 	// For all other types players are never out
 	return false
+}
+
+// SetStopper will mark the player as a stopper in SCAM match type
+func (p *Player2Leg) SetStopper() {
+	p.IsStopper = null.BoolFrom(true)
+	p.IsScorer = null.BoolFrom(false)
+}
+
+// SetScorer will mark the player as a scorer in SCAM match type
+func (p *Player2Leg) SetScorer() {
+	p.IsStopper = null.BoolFrom(false)
+	p.IsScorer = null.BoolFrom(true)
+
+}
+
+// DecorateVisitsScam will add information about stopper/scorer to each visit
+func DecorateVisitsScam(players map[int]*Player2Leg, visits []*Visit) {
+	stopperOrder := 1
+	for _, player := range players {
+		if player.Order == stopperOrder {
+			player.SetStopper()
+		} else {
+			player.SetScorer()
+		}
+		player.Hits = make(HitsMap)
+	}
+
+	hits := make(HitsMap)
+	for _, visit := range visits {
+		player := players[visit.PlayerID]
+		if player.IsStopper.Bool {
+			hits.Add(visit.FirstDart)
+			hits.Add(visit.SecondDart)
+			hits.Add(visit.ThirdDart)
+			player.Hits = hits
+
+			visit.IsStopper = null.BoolFrom(true)
+			if hits.Contains(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
+				stopperOrder++
+				for _, player := range players {
+					if player.Order == stopperOrder {
+						player.SetStopper()
+					} else {
+						player.SetScorer()
+					}
+				}
+				hits = make(HitsMap)
+			}
+		}
+	}
 }

@@ -48,6 +48,8 @@ const (
 	JDCPRACTICE = 14
 	// KNOCKOUT constant representing type 15
 	KNOCKOUT = 15
+	// SCAM constant representing type 16
+	SCAM = 16
 )
 
 // TargetsBermudaTriangle contains the target for each round of Bermuda Triangle
