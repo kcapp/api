@@ -955,10 +955,22 @@ func GetLeg(id int) (*models.Leg, error) {
 				visit.DartsThrown = player.DartsThrown
 			} else if matchType == models.SCAM {
 				if visit.IsStopper.Bool {
-					scores[visit.PlayerID].CurrentScore = 0
-				} else {
-					scores[visit.PlayerID].CurrentScore += score
+					score = 0
+
+					first := scores[visit.PlayerID].Hits.GetHits(visit.FirstDart.ValueRaw(), models.SINGLE) - 1
+					if first == 0 {
+						score += 1
+					}
+					second := scores[visit.PlayerID].Hits.GetHits(visit.SecondDart.ValueRaw(), models.SINGLE) - 1
+					if second == 0 {
+						score += 1
+					}
+					third := scores[visit.PlayerID].Hits.GetHits(visit.ThirdDart.ValueRaw(), models.SINGLE) - 1
+					if third == 0 {
+						score += 1
+					}
 				}
+				scores[visit.PlayerID].CurrentScore += score
 			} else {
 				scores[visit.PlayerID].CurrentScore -= score
 			}

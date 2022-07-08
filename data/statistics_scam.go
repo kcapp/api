@@ -1,14 +1,14 @@
 package data
 
 import (
+	"database/sql"
 	"log"
 
 	"github.com/kcapp/api/models"
 )
 
-// GetScameStatistics will return statistics for all players active during the given period
-/*
-func GetScameStatistics(from string, to string) ([]*models.StatisticsScam, error) {
+// GetScamStatistics will return statistics for all players active during the given period
+func GetScamStatistics(from string, to string) ([]*models.StatisticsScam, error) {
 	rows, err := models.DB.Query(`
 			SELECT
 				p.id,
@@ -17,12 +17,13 @@ func GetScameStatistics(from string, to string) ([]*models.StatisticsScam, error
 				COUNT(DISTINCT l.id) AS 'legs_played',
 				COUNT(DISTINCT l2.id) AS 'legs_won',
 				m.office_id AS 'office_id',
-				SUM(s.darts_thrown) as 'darts_thrown',
+				SUM(s.darts_thrown_stopper) as 'darts_thrown_stopper',
+				SUM(s.darts_thrown_scorer) as 'darts_thrown_scorer',
+				SUM(s.score) / SUM(s.darts_thrown_scorer) as 'ppd',
+				SUM(s.score) / SUM(s.darts_thrown_scorer) * 3 as 'three_dart_avg',
 				CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
-				SUM(s.mpr) / COUNT(DISTINCT l.id) as 'mpr',
-				SUM(s.shanghai_count) as 'shanghai_count',
-				SUM(s.doubles_hitrate) / COUNT(l.id) as 'doubles_hitrate'
-			FROM statistics_jdc_practice s
+				(20 * COUNT(DISTINCT l.id)) / SUM(darts_thrown_stopper) * 3 as 'mpr'
+			FROM statistics_scam s
 				JOIN player p ON p.id = s.player_id
 				JOIN leg l ON l.id = s.leg_id
 				JOIN matches m ON m.id = l.match_id
@@ -30,7 +31,7 @@ func GetScameStatistics(from string, to string) ([]*models.StatisticsScam, error
 				LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 			WHERE m.updated_at >= ? AND m.updated_at < ?
 				AND l.is_finished = 1 AND m.is_abandoned = 0
-				AND m.match_type_id = 14
+				AND m.match_type_id = 16
 			GROUP BY p.id, m.office_id
 			ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
 	if err != nil {
@@ -41,8 +42,8 @@ func GetScameStatistics(from string, to string) ([]*models.StatisticsScam, error
 	stats := make([]*models.StatisticsScam, 0)
 	for rows.Next() {
 		s := new(models.StatisticsScam)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID, &s.DartsThrown,
-			&s.Score, &s.MPR, &s.ShanghaiCount, &s.DoublesHitrate)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID, &s.DartsThrownStopper, &s.DartsThrownScorer,
+			&s.PPD, &s.ThreeDartAvg, &s.Score, &s.MPR)
 		if err != nil {
 			return nil, err
 		}
@@ -57,12 +58,13 @@ func GetScamStatisticsForLeg(id int) ([]*models.StatisticsScam, error) {
 			SELECT
 				l.id,
 				p.id,
-				s.darts_thrown,
+				s.darts_thrown_scorer,
+				s.darts_thrown_stopper,
 				s.score,
 				s.mpr,
-				s.shanghai_count,
-				s.doubles_hitrate
-			FROM statistics_jdc_practice s
+				s.ppd,
+				s.ppd / 3 as 'three_dart_avg'
+			FROM statistics_scam s
 				JOIN player p ON p.id = s.player_id
 				JOIN leg l ON l.id = s.leg_id
 				JOIN player2leg p2l on l.id = p2l.leg_id AND p.id = p2l.player_id
@@ -75,7 +77,7 @@ func GetScamStatisticsForLeg(id int) ([]*models.StatisticsScam, error) {
 	stats := make([]*models.StatisticsScam, 0)
 	for rows.Next() {
 		s := new(models.StatisticsScam)
-		err := rows.Scan(&s.LegID, &s.PlayerID, &s.DartsThrown, &s.Score, &s.MPR, &s.ShanghaiCount, &s.DoublesHitrate)
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.DartsThrownScorer, &s.DartsThrownStopper, &s.Score, &s.MPR, &s.PPD, &s.ThreeDartAvg)
 		if err != nil {
 			return nil, err
 		}
@@ -89,12 +91,13 @@ func GetScamStatisticsForMatch(id int) ([]*models.StatisticsScam, error) {
 	rows, err := models.DB.Query(`
 			SELECT
 				p.id,
-				SUM(s.darts_thrown) as 'darts_thrown',
+				SUM(s.darts_thrown_scorer) as 'darts_thrown_scorer',
+				SUM(s.darts_thrown_stopper) as 'darts_thrown_stopper',
 				CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
-				SUM(s.mpr) / COUNT(DISTINCT l.id) as 'mpr',
-				SUM(s.shanghai_count) as 'shanghai_count',
-				SUM(s.doubles_hitrate) / COUNT(l.id) as 'doubles_hitrate'
-			FROM statistics_jdc_practice s
+				SUM(s.score) / SUM(s.darts_thrown_scorer) as 'ppd',
+				SUM(s.score) / SUM(s.darts_thrown_scorer) * 3 as 'three_dart_avg',
+				(20 * COUNT(DISTINCT l.id)) / SUM(darts_thrown_stopper) * 3 as 'mpr'
+			FROM statistics_scam s
 				JOIN player p ON p.id = s.player_id
 				JOIN leg l ON l.id = s.leg_id
 				JOIN matches m ON m.id = l.match_id
@@ -110,7 +113,7 @@ func GetScamStatisticsForMatch(id int) ([]*models.StatisticsScam, error) {
 	stats := make([]*models.StatisticsScam, 0)
 	for rows.Next() {
 		s := new(models.StatisticsScam)
-		err := rows.Scan(&s.PlayerID, &s.DartsThrown, &s.Score, &s.MPR, &s.ShanghaiCount, &s.DoublesHitrate)
+		err := rows.Scan(&s.PlayerID, &s.DartsThrownScorer, &s.DartsThrownStopper, &s.Score, &s.PPD, &s.ThreeDartAvg, &s.MPR)
 		if err != nil {
 			return nil, err
 		}
@@ -129,12 +132,13 @@ func GetScamStatisticsForPlayer(id int) (*models.StatisticsScam, error) {
 				COUNT(DISTINCT m2.id) AS 'matches_won',
 				COUNT(DISTINCT l.id) AS 'legs_played',
 				COUNT(DISTINCT l2.id) AS 'legs_won',
-				SUM(s.darts_thrown) as 'darts_thrown',
+				SUM(s.darts_thrown_scorer) as 'darts_thrown_scorer',
+				SUM(s.darts_thrown_stopper) as 'darts_thrown_stopper',
 				CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
-				SUM(s.mpr) / COUNT(DISTINCT l.id) as 'mpr',
-				SUM(s.shanghai_count) as 'shanghai_count',
-				SUM(s.doubles_hitrate) / COUNT(l.id) as 'doubles_hitrate'
-			FROM statistics_jdc_practice s
+				SUM(darts_thrown_stopper) / 20 * COUNT(DISTINCT l.id) * 3 as 'mpr',
+				SUM(s.score) / SUM(s.darts_thrown_scorer) as 'ppd',
+				SUM(s.score) / SUM(s.darts_thrown_scorer) / 3 as 'three_dart_avg'
+			FROM statistics_scam s
 				JOIN player p ON p.id = s.player_id
 				JOIN leg l ON l.id = s.leg_id
 				JOIN matches m ON m.id = l.match_id
@@ -142,9 +146,9 @@ func GetScamStatisticsForPlayer(id int) (*models.StatisticsScam, error) {
 				LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 			WHERE s.player_id = ?
 				AND l.is_finished = 1 AND m.is_abandoned = 0
-				AND m.match_type_id = 14
-			GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrown,
-		&s.Score, &s.MPR, &s.ShanghaiCount, &s.DoublesHitrate)
+				AND m.match_type_id = 16
+			GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrownScorer, &s.DartsThrownStopper,
+		&s.Score, &s.MPR, &s.PPD, &s.ThreeDartAvg)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return new(models.StatisticsScam), nil
@@ -156,7 +160,7 @@ func GetScamStatisticsForPlayer(id int) (*models.StatisticsScam, error) {
 
 // GetScamHistoryForPlayer will return history of Scam statistics for the given player
 func GetScamHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.JDCPRACTICE, false)
+	legs, err := GetLegsOfType(models.SCAM, false)
 	if err != nil {
 		return nil, err
 	}
@@ -169,18 +173,19 @@ func GetScamHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 			SELECT
 				l.id,
 				p.id,
-				s.darts_thrown,
+				s.darts_thrown_scorer,
+				s.darts_thrown_stopper,
 				s.score,
 				s.mpr,
-				s.shanghai_count,
-				s.doubles_hitrate
-			FROM statistics_jdc_practice s
+				s.ppd,
+				s.ppd / 3 as 'three_dart_avg'
+			FROM statistics_scam s
 				LEFT JOIN player p ON p.id = s.player_id
 				LEFT JOIN leg l ON l.id = s.leg_id
 				LEFT JOIN matches m ON m.id = l.match_id
 			WHERE s.player_id = ?
 				AND l.is_finished = 1 AND m.is_abandoned = 0
-				AND m.match_type_id = 14
+				AND m.match_type_id = 16
 			ORDER BY l.id DESC
 			LIMIT ?`, id, limit)
 	if err != nil {
@@ -191,7 +196,7 @@ func GetScamHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 	legs = make([]*models.Leg, 0)
 	for rows.Next() {
 		s := new(models.StatisticsScam)
-		err := rows.Scan(&s.LegID, &s.PlayerID, &s.DartsThrown, &s.Score, &s.MPR, &s.ShanghaiCount, &s.DoublesHitrate)
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.DartsThrownScorer, &s.DartsThrownStopper, &s.Score, &s.MPR, &s.PPD, &s.ThreeDartAvg)
 		if err != nil {
 			return nil, err
 		}
@@ -200,7 +205,7 @@ func GetScamHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 		legs = append(legs, leg)
 	}
 	return legs, nil
-}*/
+}
 
 // CalculateScamStatistics will generate Scam statistics for the given leg
 func CalculateScamStatistics(legID int) (map[int]*models.StatisticsScam, error) {
@@ -255,7 +260,7 @@ func CalculateScamStatistics(legID int) (map[int]*models.StatisticsScam, error) 
 	for _, stats := range statisticsMap {
 		stats.PPD = float32(stats.Score) / float32(stats.DartsThrownScorer)
 		stats.ThreeDartAvg = stats.PPD * 3
-		stats.MPR = stats.MPR / float32((stats.DartsThrownStopper / 3))
+		stats.MPR = 20 / float32(stats.DartsThrownStopper) * 3
 	}
 	return statisticsMap, nil
 }

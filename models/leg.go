@@ -233,6 +233,23 @@ func (m HitsMap) Contains(values ...int) bool {
 	return true
 }
 
+// Contains will check if the map contains all the given values
+func (m HitsMap) GetHits(value int, modifier int) int {
+	hits := 0
+	if val, ok := m[value]; ok {
+		if modifier == SINGLE {
+			hits = val.Singles
+		} else if modifier == DOUBLE {
+			hits = val.Doubles
+		} else if modifier == TRIPLE {
+			hits = val.Triples
+		} else {
+			hits = val.Total
+		}
+	}
+	return hits
+}
+
 // Add will add the given dart to the HitsMap, inserting it if needed or incrementing the existing value
 func (m HitsMap) Add(d *Dart) {
 	if _, ok := m[d.ValueRaw()]; !ok {

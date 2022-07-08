@@ -312,6 +312,16 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(stats)
 		return
 
+	case models.SCAM:
+		stats, err := data.GetScamStatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get Scam Statistics for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
 	default:
 		log.Println("Unknown match type parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -486,6 +496,16 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 		legs, err := data.GetKnockoutHistoryForPlayer(id, limit)
 		if err != nil {
 			log.Println("Unable to get Knockout history for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	case models.SCAM:
+		legs, err := data.GetScamHistoryForPlayer(id, limit)
+		if err != nil {
+			log.Println("Unable to get Scam history for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
