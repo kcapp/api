@@ -564,13 +564,13 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 					hits = make(models.HitsMap)
 				}
 			} else if player.IsScorer.Bool {
-				if !hits.Contains(visit.FirstDart.ValueRaw()) {
+				if hits.GetHits(visit.FirstDart.ValueRaw(), models.SINGLE) < 1 {
 					player.CurrentScore += visit.FirstDart.GetScore()
 				}
-				if !hits.Contains(visit.SecondDart.ValueRaw()) {
+				if hits.GetHits(visit.SecondDart.ValueRaw(), models.SINGLE) < 1 {
 					player.CurrentScore += visit.SecondDart.GetScore()
 				}
-				if !hits.Contains(visit.ThirdDart.ValueRaw()) {
+				if hits.GetHits(visit.ThirdDart.ValueRaw(), models.SINGLE) < 1 {
 					player.CurrentScore += visit.ThirdDart.GetScore()
 				}
 			}

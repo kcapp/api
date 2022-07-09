@@ -542,6 +542,67 @@ func (visit *Visit) CalculateJDCPracticeScore(round int) int {
 	return score
 }
 
+// CalculateScamScore will calculate score for the given visit
+func (visit *Visit) CalculateScamScore(scores map[int]*Player2Leg) int {
+	score := 0
+
+	var stopper *Player2Leg
+	for _, player := range scores {
+		if player.IsStopper.Bool {
+			stopper = player
+		}
+	}
+	if stopper.Hits.GetHits(visit.FirstDart.ValueRaw(), SINGLE) < 1 {
+		score += visit.FirstDart.GetScore()
+	}
+	if stopper.Hits.GetHits(visit.SecondDart.ValueRaw(), SINGLE) < 1 {
+		score += visit.SecondDart.GetScore()
+	}
+	if stopper.Hits.GetHits(visit.ThirdDart.ValueRaw(), SINGLE) < 1 {
+		score += visit.ThirdDart.GetScore()
+	}
+	return score
+}
+
+// CalculateScamMarks will calculate marks hit for the given visit
+func (visit *Visit) CalculateScamMarks(scores map[int]*Player2Leg) int {
+	marks := 0
+
+	first := visit.FirstDart.ValueRaw()
+	second := visit.SecondDart.ValueRaw()
+	third := visit.ThirdDart.ValueRaw()
+
+	countFirst := 1
+	countSecond := 1
+	countThird := 1
+	if first == second && visit.FirstDart.IsSingle() && visit.SecondDart.IsSingle() {
+		countFirst++
+		countSecond++
+	}
+	if first == third && visit.FirstDart.IsSingle() && visit.ThirdDart.IsSingle() {
+		countFirst++
+		countThird++
+	}
+	if second == third && visit.SecondDart.IsSingle() && visit.ThirdDart.IsSingle() {
+		countSecond++
+		countThird++
+	}
+
+	hitsFirst := scores[visit.PlayerID].Hits.GetHits(first, SINGLE) - countFirst
+	if hitsFirst == 0 && visit.FirstDart.IsSingle() && !visit.FirstDart.IsMiss() {
+		marks += 1
+	}
+	hitsSecond := scores[visit.PlayerID].Hits.GetHits(second, SINGLE) - countSecond
+	if hitsSecond == 0 && visit.SecondDart.IsSingle() && !visit.SecondDart.IsMiss() && visit.FirstDart.ValueRaw() != visit.SecondDart.ValueRaw() {
+		marks += 1
+	}
+	hitsThird := scores[visit.PlayerID].Hits.GetHits(third, SINGLE) - countThird
+	if hitsThird == 0 && visit.ThirdDart.IsSingle() && !visit.ThirdDart.IsMiss() && visit.FirstDart.ValueRaw() != visit.ThirdDart.ValueRaw() && visit.SecondDart.ValueRaw() != visit.ThirdDart.ValueRaw() {
+		marks += 1
+	}
+	return marks
+}
+
 // IsShanghai will check if the given visit is a "Shanghai". A Shanghai visit is one where a single, double and triple multipler is hit with each dart
 func (visit *Visit) IsShanghai() bool {
 	first := visit.FirstDart
