@@ -525,6 +525,56 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			}
 			scores[prev.PlayerID].CurrentScore = 0
 		}
+	} else if matchType == models.SCAM {
+		stopperOrder := 1
+		for _, player := range scores {
+			if player.Order == stopperOrder {
+				player.SetStopper()
+			} else {
+				player.SetScorer()
+			}
+			player.CurrentScore = 0
+			player.Hits = make(models.HitsMap)
+		}
+
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+
+		hits := make(models.HitsMap)
+		for _, visit := range visits {
+			player := scores[visit.PlayerID]
+			if player.IsStopper.Bool {
+				hits.Add(visit.FirstDart)
+				hits.Add(visit.SecondDart)
+				hits.Add(visit.ThirdDart)
+				player.Hits = hits
+
+				visit.IsStopper = null.BoolFrom(true)
+				if hits.Contains(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
+					stopperOrder++
+					for _, player := range scores {
+						if player.Order == stopperOrder {
+							player.SetStopper()
+						} else {
+							player.SetScorer()
+						}
+					}
+					hits = make(models.HitsMap)
+				}
+			} else if player.IsScorer.Bool {
+				if !hits.Contains(visit.FirstDart.ValueRaw()) {
+					player.CurrentScore += visit.FirstDart.GetScore()
+				}
+				if !hits.Contains(visit.SecondDart.ValueRaw()) {
+					player.CurrentScore += visit.SecondDart.GetScore()
+				}
+				if !hits.Contains(visit.ThirdDart.ValueRaw()) {
+					player.CurrentScore += visit.ThirdDart.GetScore()
+				}
+			}
+		}
 	}
 	return scores, nil
 }

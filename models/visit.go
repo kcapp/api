@@ -25,6 +25,8 @@ type Visit struct {
 	Score       int         `json:"score"`
 	Marks       int         `json:"marks"`
 	Scores      map[int]int `json:"scores"`
+	// Used for SCAM match type
+	IsStopper null.Bool `json:"is_stopper,omitempty"`
 }
 
 type comparingMatrix [][]bool
