@@ -137,7 +137,7 @@ func GetScamStatisticsForPlayer(id int) (*models.StatisticsScam, error) {
 				CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 				SUM(darts_thrown_stopper) / 20 * COUNT(DISTINCT l.id) * 3 as 'mpr',
 				SUM(s.score) / SUM(s.darts_thrown_scorer) as 'ppd',
-				SUM(s.score) / SUM(s.darts_thrown_scorer) / 3 as 'three_dart_avg'
+				SUM(s.score) / SUM(s.darts_thrown_scorer) * 3 as 'three_dart_avg'
 			FROM statistics_scam s
 				JOIN player p ON p.id = s.player_id
 				JOIN leg l ON l.id = s.leg_id
@@ -178,7 +178,7 @@ func GetScamHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 				s.score,
 				s.mpr,
 				s.ppd,
-				s.ppd / 3 as 'three_dart_avg'
+				s.ppd * 3 as 'three_dart_avg'
 			FROM statistics_scam s
 				LEFT JOIN player p ON p.id = s.player_id
 				LEFT JOIN leg l ON l.id = s.leg_id
@@ -221,8 +221,6 @@ func CalculateScamStatistics(legID int) (map[int]*models.StatisticsScam, error) 
 
 	statisticsMap := make(map[int]*models.StatisticsScam)
 	for _, player := range players {
-		player.Hits = make(models.HitsMap) // Reset HitsMap to accurately calculate MPR
-
 		stats := new(models.StatisticsScam)
 		stats.PlayerID = player.PlayerID
 		stats.Score = player.CurrentScore
@@ -231,27 +229,10 @@ func CalculateScamStatistics(legID int) (map[int]*models.StatisticsScam, error) 
 	models.DecorateVisitsScam(players, leg.Visits)
 
 	for _, visit := range leg.Visits {
-		player := players[visit.PlayerID]
 		stats := statisticsMap[visit.PlayerID]
 
 		if visit.IsStopper.Bool {
 			stats.DartsThrownStopper += visit.GetDartsThrown()
-
-			hits := player.Hits
-			if hits.Contains(visit.FirstDart.ValueRaw()) {
-				stats.MPR += 1
-			}
-			hits.Add(visit.FirstDart)
-
-			if hits.Contains(visit.SecondDart.ValueRaw()) {
-				stats.MPR += 1
-			}
-			hits.Add(visit.SecondDart)
-
-			if hits.Contains(visit.ThirdDart.ValueRaw()) {
-				stats.MPR += 1
-			}
-			hits.Add(visit.ThirdDart)
 		} else {
 			stats.DartsThrownScorer += 3
 		}

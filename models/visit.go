@@ -568,38 +568,22 @@ func (visit *Visit) CalculateScamScore(scores map[int]*Player2Leg) int {
 func (visit *Visit) CalculateScamMarks(scores map[int]*Player2Leg) int {
 	marks := 0
 
-	first := visit.FirstDart.ValueRaw()
-	second := visit.SecondDart.ValueRaw()
-	third := visit.ThirdDart.ValueRaw()
+	hits := scores[visit.PlayerID].Hits
+	if hits.GetHits(visit.FirstDart.ValueRaw(), SINGLE) < 1 && visit.FirstDart.IsSingle() && !visit.FirstDart.IsMiss() {
+		marks++
+	}
+	hits.Add(visit.FirstDart)
 
-	countFirst := 1
-	countSecond := 1
-	countThird := 1
-	if first == second && visit.FirstDart.IsSingle() && visit.SecondDart.IsSingle() {
-		countFirst++
-		countSecond++
+	if hits.GetHits(visit.SecondDart.ValueRaw(), SINGLE) < 1 && visit.SecondDart.IsSingle() && !visit.SecondDart.IsMiss() {
+		marks++
 	}
-	if first == third && visit.FirstDart.IsSingle() && visit.ThirdDart.IsSingle() {
-		countFirst++
-		countThird++
-	}
-	if second == third && visit.SecondDart.IsSingle() && visit.ThirdDart.IsSingle() {
-		countSecond++
-		countThird++
-	}
+	hits.Add(visit.SecondDart)
 
-	hitsFirst := scores[visit.PlayerID].Hits.GetHits(first, SINGLE) - countFirst
-	if hitsFirst == 0 && visit.FirstDart.IsSingle() && !visit.FirstDart.IsMiss() {
-		marks += 1
+	if hits.GetHits(visit.ThirdDart.ValueRaw(), SINGLE) < 1 && visit.ThirdDart.IsSingle() && !visit.ThirdDart.IsMiss() {
+		marks++
 	}
-	hitsSecond := scores[visit.PlayerID].Hits.GetHits(second, SINGLE) - countSecond
-	if hitsSecond == 0 && visit.SecondDart.IsSingle() && !visit.SecondDart.IsMiss() && visit.FirstDart.ValueRaw() != visit.SecondDart.ValueRaw() {
-		marks += 1
-	}
-	hitsThird := scores[visit.PlayerID].Hits.GetHits(third, SINGLE) - countThird
-	if hitsThird == 0 && visit.ThirdDart.IsSingle() && !visit.ThirdDart.IsMiss() && visit.FirstDart.ValueRaw() != visit.ThirdDart.ValueRaw() && visit.SecondDart.ValueRaw() != visit.ThirdDart.ValueRaw() {
-		marks += 1
-	}
+	hits.Add(visit.ThirdDart)
+
 	return marks
 }
 

@@ -838,7 +838,7 @@ func GetLeg(id int) (*models.Leg, error) {
 	scores := make(map[int]*models.Player2Leg)
 	for i := 0; i < len(leg.Players); i++ {
 		p2l := new(models.Player2Leg)
-		p2l.Hits = make(map[int]*models.Hits)
+		p2l.Hits = make(models.HitsMap)
 		if matchType == models.DARTSATX || matchType == models.AROUNDTHECLOCK || matchType == models.AROUNDTHEWORLD || matchType == models.SHANGHAI ||
 			matchType == models.TICTACTOE || matchType == models.BERMUDATRIANGLE || matchType == models.GOTCHA || matchType == models.JDCPRACTICE ||
 			matchType == models.SHOOTOUT || matchType == models.SCAM {
@@ -865,8 +865,15 @@ func GetLeg(id int) (*models.Leg, error) {
 		copy(specialNums, leg.Parameters.Numbers)
 	}
 
+	playerOrder := 1
 	if matchType == models.SCAM {
-		models.DecorateVisitsScam(scores, visits)
+		for _, player := range scores {
+			if player.Order == playerOrder {
+				player.SetStopper()
+			} else {
+				player.SetScorer()
+			}
+		}
 	}
 
 	dartsThrown := 0
@@ -954,9 +961,21 @@ func GetLeg(id int) (*models.Leg, error) {
 				player.DartsThrown += 3
 				visit.DartsThrown = player.DartsThrown
 			} else if matchType == models.SCAM {
-				if visit.IsStopper.Bool {
+				player := scores[visit.PlayerID]
+				if player.IsStopper.Bool {
 					score = 0
 					visit.Marks = visit.CalculateScamMarks(scores)
+					visit.IsStopper = null.BoolFrom(true)
+					if player.Hits.Contains(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
+						playerOrder++
+						for _, player := range scores {
+							if player.Order == playerOrder {
+								player.SetStopper()
+							} else {
+								player.SetScorer()
+							}
+						}
+					}
 				} else {
 					score = visit.CalculateScamScore(scores)
 					scores[visit.PlayerID].CurrentScore += score
