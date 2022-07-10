@@ -432,10 +432,12 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 func GetNextTournamentMatch(matchID int) (*models.Match, error) {
 	var nextMatchID null.Int
 	err := models.DB.QueryRow(`
-		SELECT match_id FROM match_metadata mm
-            JOIN matches m ON mm.match_id = m.id
-		WHERE (order_of_play = (SELECT order_of_play FROM match_metadata mm WHERE match_id = ?) + 1)
-            AND m.tournament_id = (SELECT tournament_id FROM matches where id = ?)`, matchID, matchID).Scan(&nextMatchID)
+		SELECT m.id FROM matches m
+			LEFT JOIN match_metadata mm ON mm.match_id = m.id
+		WHERE m.tournament_id = (SELECT tournament_id FROM matches WHERE id = ?)
+			AND ((order_of_play = (SELECT order_of_play FROM match_metadata mm WHERE match_id = ?) + 1)
+				OR created_at > (SELECT created_at FROM matches WHERE id = ?))
+		ORDER BY mm.order_of_play, m.created_at LIMIT 1`, matchID, matchID, matchID).Scan(&nextMatchID)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -605,7 +607,7 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 		if best.BestThreeDartAvg == nil {
 			best.BestThreeDartAvg = new(models.BestStatisticFloat)
 		}
-		if stat.ThreeDartAvg > best.BestThreeDartAvg.Value {
+		if stat.ThreeDartAvg >= best.BestThreeDartAvg.Value {
 			best.BestThreeDartAvg.Value = stat.ThreeDartAvg
 			best.BestThreeDartAvg.LegID = stat.LegID
 			best.BestThreeDartAvg.PlayerID = stat.PlayerID
@@ -613,7 +615,7 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 		if best.BestFirstNineAvg == nil {
 			best.BestFirstNineAvg = new(models.BestStatisticFloat)
 		}
-		if stat.FirstNineThreeDartAvg > best.BestFirstNineAvg.Value {
+		if stat.FirstNineThreeDartAvg >= best.BestFirstNineAvg.Value {
 			best.BestFirstNineAvg.Value = stat.FirstNineThreeDartAvg
 			best.BestFirstNineAvg.LegID = stat.LegID
 			best.BestFirstNineAvg.PlayerID = stat.PlayerID
