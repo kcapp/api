@@ -19,4 +19,5 @@ type StatisticsShootout struct {
 	Score140sPlus int             `json:"scores_140s_plus"`
 	Score180s     int             `json:"scores_180s"`
 	Hits          map[int64]*Hits `json:"hits,omitempty"`
+	HighestScore  int             `json:"highest_score"`
 }

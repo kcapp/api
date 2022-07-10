@@ -134,7 +134,8 @@ func GetJDCPracticeStatisticsForPlayer(id int) (*models.StatisticsJDCPractice, e
 				CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 				SUM(s.mpr) / COUNT(DISTINCT l.id) as 'mpr',
 				SUM(s.shanghai_count) as 'shanghai_count',
-				SUM(s.doubles_hitrate) / COUNT(l.id) as 'doubles_hitrate'
+				SUM(s.doubles_hitrate) / COUNT(l.id) as 'doubles_hitrate',
+				MAX(s.score) as 'highest_score'
 			FROM statistics_jdc_practice s
 				JOIN player p ON p.id = s.player_id
 				JOIN leg l ON l.id = s.leg_id
@@ -145,7 +146,7 @@ func GetJDCPracticeStatisticsForPlayer(id int) (*models.StatisticsJDCPractice, e
 				AND l.is_finished = 1 AND m.is_abandoned = 0
 				AND m.match_type_id = 14
 			GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrown,
-		&s.Score, &s.MPR, &s.ShanghaiCount, &s.DoublesHitrate)
+		&s.Score, &s.MPR, &s.ShanghaiCount, &s.DoublesHitrate, &s.HighestScore)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return new(models.StatisticsJDCPractice), nil
