@@ -224,9 +224,25 @@ type Player2Leg struct {
 type HitsMap map[int]*Hits
 
 // Contains will check if the map contains all the given values
-func (m HitsMap) Contains(values ...int) bool {
+func (m HitsMap) Contains(modifier int, values ...int) bool {
 	for _, v := range values {
-		if _, ok := m[v]; !ok {
+		if hits, ok := m[v]; ok {
+			count := 0
+			if modifier == SINGLE {
+				count += hits.Singles
+			} else if modifier == DOUBLE {
+				count += hits.Doubles
+			} else if modifier == TRIPLE {
+				count += hits.Triples
+			} else {
+				count += hits.Total
+			}
+			if count < 1 {
+				// No hits on the given modifier
+				return false
+			}
+		} else {
+			// No hits on the number at all
 			return false
 		}
 	}
@@ -354,7 +370,7 @@ func DecorateVisitsScam(players map[int]*Player2Leg, visits []*Visit) {
 			player.Hits = hits
 
 			visit.IsStopper = null.BoolFrom(true)
-			if hits.Contains(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
+			if hits.Contains(SINGLE, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
 				stopperOrder++
 				for _, player := range players {
 					if player.Order == stopperOrder {

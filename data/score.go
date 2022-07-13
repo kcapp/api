@@ -174,7 +174,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 			hits.Add(visit.SecondDart)
 			hits.Add(visit.ThirdDart)
 
-			if hits.Contains(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
+			if hits.Contains(models.SINGLE, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
 				// Invalidate the last darts incase we "checked out" with only 1 or two darts
 				if visit.ThirdDart.ValueRaw() == 0 {
 					visit.ThirdDart.Value = null.IntFromPtr(nil)
@@ -187,7 +187,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 			allStopped := true
 			for _, player := range players {
 				// Check if all players have closed all numbers
-				if !player.Hits.Contains(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
+				if !player.Hits.Contains(models.SINGLE, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
 					allStopped = false
 					break
 				}

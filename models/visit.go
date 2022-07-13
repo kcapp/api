@@ -552,13 +552,13 @@ func (visit *Visit) CalculateScamScore(scores map[int]*Player2Leg) int {
 			stopper = player
 		}
 	}
-	if stopper.Hits.GetHits(visit.FirstDart.ValueRaw(), SINGLE) < 1 {
+	if stopper.Hits.GetHits(visit.FirstDart.ValueRaw(), SINGLE) < 1 && !visit.FirstDart.IsBull() {
 		score += visit.FirstDart.GetScore()
 	}
-	if stopper.Hits.GetHits(visit.SecondDart.ValueRaw(), SINGLE) < 1 {
+	if stopper.Hits.GetHits(visit.SecondDart.ValueRaw(), SINGLE) < 1 && !visit.SecondDart.IsBull() {
 		score += visit.SecondDart.GetScore()
 	}
-	if stopper.Hits.GetHits(visit.ThirdDart.ValueRaw(), SINGLE) < 1 {
+	if stopper.Hits.GetHits(visit.ThirdDart.ValueRaw(), SINGLE) < 1 && !visit.ThirdDart.IsBull() {
 		score += visit.ThirdDart.GetScore()
 	}
 	return score

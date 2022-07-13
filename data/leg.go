@@ -966,7 +966,7 @@ func GetLeg(id int) (*models.Leg, error) {
 					score = 0
 					visit.Marks = visit.CalculateScamMarks(scores)
 					visit.IsStopper = null.BoolFrom(true)
-					if player.Hits.Contains(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
+					if player.Hits.Contains(models.SINGLE, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
 						playerOrder++
 						for _, player := range scores {
 							if player.Order == playerOrder {

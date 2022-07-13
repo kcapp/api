@@ -552,7 +552,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 				player.Hits = hits
 
 				visit.IsStopper = null.BoolFrom(true)
-				if hits.Contains(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
+				if hits.Contains(models.SINGLE, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
 					stopperOrder++
 					for _, player := range scores {
 						if player.Order == stopperOrder {
