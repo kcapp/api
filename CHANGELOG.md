@@ -7,6 +7,7 @@
 - Added more general statistics for each tournament to `/tournament/<id>/statistics`
 - Added visit statistics for 60+, 100+, 140+, and 180
 - Option to mark players as "Placeholder" to be used in tournaments before final players are known
+* Probabilities and Odds for Draw of matches based on Binomial Regression
 - New `Scam` match type
 
 #### Changed

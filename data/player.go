@@ -1211,3 +1211,13 @@ func GetPlayerWinProbability(player1Elo int, player2Elo int) float64 {
 	// Pr(A) = 1 / (10^(-ELODIFF/400) + 1)
 	return 1 / (math.Pow(10, float64(-(player1Elo-player2Elo))/400) + 1)
 }
+
+func GetPlayerDrawProbability(player1Elo int, player2Elo int) float64 {
+	// Quants Magic using Binomial Regression and Elos from 800 matches
+	// Caveat: Model won´t be accurate for extreme cases (Elo Diff >500)
+	// Formula:
+	//   pDraw = 1 / (1 + exp(-(-1.479018 - 0.000001434670 * abs(eloDiff)^2)))
+	eloDiff := math.Abs(float64(player1Elo - player2Elo))
+	pDraw := 1 / (1 + math.Exp(-(-1.479018 - float64(0.000001434670)*eloDiff*eloDiff)))
+	return pDraw
+}

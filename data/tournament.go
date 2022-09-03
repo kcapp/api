@@ -265,12 +265,14 @@ func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
 			m.is_finished, m.is_abandoned, m.is_walkover, m.winner_id,
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
 			GROUP_CONCAT(pe.current_elo ORDER BY p2l.order) AS 'elos',
-			(MAX(p.is_placeholder) - 1) * -1 AS 'is_players_decided'
+			(MAX(p.is_placeholder) - 1) * -1 AS 'is_players_decided',
+			mm.is_draw_possible
 		FROM matches m
 			JOIN player2leg p2l ON p2l.match_id = m.id
 			LEFT JOIN leg l ON l.match_id = m.id
 			LEFT JOIN player_elo pe ON pe.player_id = p2l.player_id AND p2l.leg_id = l.id
 			LEFT JOIN player p ON p.id = pe.player_id
+			LEFT JOIN match_mode mm ON mm.id = m.match_mode_id
 		WHERE m.tournament_id = ?
 		GROUP by m.id
 		ORDER BY m.is_finished, m.created_at ASC`, id)
@@ -284,8 +286,9 @@ func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
 		p := new(models.Probability)
 		var players string
 		var elos string
+		var isDrawPossible bool
 		err := rows.Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.IsStarted, &p.IsFinished, &p.IsAbandoned, &p.IsWalkover, &p.WinnerID,
-			&players, &elos, &p.IsPlayersDecided)
+			&players, &elos, &p.IsPlayersDecided, &isDrawPossible)
 		if err != nil {
 			return nil, err
 		}
@@ -297,17 +300,26 @@ func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
 			p.Players[1]: playerElos[1],
 		}
 
-		prob1 := math.Round(GetPlayerWinProbability(playerElos[0], playerElos[1])*1000) / 1000
-		prob2 := math.Round(GetPlayerWinProbability(playerElos[1], playerElos[0])*1000) / 1000
+		pHome := GetPlayerWinProbability(playerElos[0], playerElos[1])
+		pAway := GetPlayerWinProbability(playerElos[1], playerElos[0])
+		probDraw := GetPlayerDrawProbability(playerElos[0], playerElos[1])
 
-		p.PlayerWinningProbabilities = map[int]float64{
-			p.Players[0]: prob1,
-			p.Players[1]: prob2,
+		if isDrawPossible {
+			pHome = pHome * (1 - probDraw)
+			pAway = pAway * (1 - probDraw)
 		}
 
-		p.PlayerOdds = map[int]float32{
-			p.Players[0]: float32(math.Round(1.0/GetPlayerWinProbability(playerElos[0], playerElos[1])*1000) / 1000),
-			p.Players[1]: float32(math.Round(1.0/GetPlayerWinProbability(playerElos[1], playerElos[0])*1000) / 1000),
+		p.PlayerWinningProbabilities = map[int]float64{
+			p.Players[0]: math.Round(pHome*1000) / 1000,
+			p.Players[1]: math.Round(pAway*1000) / 1000,
+		}
+		p.PlayerOdds = map[int]float64{
+			p.Players[0]: math.Round(1.0/pHome*1000) / 1000,
+			p.Players[1]: math.Round(1.0/pAway*1000) / 1000,
+		}
+		if isDrawPossible {
+			p.PlayerWinningProbabilities[0] = math.Round(probDraw*1000) / 1000
+			p.PlayerOdds[0] = math.Round(1.0/probDraw*1000) / 1000
 		}
 
 		probabilities = append(probabilities, p)
