@@ -15,6 +15,7 @@
 
 #### Fixed
 - Correctly rematch for matches with Bots
+- Global Fish-n-Chips statistics being off when matches are played without office
 - Fixed an issue with three darts average being showed incorrectly for tournament matches before they finish
 
 ## [2.3.0] - 2022-03-06
