@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/guregu/null"
 )
@@ -17,13 +18,15 @@ type Visit struct {
 	SecondDart  *Dart       `json:"second_dart"`
 	ThirdDart   *Dart       `json:"third_dart"`
 	IsBust      bool        `json:"is_bust"`
-	CreatedAt   string      `json:"created_at"`
-	UpdatedAt   string      `json:"updated_at"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
 	Count       int         `json:"count,omitempty"`
 	DartsThrown int         `json:"darts_thrown,omitempty"`
 	Score       int         `json:"score"`
 	Marks       int         `json:"marks"`
 	Scores      map[int]int `json:"scores"`
+	// Used for SCAM match type
+	IsStopper null.Bool `json:"is_stopper,omitempty"`
 }
 
 type comparingMatrix [][]bool
@@ -172,6 +175,35 @@ func (visit Visit) IsFishAndChips() bool {
 	fishAndChipsVisit.ThirdDart = NewDart(null.IntFrom(1), SINGLE)
 
 	return visit.isEqualTo(*fishAndChipsVisit)
+}
+
+// IsScore60Plus will check if a given visit counts as 60+
+func (visit Visit) IsScore60Plus() bool {
+	if visit.GetScore() >= 60 && visit.GetScore() < 100 {
+		return true
+	}
+	return false
+}
+
+// IsScore100Plus will check if a given visit counts as 100+
+func (visit Visit) IsScore100Plus() bool {
+	if visit.GetScore() >= 100 && visit.GetScore() < 140 {
+		return true
+	}
+	return false
+}
+
+// IsScore140Plus will check if a given visit counts as 140+
+func (visit Visit) IsScore140Plus() bool {
+	if visit.GetScore() >= 140 && visit.GetScore() < 180 {
+		return true
+	}
+	return false
+}
+
+// IsScore180 will check if a given visit count as 180
+func (visit Visit) IsScore180() bool {
+	return visit.GetScore() == 180
 }
 
 // checkIfEquivalent sees if the input visit is the same as this visit
@@ -508,6 +540,51 @@ func (visit *Visit) CalculateJDCPracticeScore(round int) int {
 		}
 	}
 	return score
+}
+
+// CalculateScamScore will calculate score for the given visit
+func (visit *Visit) CalculateScamScore(scores map[int]*Player2Leg) int {
+	score := 0
+
+	var stopper *Player2Leg
+	for _, player := range scores {
+		if player.IsStopper.Bool {
+			stopper = player
+		}
+	}
+	if stopper.Hits.GetHits(visit.FirstDart.ValueRaw(), SINGLE) < 1 && !visit.FirstDart.IsBull() {
+		score += visit.FirstDart.GetScore()
+	}
+	if stopper.Hits.GetHits(visit.SecondDart.ValueRaw(), SINGLE) < 1 && !visit.SecondDart.IsBull() {
+		score += visit.SecondDart.GetScore()
+	}
+	if stopper.Hits.GetHits(visit.ThirdDart.ValueRaw(), SINGLE) < 1 && !visit.ThirdDart.IsBull() {
+		score += visit.ThirdDart.GetScore()
+	}
+	return score
+}
+
+// CalculateScamMarks will calculate marks hit for the given visit
+func (visit *Visit) CalculateScamMarks(scores map[int]*Player2Leg) int {
+	marks := 0
+
+	hits := scores[visit.PlayerID].Hits
+	if hits.GetHits(visit.FirstDart.ValueRaw(), SINGLE) < 1 && visit.FirstDart.IsSingle() && !visit.FirstDart.IsMiss() {
+		marks++
+	}
+	hits.Add(visit.FirstDart)
+
+	if hits.GetHits(visit.SecondDart.ValueRaw(), SINGLE) < 1 && visit.SecondDart.IsSingle() && !visit.SecondDart.IsMiss() {
+		marks++
+	}
+	hits.Add(visit.SecondDart)
+
+	if hits.GetHits(visit.ThirdDart.ValueRaw(), SINGLE) < 1 && visit.ThirdDart.IsSingle() && !visit.ThirdDart.IsMiss() {
+		marks++
+	}
+	hits.Add(visit.ThirdDart)
+
+	return marks
 }
 
 // IsShanghai will check if the given visit is a "Shanghai". A Shanghai visit is one where a single, double and triple multipler is hit with each dart

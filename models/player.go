@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/guregu/null"
 )
@@ -27,8 +28,9 @@ type Player struct {
 	OfficeID       null.Int    `json:"office_id,omitempty"`
 	IsActive       bool        `json:"is_active"`
 	IsBot          bool        `json:"is_bot"`
-	CreatedAt      string      `json:"created_at"`
-	UpdatedAt      string      `json:"updated_at,omitempty"`
+	IsPlaceholder  bool        `json:"is_placeholder"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at,omitempty"`
 	TournamentElo  int         `json:"tournament_elo,omitempty"`
 	CurrentElo     int         `json:"current_elo,omitempty"`
 }
@@ -64,8 +66,9 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		OfficeID       null.Int    `json:"office_id,omitempty"`
 		IsActive       bool        `json:"is_active"`
 		IsBot          bool        `json:"is_bot"`
-		CreatedAt      string      `json:"created_at"`
-		UpdatedAt      string      `json:"updated_at,omitempty"`
+		IsPlaceholder  bool        `json:"is_placeholder"`
+		CreatedAt      time.Time   `json:"created_at"`
+		UpdatedAt      time.Time   `json:"updated_at"`
 		TournamentElo  int         `json:"tournament_elo,omitempty"`
 		CurrentElo     int         `json:"current_elo,omitempty"`
 	}
@@ -89,10 +92,16 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		OfficeID:       player.OfficeID,
 		IsActive:       player.IsActive,
 		IsBot:          player.IsBot,
+		IsPlaceholder:  player.IsPlaceholder,
 		CreatedAt:      player.CreatedAt,
 		UpdatedAt:      player.UpdatedAt,
 		TournamentElo:  player.TournamentElo,
 		CurrentElo:     player.CurrentElo,
-		Name:           strings.Trim((player.FirstName + " " + player.LastName.ValueOrZero()), " "),
+		Name:           player.GetName(),
 	})
+}
+
+// GetName will get the full name for the given player
+func (player Player) GetName() string {
+	return strings.Trim((player.FirstName + " " + player.LastName.ValueOrZero()), " ")
 }

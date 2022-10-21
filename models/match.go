@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"strconv"
+	"time"
 
 	"github.com/guregu/null"
 )
@@ -47,6 +48,8 @@ const (
 	JDCPRACTICE = 14
 	// KNOCKOUT constant representing type 15
 	KNOCKOUT = 15
+	// SCAM constant representing type 16
+	SCAM = 16
 )
 
 // TargetsBermudaTriangle contains the target for each round of Bermuda Triangle
@@ -115,15 +118,16 @@ var TargetsJDCPractice = [19]Target{
 type Match struct {
 	ID              int                `json:"id"`
 	CurrentLegID    null.Int           `json:"current_leg_id"`
-	CreatedAt       string             `json:"created_at"`
-	UpdatedAt       string             `json:"updated_at"`
-	EndTime         string             `json:"end_time,omitempty"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+	EndTime         time.Time          `json:"end_time,omitempty"`
 	MatchType       *MatchType         `json:"match_type"`
 	MatchMode       *MatchMode         `json:"match_mode"`
 	WinnerID        null.Int           `json:"winner_id"`
 	IsFinished      bool               `json:"is_finished"`
 	IsAbandoned     bool               `json:"is_abandoned"`
 	IsWalkover      bool               `json:"is_walkover"`
+	IsStarted       bool               `json:"is_started"`
 	OfficeID        null.Int           `json:"office_id,omitempty"`
 	OweTypeID       null.Int           `json:"owe_type_id"`
 	VenueID         null.Int           `json:"venue_id"`
@@ -136,8 +140,8 @@ type Match struct {
 	Legs            []*Leg             `json:"legs,omitempty"`
 	PlayerHandicaps map[int]int        `json:"player_handicaps,omitempty"`
 	BotPlayerConfig map[int]*BotConfig `json:"bot_player_config,omitempty"`
-	FirstThrow      null.String        `json:"first_throw_time,omitempty"`
-	LastThrow       null.String        `json:"last_throw_time,omitempty"`
+	FirstThrow      null.Time          `json:"first_throw_time,omitempty"`
+	LastThrow       null.Time          `json:"last_throw_time,omitempty"`
 	EloChange       map[int]*PlayerElo `json:"elo_change,omitempty"`
 	LegsWon         []int              `json:"legs_won,omitempty"`
 }
@@ -148,9 +152,9 @@ func (match Match) MarshalJSON() ([]byte, error) {
 	type matchJSON struct {
 		ID               int                `json:"id"`
 		CurrentLegID     null.Int           `json:"current_leg_id"`
-		CreatedAt        string             `json:"created_at"`
-		UpdatedAt        string             `json:"updated_at"`
-		EndTime          string             `json:"end_time,omitempty"`
+		CreatedAt        time.Time          `json:"created_at"`
+		UpdatedAt        time.Time          `json:"updated_at"`
+		EndTime          time.Time          `json:"end_time,omitempty"`
 		MatchType        *MatchType         `json:"match_type"`
 		MatchMode        *MatchMode         `json:"match_mode"`
 		WinnerID         null.Int           `json:"winner_id"`
@@ -170,8 +174,8 @@ func (match Match) MarshalJSON() ([]byte, error) {
 		CurrentLegNumber string             `json:"current_leg_num"`
 		PlayerHandicaps  map[int]int        `json:"player_handicaps,omitempty"`
 		BotPlayerConfig  map[int]*BotConfig `json:"bot_player_config,omitempty"`
-		FirstThrow       null.String        `json:"first_throw_time,omitempty"`
-		LastThrow        null.String        `json:"last_throw_time,omitempty"`
+		FirstThrow       null.Time          `json:"first_throw_time,omitempty"`
+		LastThrow        null.Time          `json:"last_throw_time,omitempty"`
 		EloChange        map[int]*PlayerElo `json:"elo_change,omitempty"`
 		LegsWon          []int              `json:"legs_won,omitempty"`
 	}
@@ -247,6 +251,7 @@ type MatchTournament struct {
 	TournamentGroupID   null.Int    `json:"tournament_group_id"`
 	TournamentGroupName null.String `json:"tournament_group_name"`
 	OfficeID            null.Int    `json:"office_id"`
+	IsPlayoffs          null.Bool   `json:"is_playoffs"`
 }
 
 // MatchMetadata struct used for storing metadata about matches

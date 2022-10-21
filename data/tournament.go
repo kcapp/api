@@ -3,6 +3,7 @@ package data
 import (
 	"database/sql"
 	"log"
+	"math"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
@@ -162,13 +163,44 @@ func GetCurrentTournamentForOffice(officeID int) (*models.Tournament, error) {
 	return GetTournament(tournamentID)
 }
 
+// GetTournamentsForOffice will return all tournaments for given office
+func GetTournamentsForOffice(officeID int) ([]*models.Tournament, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, office_id, start_time, end_time
+		FROM tournament
+		WHERE office_id = ?
+		ORDER BY start_time DESC`, officeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tournaments := make([]*models.Tournament, 0)
+	for rows.Next() {
+		tournament := new(models.Tournament)
+		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
+			&tournament.PlayoffsTournamentID, &tournament.OfficeID, &tournament.StartTime, &tournament.EndTime)
+		if err != nil {
+			return nil, err
+		}
+		tournaments = append(tournaments, tournament)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return tournaments, nil
+}
+
 // GetTournamentMatches will return all matches for the given tournament
 func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id, m.is_finished, m.current_leg_id, m.winner_id, m.is_walkover, m.created_at, m.updated_at, m.owe_type_id, m.venue_id,
+			m.id, m.is_finished, m.current_leg_id, m.winner_id, m.is_walkover, IF(TIMEDIFF(MAX(l.updated_at), NOW() - INTERVAL 15 MINUTE) > 0, 1, 0) AS 'is_started',
+			m.created_at, m.updated_at, m.owe_type_id, m.venue_id,
 			mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required,
-			v.id, v.name, v.description, m.updated_at as 'last_throw', GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
+			v.id, v.name, v.description, l.updated_at as 'last_throw', GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
 			m.tournament_id, tg.id, GROUP_CONCAT(legs.winner_id ORDER BY legs.id) AS 'legs_won', ot.item
 		FROM matches m
 			JOIN match_type mt ON mt.id = m.match_type_id
@@ -199,8 +231,8 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 		var players string
 		var legsWon null.String
 		var ot null.String
-		err := rows.Scan(&m.ID, &m.IsFinished, &m.CurrentLegID, &m.WinnerID, &m.IsWalkover, &m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID,
-			&m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
+		err := rows.Scan(&m.ID, &m.IsFinished, &m.CurrentLegID, &m.WinnerID, &m.IsWalkover, &m.IsStarted, &m.CreatedAt, &m.UpdatedAt,
+			&m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
 			&venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players, &m.TournamentID, &groupID, &legsWon, &ot)
 		if err != nil {
@@ -225,6 +257,82 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 	return matches, nil
 }
 
+// GetTournamentProbabilities will return all matches for the given tournament with winning probabilities for players
+func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			m.id, m.created_at, m.updated_at, IF(TIMEDIFF(MAX(l.updated_at), NOW() - INTERVAL 15 MINUTE) > 0, 1, 0) AS 'is_started',
+			m.is_finished, m.is_abandoned, m.is_walkover, m.winner_id,
+			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
+			GROUP_CONCAT(DISTINCT pe.current_elo ORDER BY p2l.order) AS 'elos',
+			(MAX(p.is_placeholder) - 1) * -1 AS 'is_players_decided',
+			mm.is_draw_possible
+		FROM matches m
+			JOIN player2leg p2l ON p2l.match_id = m.id
+			LEFT JOIN leg l ON l.match_id = m.id
+			LEFT JOIN player_elo pe ON pe.player_id = p2l.player_id AND p2l.leg_id = l.id
+			LEFT JOIN player p ON p.id = pe.player_id
+			LEFT JOIN match_mode mm ON mm.id = m.match_mode_id
+		WHERE m.tournament_id = ?
+		GROUP by m.id
+		ORDER BY m.is_finished, m.created_at ASC`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	probabilities := make([]*models.Probability, 0)
+	for rows.Next() {
+		p := new(models.Probability)
+		var players string
+		var elos string
+		var isDrawPossible bool
+		err := rows.Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.IsStarted, &p.IsFinished, &p.IsAbandoned, &p.IsWalkover, &p.WinnerID,
+			&players, &elos, &p.IsPlayersDecided, &isDrawPossible)
+		if err != nil {
+			return nil, err
+		}
+		p.Players = util.StringToIntArray(players)
+		playerElos := util.StringToIntArray(elos)
+		if len(playerElos) == 1 {
+			playerElos = append(playerElos, playerElos[0])
+		}
+
+		p.Elos = map[int]int{
+			p.Players[0]: playerElos[0],
+			p.Players[1]: playerElos[1],
+		}
+
+		pHome := GetPlayerWinProbability(playerElos[0], playerElos[1])
+		pAway := GetPlayerWinProbability(playerElos[1], playerElos[0])
+		probDraw := GetPlayerDrawProbability(playerElos[0], playerElos[1])
+
+		if isDrawPossible {
+			pHome = pHome * (1 - probDraw)
+			pAway = pAway * (1 - probDraw)
+		}
+
+		p.PlayerWinningProbabilities = map[int]float64{
+			p.Players[0]: math.Round(pHome*1000) / 1000,
+			p.Players[1]: math.Round(pAway*1000) / 1000,
+		}
+		p.PlayerOdds = map[int]float64{
+			p.Players[0]: math.Round(1.0/pHome*1000) / 1000,
+			p.Players[1]: math.Round(1.0/pAway*1000) / 1000,
+		}
+		if isDrawPossible {
+			p.PlayerWinningProbabilities[0] = math.Round(probDraw*1000) / 1000
+			p.PlayerOdds[0] = math.Round(1.0/probDraw*1000) / 1000
+		}
+
+		probabilities = append(probabilities, p)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return probabilities, nil
+}
+
 // GetTournamentOverview will return an overview for a given tournament
 func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error) {
 	rows, err := models.DB.Query(`
@@ -242,9 +350,9 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			(COUNT(DISTINCT legs_for.id) - COUNT(DISTINCT legs_against.id)) AS 'diff',
 			COUNT(DISTINCT won.id) * 2 + COUNT(DISTINCT draw.id) AS 'pts',
 			IFNULL(SUM(s.ppd_score) / SUM(s.darts_thrown), -1) AS 'ppd',
-			IFNULL(SUM(s.first_nine_ppd) / COUNT(finished.id), -1) AS 'first_nine_ppd',
+			IFNULL(SUM(s.first_nine_ppd_score) / (9 * (COUNT(DISTINCT legs_for.id) + COUNT(DISTINCT legs_against.id))), -1) AS 'first_nine_ppd',
 			IFNULL(SUM(s.ppd_score) / SUM(s.darts_thrown) * 3, -1) AS 'three_dart_avg',
-			IFNULL(SUM(s.first_nine_ppd) / COUNT(finished.id) * 3, -1) AS 'first_nine_three_dart_avg',
+			IFNULL(SUM(s.first_nine_ppd_score) * 3 / (9 * (COUNT(DISTINCT legs_for.id) + COUNT(DISTINCT legs_against.id))), -1) AS 'first_nine_three_dart_avg',
 			IFNULL(SUM(60s_plus), 0) AS '60s_plus',
 			IFNULL(SUM(100s_plus), 0) AS '100s_plus',
 			IFNULL(SUM(140s_plus), 0) AS '140s_plus',
@@ -310,11 +418,11 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 	}
 	statistics.HighestCheckout = checkouts
 
-	a, err := getTournamentBestStatistics(tournamentID)
+	bestStatistics, err := getTournamentBestStatistics(tournamentID)
 	if err != nil {
 		return nil, err
 	}
-	for _, val := range a {
+	for _, val := range bestStatistics {
 		statistics.BestThreeDartAvg = append(statistics.BestThreeDartAvg, val.BestThreeDartAvg)
 		statistics.BestFirstNineAvg = append(statistics.BestFirstNineAvg, val.BestFirstNineAvg)
 		if val.Best301 != nil {
@@ -327,7 +435,11 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 			statistics.Best701DartsThrown = append(statistics.Best701DartsThrown, val.Best701)
 		}
 	}
-
+	generalStatistics, err := getTournamentGeneralStatistics(tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	statistics.GeneralStatistics = generalStatistics
 	return statistics, nil
 }
 
@@ -335,10 +447,12 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 func GetNextTournamentMatch(matchID int) (*models.Match, error) {
 	var nextMatchID null.Int
 	err := models.DB.QueryRow(`
-		SELECT match_id FROM match_metadata mm
-            JOIN matches m ON mm.match_id = m.id
-		WHERE (order_of_play = (SELECT order_of_play FROM match_metadata mm WHERE match_id = ?) + 1)
-            AND m.tournament_id = (SELECT tournament_id FROM matches where id = ?)`, matchID, matchID).Scan(&nextMatchID)
+		SELECT m.id FROM matches m
+			LEFT JOIN match_metadata mm ON mm.match_id = m.id
+		WHERE m.tournament_id = (SELECT tournament_id FROM matches WHERE id = ?)
+			AND ((order_of_play = (SELECT order_of_play FROM match_metadata mm WHERE match_id = ?) + 1)
+				OR created_at > (SELECT created_at FROM matches WHERE id = ?))
+		ORDER BY mm.order_of_play, m.created_at LIMIT 1`, matchID, matchID, matchID).Scan(&nextMatchID)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -404,12 +518,12 @@ func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic
 			JOIN matches m on l.match_id = m.id
 			WHERE l.winner_id = s.player_id
 				AND s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))
-				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id WHERE l.winner_id = s.player_id GROUP BY leg_id)
+				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id JOIN matches m on l.match_id = m.id WHERE m.tournament_id = ? AND l.winner_id = s.player_id GROUP BY leg_id)
 				AND IFNULL(l.leg_type_id, m.match_type_id) = 1 -- X01
 			GROUP BY s.player_id, s.id
 			ORDER BY checkout DESC) checkouts
 			GROUP BY player_id
-		ORDER BY checkout DESC`, tournamentID)
+		ORDER BY checkout DESC`, tournamentID, tournamentID)
 	if err != nil {
 		return nil, err
 	}
@@ -430,7 +544,7 @@ func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic
 	return best, nil
 }
 
-// getBestStatistics will calculate Best PPD, Best First 9, Best 301 and Best 501 for the given players
+// getTournamentBestStatistics will calculate Best PPD, Best First 9, Best 301 and Best 501 for the given players
 func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, error) {
 	rows, err := models.DB.Query(`
 		SELECT
@@ -508,7 +622,7 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 		if best.BestThreeDartAvg == nil {
 			best.BestThreeDartAvg = new(models.BestStatisticFloat)
 		}
-		if stat.ThreeDartAvg > best.BestThreeDartAvg.Value {
+		if stat.ThreeDartAvg >= best.BestThreeDartAvg.Value {
 			best.BestThreeDartAvg.Value = stat.ThreeDartAvg
 			best.BestThreeDartAvg.LegID = stat.LegID
 			best.BestThreeDartAvg.PlayerID = stat.PlayerID
@@ -516,7 +630,7 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 		if best.BestFirstNineAvg == nil {
 			best.BestFirstNineAvg = new(models.BestStatisticFloat)
 		}
-		if stat.FirstNineThreeDartAvg > best.BestFirstNineAvg.Value {
+		if stat.FirstNineThreeDartAvg >= best.BestFirstNineAvg.Value {
 			best.BestFirstNineAvg.Value = stat.FirstNineThreeDartAvg
 			best.BestFirstNineAvg.LegID = stat.LegID
 			best.BestFirstNineAvg.PlayerID = stat.PlayerID
@@ -529,6 +643,73 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 	}
 
 	return s, nil
+}
+
+// getTournamentGeneralStatistics will return general statistics for a given tournament
+func getTournamentGeneralStatistics(tournamentID int) (*models.TournamentGeneralStatistics, error) {
+	tgs := new(models.TournamentGeneralStatistics)
+	err := models.DB.QueryRow(`
+		SELECT
+			SUM(60s_plus) AS '60s_plus',
+			SUM(100s_plus) AS '100s_plus',
+			SUM(140s_plus) AS '140s_plus',
+			SUM(180s) AS '180s',
+			SUM(fnc) AS 'fish-n-chips',
+			SUM(checkout_d1) AS 'checkout-d1',
+			SUM(bulls) as 'bulls',
+			SUM(double_bulls) as 'double_bulls'
+		FROM (
+			SELECT SUM(60s_plus)  AS '60s_plus',
+					SUM(100s_plus) AS '100s_plus',
+					SUM(140s_plus) AS '140s_plus',
+					SUM(180s)      AS '180s',
+					0 AS 'fnc',
+					0 AS 'checkout_d1',
+					0 AS 'bulls',
+					0 AS 'double_bulls'
+			FROM statistics_x01 s
+				LEFT JOIN leg l ON l.id = s.leg_id
+				LEFT JOIN matches m ON m.id = l.match_id
+			WHERE m.tournament_id = ?
+		UNION ALL
+			SELECT
+				0, 0, 0, 0, count(s.id) AS 'fnc', 0, 0, 0
+			FROM score s
+				LEFT JOIN leg l ON l.id = s.leg_id
+				LEFT JOIN matches m ON m.id = l.match_id
+			WHERE
+				first_dart IN (1, 20, 5) AND first_dart_multiplier = 1
+			AND second_dart IN (1, 20, 5) AND second_dart_multiplier = 1
+			AND third_dart IN (1, 20, 5) AND third_dart_multiplier = 1
+			AND first_dart + second_dart + third_dart = 26
+			AND m.tournament_id = ? AND l.is_finished = 1
+		UNION ALL
+			SELECT
+				0, 0, 0, 0, 0, count(leg_id) as 'checkout_d1', 0, 0
+			FROM score s
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m on l.match_id = m.id
+			WHERE l.winner_id = s.player_id
+				AND s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))
+				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id JOIN matches m on l.match_id = m.id WHERE m.tournament_id = ? AND l.winner_id = s.player_id GROUP BY leg_id)
+				AND IFNULL(s.first_dart * s.first_dart_multiplier, 0) + IFNULL(s.second_dart * s.second_dart_multiplier, 0) + IFNULL(s.third_dart * s.third_dart_multiplier, 0) = 2
+				AND IFNULL(l.leg_type_id, m.match_type_id) = 1
+				AND l.is_finished = 1
+		UNION ALL
+			SELECT
+				0, 0, 0, 0, 0, 0,
+				SUM(IF(first_dart = 25 AND first_dart_multiplier = 1, 1, 0)+IF(second_dart = 25 AND second_dart_multiplier = 1, 1, 0)+IF(third_dart = 25 AND third_dart_multiplier = 1, 1, 0)) as 'bull',
+				SUM(IF(first_dart = 25 AND first_dart_multiplier = 2, 1, 0)+IF(second_dart = 25 AND second_dart_multiplier = 2, 1, 0)+IF(third_dart = 25 AND third_dart_multiplier = 2, 1, 0)) as 'double_bull'
+			FROM score s
+				LEFT JOIN leg l ON l.id = s.leg_id
+				LEFT JOIN matches m ON m.id = l.match_id
+			WHERE m.tournament_id = ? AND l.is_finished
+		) statistics`, tournamentID, tournamentID, tournamentID, tournamentID, tournamentID).Scan(&tgs.Score60sPlus, &tgs.Score100sPlus, &tgs.Score140sPlus,
+		&tgs.Score180s, &tgs.ScoreFishNChips, &tgs.D1Checkouts, &tgs.ScoreBullseye, &tgs.ScoreDoubleBullseye)
+	if err != nil {
+		return nil, err
+	}
+	return tgs, nil
 }
 
 // NewTournament will create a new tournament

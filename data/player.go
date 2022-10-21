@@ -22,7 +22,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color, p.profile_pic_url, p.smartcard_uid,
-			 p.board_stream_url, p.board_stream_css, p.active, p.office_id, p.is_bot, p.created_at
+			 p.board_stream_url, p.board_stream_css, p.active, p.office_id, p.is_bot, p.is_placeholder, p.created_at, p.updated_at
 		FROM player p`)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
-			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.IsActive, &p.OfficeID, &p.IsBot, &p.CreatedAt)
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.IsActive, &p.OfficeID, &p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -62,8 +62,9 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 
 	rows, err := models.DB.Query(`
 		SELECT
-			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color,
-			p.profile_pic_url, p.smartcard_uid, p.board_stream_url, p.board_stream_css, p.office_id, p.active, p.is_bot, p.created_at
+			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color, p.profile_pic_url,
+			p.smartcard_uid, p.board_stream_url, p.board_stream_css, p.office_id, p.active, p.is_bot, p.is_placeholder,
+			p.created_at, p.updated_at
 		FROM player p
 		WHERE active = 1`)
 	if err != nil {
@@ -75,7 +76,7 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
-			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.CreatedAt)
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -102,13 +103,13 @@ func GetPlayer(id int) (*models.Player, error) {
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname,
 			p.slack_handle, p.color, p.profile_pic_url, p.smartcard_uid, p.board_stream_url, p.board_stream_css,
-			p.office_id, p.active, p.is_bot, p.created_at, pe.current_elo, pe.tournament_elo
+			p.office_id, p.active, p.is_bot, p.is_placeholder, p.created_at, p.updated_at, pe.current_elo, pe.tournament_elo
 		FROM player p
 		JOIN player_elo pe on pe.player_id = p.id
 		WHERE p.id = ?`, id).
 		Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
 			&p.Color, &p.ProfilePicURL, &p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive,
-			&p.IsBot, &p.CreatedAt, &p.CurrentElo, &p.TournamentElo)
+			&p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt, &p.CurrentElo, &p.TournamentElo)
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +223,8 @@ func UpdatePlayer(playerID int, player models.Player) error {
 	stmt, err := models.DB.Prepare(`
 		UPDATE player SET
 			first_name = ?, last_name = ?, vocal_name = ?, nickname = ?, slack_handle = ?,
-			color = ?, profile_pic_url = ?, smartcard_uid = ?, board_stream_url = ?, board_stream_css = ?, office_id = ?
+			color = ?, profile_pic_url = ?, smartcard_uid = ?, board_stream_url = ?, board_stream_css = ?, office_id = ?,
+			updated_at = NOW()
 		WHERE id = ?`)
 	if err != nil {
 		return err
@@ -523,6 +525,56 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			}
 			scores[prev.PlayerID].CurrentScore = 0
 		}
+	} else if matchType == models.SCAM {
+		stopperOrder := 1
+		for _, player := range scores {
+			if player.Order == stopperOrder {
+				player.SetStopper()
+			} else {
+				player.SetScorer()
+			}
+			player.CurrentScore = 0
+			player.Hits = make(models.HitsMap)
+		}
+
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+
+		hits := make(models.HitsMap)
+		for _, visit := range visits {
+			player := scores[visit.PlayerID]
+			if player.IsStopper.Bool {
+				hits.Add(visit.FirstDart)
+				hits.Add(visit.SecondDart)
+				hits.Add(visit.ThirdDart)
+				player.Hits = hits
+
+				visit.IsStopper = null.BoolFrom(true)
+				if hits.Contains(models.SINGLE, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
+					stopperOrder++
+					for _, player := range scores {
+						if player.Order == stopperOrder {
+							player.SetStopper()
+						} else {
+							player.SetScorer()
+						}
+					}
+					hits = make(models.HitsMap)
+				}
+			} else if player.IsScorer.Bool {
+				if hits.GetHits(visit.FirstDart.ValueRaw(), models.SINGLE) < 1 {
+					player.CurrentScore += visit.FirstDart.GetScore()
+				}
+				if hits.GetHits(visit.SecondDart.ValueRaw(), models.SINGLE) < 1 {
+					player.CurrentScore += visit.SecondDart.GetScore()
+				}
+				if hits.GetHits(visit.ThirdDart.ValueRaw(), models.SINGLE) < 1 {
+					player.CurrentScore += visit.ThirdDart.GetScore()
+				}
+			}
+		}
 	}
 	return scores, nil
 }
@@ -544,7 +596,8 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 			p.board_stream_css,
 			p.office_id,
 			p.active,
-			p.is_bot
+			p.is_bot,
+			p.is_placeholder
 		FROM player2leg p2l
 		LEFT JOIN player p ON p.id = p2l.player_id WHERE p2l.leg_id = ?`, legID)
 	if err != nil {
@@ -555,8 +608,8 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color,
-			&p.ProfilePicURL, &p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot)
+		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.IsPlaceholder)
 		if err != nil {
 			return nil, err
 		}
@@ -918,8 +971,8 @@ func GetPlayerHeadToHead(player1 int, player2 int) (*models.StatisticsHead2Head,
 	}
 	p1Elo := elos[0].CurrentElo
 	p2Elo := elos[1].CurrentElo
-	elos[0].WinProbability = getPlayerWinProbability(p1Elo, p2Elo)
-	elos[1].WinProbability = getPlayerWinProbability(p2Elo, p1Elo)
+	elos[0].WinProbability = GetPlayerWinProbability(p1Elo, p2Elo)
+	elos[1].WinProbability = GetPlayerWinProbability(p2Elo, p1Elo)
 
 	playerElos := make(map[int]*models.PlayerElo)
 	for _, elo := range elos {
@@ -1154,7 +1207,17 @@ func calculateElo(winnerElo int, winnerMatches int, looserElo int, looserMatches
 	return calculatedWinner, calculatedLooser
 }
 
-func getPlayerWinProbability(player1Elo int, player2Elo int) float64 {
+func GetPlayerWinProbability(player1Elo int, player2Elo int) float64 {
 	// Pr(A) = 1 / (10^(-ELODIFF/400) + 1)
 	return 1 / (math.Pow(10, float64(-(player1Elo-player2Elo))/400) + 1)
+}
+
+func GetPlayerDrawProbability(player1Elo int, player2Elo int) float64 {
+	// Quants Magic using Binomial Regression and Elos from 800 matches
+	// Caveat: Model won´t be accurate for extreme cases (Elo Diff >500)
+	// Formula:
+	//   pDraw = 1 / (1 + exp(-(-1.479018 - 0.000001434670 * abs(eloDiff)^2)))
+	eloDiff := math.Abs(float64(player1Elo - player2Elo))
+	pDraw := 1 / (1 + math.Exp(-(-1.479018 - float64(0.000001434670)*eloDiff*eloDiff)))
+	return pDraw
 }

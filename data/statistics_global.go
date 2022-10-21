@@ -61,8 +61,8 @@ func GetGlobalStatistics() (map[int]*models.GlobalStatistics, error) {
 		all.PointsBusted += s.PointsBusted
 		all.Score180s += s.Score180s
 		all.ScoreBullseyes += s.ScoreBullseyes
-		all.FishNChips += s.FishNChips
 	}
+	all.FishNChips = fnc[0].FishNChips
 	stats[0] = all
 
 	return stats, nil

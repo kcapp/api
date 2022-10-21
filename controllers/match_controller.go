@@ -55,7 +55,19 @@ func ReMatch(w http.ResponseWriter, r *http.Request) {
 		opp := len(match.Players) - 1 - i
 		match.Players[i], match.Players[opp] = match.Players[opp], match.Players[i]
 	}
-	match.CreatedAt = time.Now().UTC().Format("2006-01-02 15:04:05")
+	players, err := data.GetPlayersScore(int(match.CurrentLegID.Int64))
+	if err != nil {
+		log.Println("Unable to get players in match: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	match.BotPlayerConfig = make(map[int]*models.BotConfig)
+	for _, player := range players {
+		if player.BotConfig != nil {
+			match.BotPlayerConfig[player.PlayerID] = player.BotConfig
+		}
+	}
+	match.CreatedAt = time.Now().UTC()
 	match, err = data.NewMatch(*match)
 	if err != nil {
 		log.Println("Unable to rematch: ", err)
@@ -87,6 +99,24 @@ func GetActiveMatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(matches)
+}
+
+func GetMatchProbabilities(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	prob, err := data.GetMatchProbabilities(id)
+	if err != nil {
+		log.Println("Unable to get match probabilities", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(prob)
 }
 
 // GetMatchesLimit will return N matches from the given starting point
@@ -289,6 +319,14 @@ func GetStatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 		stats, err := data.GetKnockoutStatisticsForMatch(matchID)
 		if err != nil {
 			log.Printf("Unable to get Knockout statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.SCAM {
+		stats, err := data.GetScamStatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get Scam statistics for match %d: %s", matchID, err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

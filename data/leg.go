@@ -116,7 +116,7 @@ func FinishLeg(visit models.Visit) error {
 	}
 	if matchType == models.SHOOTOUT || matchType == models.DARTSATX || matchType == models.AROUNDTHEWORLD ||
 		(matchType == models.SHANGHAI && !visit.IsShanghai()) || matchType == models.BERMUDATRIANGLE ||
-		matchType == models.JDCPRACTICE {
+		matchType == models.JDCPRACTICE || matchType == models.SCAM {
 		// For certain game types we need to check the scores of each player to determine which player won the leg with the highest score
 		scores, err := GetPlayersScore(visit.LegID)
 		if err != nil {
@@ -384,6 +384,22 @@ func FinishLeg(visit models.Visit) error {
 			}
 			log.Printf("[%d] Inserting Knockout statistics for player %d", visit.LegID, playerID)
 		}
+	} else if matchType == models.SCAM {
+		statisticsMap, err := CalculateScamStatistics(visit.LegID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+				INSERT INTO statistics_scam (leg_id, player_id, darts_thrown_stopper, darts_thrown_scorer, mpr, ppd, score) VALUES (?,?,?,?,?,?,?)`,
+				visit.LegID, playerID, stats.DartsThrownStopper, stats.DartsThrownScorer, stats.MPR, stats.PPD, stats.Score)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("[%d] Inserting Scam statistics for player %d", visit.LegID, playerID)
+		}
 	} else {
 		statisticsMap, err := CalculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
 		if err != nil {
@@ -603,6 +619,12 @@ func UndoLegFinish(legID int) error {
 		tx.Rollback()
 		return err
 	}
+	_, err = tx.Exec("DELETE FROM statistics_scam WHERE leg_id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
 	// Remove the last score
 	_, err = tx.Exec("DELETE FROM score WHERE leg_id = ? ORDER BY id DESC LIMIT 1", legID)
 	if err != nil {
@@ -816,10 +838,10 @@ func GetLeg(id int) (*models.Leg, error) {
 	scores := make(map[int]*models.Player2Leg)
 	for i := 0; i < len(leg.Players); i++ {
 		p2l := new(models.Player2Leg)
-		p2l.Hits = make(map[int]*models.Hits)
+		p2l.Hits = make(models.HitsMap)
 		if matchType == models.DARTSATX || matchType == models.AROUNDTHECLOCK || matchType == models.AROUNDTHEWORLD || matchType == models.SHANGHAI ||
 			matchType == models.TICTACTOE || matchType == models.BERMUDATRIANGLE || matchType == models.GOTCHA || matchType == models.JDCPRACTICE ||
-			matchType == models.SHOOTOUT {
+			matchType == models.SHOOTOUT || matchType == models.SCAM {
 			p2l.CurrentScore = 0
 		} else if matchType == models.KNOCKOUT {
 			p2l.CurrentScore = 0
@@ -832,6 +854,7 @@ func GetLeg(id int) (*models.Leg, error) {
 			p2l.CurrentScore = leg.StartingScore
 			p2l.StartingScore = leg.StartingScore
 		}
+		p2l.Order = i + 1
 		p2l.DartsThrown = 0
 		scores[leg.Players[i]] = p2l
 	}
@@ -840,6 +863,17 @@ func GetLeg(id int) (*models.Leg, error) {
 	if leg.Parameters != nil && leg.Parameters.Numbers != nil {
 		specialNums = make([]int, len(leg.Parameters.Numbers))
 		copy(specialNums, leg.Parameters.Numbers)
+	}
+
+	playerOrder := 1
+	if matchType == models.SCAM {
+		for _, player := range scores {
+			if player.Order == playerOrder {
+				player.SetStopper()
+			} else {
+				player.SetScorer()
+			}
+		}
 	}
 
 	dartsThrown := 0
@@ -926,6 +960,26 @@ func GetLeg(id int) (*models.Leg, error) {
 				// Set correctly darts thrown for each player
 				player.DartsThrown += 3
 				visit.DartsThrown = player.DartsThrown
+			} else if matchType == models.SCAM {
+				player := scores[visit.PlayerID]
+				if player.IsStopper.Bool {
+					score = 0
+					visit.Marks = visit.CalculateScamMarks(scores)
+					visit.IsStopper = null.BoolFrom(true)
+					if player.Hits.Contains(models.SINGLE, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
+						playerOrder++
+						for _, player := range scores {
+							if player.Order == playerOrder {
+								player.SetStopper()
+							} else {
+								player.SetScorer()
+							}
+						}
+					}
+				} else {
+					score = visit.CalculateScamScore(scores)
+					scores[visit.PlayerID].CurrentScore += score
+				}
 			} else {
 				scores[visit.PlayerID].CurrentScore -= score
 			}
@@ -1000,7 +1054,7 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 	if err != nil {
 		return nil, err
 	}
-	hitsMap := make(map[int]map[int]*models.Hits)
+	hitsMap := make(map[int]models.HitsMap)
 	lowestScore := leg.StartingScore
 	players := make([]*models.Player2Leg, 0)
 	for _, player := range scores {
@@ -1008,7 +1062,7 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 		if player.CurrentScore < lowestScore {
 			lowestScore = player.CurrentScore
 		}
-		hitsMap[player.PlayerID] = make(map[int]*models.Hits)
+		hitsMap[player.PlayerID] = make(models.HitsMap)
 		players = append(players, player)
 	}
 
@@ -1024,25 +1078,10 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 
 	// Get hits on each number for each player
 	for _, visit := range leg.Visits {
-		m := hitsMap[visit.PlayerID]
-
-		v := visit.FirstDart.ValueRaw()
-		if _, ok := m[v]; !ok {
-			m[v] = new(models.Hits)
-		}
-		m[v].Add(visit.FirstDart)
-
-		v = visit.SecondDart.ValueRaw()
-		if _, ok := m[v]; !ok {
-			m[v] = new(models.Hits)
-		}
-		m[v].Add(visit.SecondDart)
-
-		v = visit.ThirdDart.ValueRaw()
-		if _, ok := m[v]; !ok {
-			m[v] = new(models.Hits)
-		}
-		m[v].Add(visit.ThirdDart)
+		hits := hitsMap[visit.PlayerID]
+		hits.Add(visit.FirstDart)
+		hits.Add(visit.SecondDart)
+		hits.Add(visit.ThirdDart)
 	}
 
 	for _, player := range players {
@@ -1050,12 +1089,19 @@ func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 		if visit, ok := lastVisits[player.PlayerID]; ok {
 			player.Modifiers.IsViliusVisit = visit.IsViliusVisit()
 			player.Modifiers.IsFishAndChips = visit.IsFishAndChips()
+			player.Modifiers.IsScore60Plus = visit.IsScore60Plus()
+			player.Modifiers.IsScore100Plus = visit.IsScore100Plus()
+			player.Modifiers.IsScore140Plus = visit.IsScore140Plus()
+			player.Modifiers.IsScore180 = visit.IsScore180()
 		}
 		if lowestScore < 171 && player.CurrentScore > 199 {
 			player.Modifiers.IsBeerMatch = true
 		}
 		player.AddVisitStatistics(*leg)
-		player.Hits = hitsMap[player.PlayerID]
+		if player.Hits == nil {
+			// Certain match types calculate hits differently, so only override it here if it's not set
+			player.Hits = hitsMap[player.PlayerID]
+		}
 	}
 
 	sort.Slice(players, func(i, j int) bool {
@@ -1092,7 +1138,7 @@ func ChangePlayerOrder(legID int, orderMap map[string]int) error {
 }
 
 // StartWarmup will set the updated_at of a leg to now
-func StartWarmup(legID int) error {
+func StartWarmup(legID int, venueID int) error {
 	tx, err := models.DB.Begin()
 	if err != nil {
 		return err
@@ -1101,6 +1147,15 @@ func StartWarmup(legID int) error {
 	if err != nil {
 		tx.Rollback()
 		return err
+	}
+	if venueID > 0 {
+		// Update the venue ID if this leg is being played at a different location than it was scheduled
+		_, err = tx.Exec("UPDATE matches SET venue_id = ? WHERE id = (SELECT match_id FROM leg WHERE id = ?)", venueID, legID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		log.Printf("[%d] Moved leg to new venue %d", legID, venueID)
 	}
 	tx.Commit()
 

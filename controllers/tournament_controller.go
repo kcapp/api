@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/guregu/null"
 	"github.com/kcapp/api/data"
 	"github.com/kcapp/api/models"
 )
@@ -111,6 +114,47 @@ func GetCurrentTournamentForOffice(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tournament)
 }
 
+// GetTournamentsForOffice will return all tournaments for given office
+func GetTournamentsForOffice(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	officeID, err := strconv.Atoi(params["office_id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	tournament, err := data.GetTournamentsForOffice(officeID)
+	if err != nil {
+		log.Println("Unable to get tournaments for office", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tournament == nil {
+		http.Error(w, "No tournaments for office", http.StatusNotFound)
+		return
+	}
+	json.NewEncoder(w).Encode(tournament)
+}
+
+func GetTournamentProbabilities(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	prob, err := data.GetTournamentProbabilities(id)
+	if err != nil {
+		log.Println("Unable to get tournament probabilities", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(prob)
+}
+
 // GetTournamentMatches will return all matches for the given tournament
 func GetTournamentMatches(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
@@ -128,6 +172,99 @@ func GetTournamentMatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(matches)
+}
+
+// GetTournamentMatchResults will reurn match results for the given ID
+func GetTournamentMatchResults(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	tournamentMatches, err := data.GetTournamentMatches(id)
+	if err != nil {
+		log.Println("Unable to get tournament matches", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	players, err := data.GetPlayers()
+	if err != nil {
+		log.Println("Unable to get players: ", err)
+		http.Error(w, "Unable to get players", http.StatusBadRequest)
+		return
+	}
+
+	type matchResult struct {
+		MatchID          int       `json:"match_id"`
+		IsFinished       bool      `json:"is_finished"`
+		IsWalkover       bool      `json:"is_walkover"`
+		IsStarted        bool      `json:"is_started"`
+		IsLive           bool      `json:"is_live"`
+		IsPlayersDecided bool      `json:"is_players_decided"`
+		MatchTime        time.Time `json:"scheduled_time"`
+		WinnerID         null.Int  `json:"winner_id"`
+		HomeScore        int       `json:"home_score"`
+		HomePlayerID     int       `json:"home_player_id"`
+		HomePlayer       string    `json:"home_player_name"`
+		AwayScore        int       `json:"away_score"`
+		AWayPlayerID     int       `json:"away_player_id"`
+		AwayPlayer       string    `json:"away_player_name"`
+	}
+	output := make([]matchResult, 0)
+	for _, matches := range tournamentMatches {
+		for _, match := range matches {
+			homePlayer := players[match.Players[0]]
+			awayPlayer := players[match.Players[1]]
+			homeWins := 0
+			awayWins := 0
+			for _, winnerID := range match.LegsWon {
+				if homePlayer.ID == winnerID {
+					homeWins++
+				} else if awayPlayer.ID == winnerID {
+					awayWins++
+				}
+			}
+			isPlayersDecided := true
+			if homePlayer.IsPlaceholder || awayPlayer.IsPlaceholder {
+				isPlayersDecided = false
+			}
+			isLive := false
+			if !match.IsFinished && match.LastThrow.Valid {
+				now := time.Now().Unix() - 600
+				if match.LastThrow.Time.UTC().Unix() > now {
+					isLive = true
+				}
+			}
+			output = append(output, matchResult{
+				match.ID,
+				match.IsFinished,
+				match.IsWalkover,
+				match.IsStarted,
+				isLive,
+				isPlayersDecided,
+				match.CreatedAt,
+				match.WinnerID,
+				homeWins,
+				homePlayer.ID,
+				homePlayer.GetName(),
+				awayWins,
+				awayPlayer.ID,
+				awayPlayer.GetName(),
+			})
+		}
+	}
+
+	sort.Slice(output, func(i, j int) bool {
+		if output[i].MatchTime.Unix() != output[j].MatchTime.Unix() {
+			return output[i].MatchTime.Unix() < output[j].MatchTime.Unix()
+		}
+		return output[i].MatchID < output[j].MatchID
+	})
+
+	json.NewEncoder(w).Encode(output)
 }
 
 // GetTournamentOverview will return statistics for the given tournament

@@ -166,6 +166,36 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 			}
 			isFinished = playersAlive < 2
 		}
+	} else if matchType == models.SCAM {
+		// Only stoppers can finish the match
+		if players[visit.PlayerID].IsStopper.Bool {
+			hits := players[visit.PlayerID].Hits
+			hits.Add(visit.FirstDart)
+			hits.Add(visit.SecondDart)
+			hits.Add(visit.ThirdDart)
+
+			if hits.Contains(models.SINGLE, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
+				// Invalidate the last darts incase we "checked out" with only 1 or two darts
+				if visit.ThirdDart.ValueRaw() == 0 {
+					visit.ThirdDart.Value = null.IntFromPtr(nil)
+				}
+				if visit.SecondDart.ValueRaw() == 0 {
+					visit.SecondDart.Value = null.IntFromPtr(nil)
+				}
+			}
+
+			allStopped := true
+			for _, player := range players {
+				// Check if all players have closed all numbers
+				if !player.Hits.Contains(models.SINGLE, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
+					allStopped = false
+					break
+				}
+			}
+			if allStopped {
+				isFinished = true
+			}
+		}
 	}
 
 	// Determine who will be the next player

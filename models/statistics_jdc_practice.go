@@ -17,6 +17,7 @@ type StatisticsJDCPractice struct {
 	MPR            null.Float `json:"mpr,omitempty"`
 	ShanghaiCount  int        `json:"shanghai_count"`
 	DoublesHitrate float64    `json:"doubles_hitrate"`
+	HighestScore   int        `json:"highest_score"`
 	// Values used only to calculate statistics
 	Marks int64 `json:"-"`
 }
