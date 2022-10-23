@@ -112,9 +112,10 @@ func (visit *Visit) SetIsBustAbove(currentScore int, targetScore int) {
 	currentScore = currentScore + visit.FirstDart.GetScore()
 	if !isBust && currentScore < targetScore {
 		isBust = visit.SecondDart.IsBustAbove(currentScore, targetScore)
-		currentScore = currentScore - visit.SecondDart.GetScore()
+		currentScore = currentScore + visit.SecondDart.GetScore()
 		if !isBust && currentScore < targetScore {
 			isBust = visit.ThirdDart.IsBustAbove(currentScore, targetScore)
+			currentScore = currentScore + visit.ThirdDart.GetScore()
 		} else {
 			// Invalidate third dart if second was bust
 			visit.ThirdDart.Value = null.IntFromPtr(nil)

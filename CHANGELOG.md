@@ -1,7 +1,11 @@
 # Changelog
 
 ## [2.5.0] - TBD
+#### Changed
+- Removed bots and busts from Global statistics
 
+#### Fixed
+- Correctly calculate Gotcha statistics
 
 ## [2.4.0] - 2022-10-21
 #### Feature
