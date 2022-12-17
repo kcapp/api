@@ -1,18 +1,29 @@
 # Changelog
 
-## [2.4.0] - TBD
+## [2.5.0] - TBD
+#### Changed
+- Removed bots and busts from Global statistics
+
+#### Fixed
+- Correctly calculate Gotcha statistics
+
+## [2.4.0] - 2022-10-21
 #### Feature
 - Change venue when match warmup starts
 - New endpoint `/tournament/<id>/matches/result` returning results for all matches in tournament
 - Added more general statistics for each tournament to `/tournament/<id>/statistics`
 - Added visit statistics for 60+, 100+, 140+, and 180
 - Option to mark players as "Placeholder" to be used in tournaments before final players are known
+* Probabilities and Odds for Draw of matches based on Binomial Regression
+- New `Scam` match type
 
 #### Changed
 - Switched from string to time for datetimes to correctly support timezones
 
 #### Fixed
 - Correctly rematch for matches with Bots
+- Global Fish-n-Chips statistics being off when matches are played without office
+- Fixed an issue with three darts average being showed incorrectly for tournament matches before they finish
 
 ## [2.3.0] - 2022-03-06
 #### Feature
@@ -104,7 +115,8 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
-[2.4.0]: https://github.com/kcapp/api/compare/v2.3.0...develop
+[2.5.0]: https://github.com/kcapp/api/compare/v2.4.0...develop
+[2.4.0]: https://github.com/kcapp/api/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/kcapp/api/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/kcapp/api/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/kcapp/api/compare/v2.0.0...v2.1.0

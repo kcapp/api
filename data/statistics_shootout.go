@@ -137,7 +137,8 @@ func GetShootoutStatisticsForPlayer(id int) (*models.StatisticsShootout, error) 
 			SUM(s.60s_plus),
 			SUM(s.100s_plus),
 			SUM(s.140s_plus),
-			SUM(s.180s) AS '180s'
+			SUM(s.180s) AS '180s',
+			MAX(s.score) AS 'max_score'
 		FROM statistics_shootout s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -147,7 +148,7 @@ func GetShootoutStatisticsForPlayer(id int) (*models.StatisticsShootout, error) 
 		WHERE s.player_id = ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
 			AND m.match_type_id = 2
-		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.Score, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.Score, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.HighestScore)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return new(models.StatisticsShootout), nil

@@ -204,12 +204,15 @@ func GetMatchProbabilities(id int) (*models.Probability, error) {
 		SELECT
 			m.id, m.created_at, m.updated_at, IF(TIMEDIFF(MAX(l.updated_at), NOW() - INTERVAL 15 MINUTE) > 0, 1, 0) AS 'is_started',
 			m.is_finished, m.is_abandoned, m.is_walkover, m.winner_id,
-			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.player_id) AS 'players',
-			GROUP_CONCAT(DISTINCT pe.current_elo ORDER BY pe.player_id) AS 'elos'
+			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
+			GROUP_CONCAT(DISTINCT pe.current_elo ORDER BY p2l.order) AS 'elos',
+			mm.is_draw_possible
 		FROM matches m
 			JOIN player2leg p2l ON p2l.match_id = m.id
-			LEFT JOIN player_elo pe ON pe.player_id = p2l.player_id
 			LEFT JOIN leg l ON l.match_id = m.id
+			LEFT JOIN player_elo pe ON pe.player_id = p2l.player_id AND p2l.leg_id = l.id
+			LEFT JOIN player p ON p.id = pe.player_id
+			LEFT JOIN match_mode mm ON mm.id = m.match_mode_id
 		WHERE m.id = ?`, id)
 	if err != nil {
 		return nil, err
@@ -221,30 +224,44 @@ func GetMatchProbabilities(id int) (*models.Probability, error) {
 		p := new(models.Probability)
 		var players string
 		var elos string
+		var isDrawPossible bool
 		err := rows.Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.IsStarted, &p.IsFinished, &p.IsAbandoned, &p.IsWalkover, &p.WinnerID,
-			&players, &elos)
+			&players, &elos, &isDrawPossible)
 		if err != nil {
 			return nil, err
 		}
 		p.Players = util.StringToIntArray(players)
 		playerElos := util.StringToIntArray(elos)
+		if len(playerElos) == 1 {
+			playerElos = append(playerElos, playerElos[0])
+		}
 
 		p.Elos = map[int]int{
 			p.Players[0]: playerElos[0],
 			p.Players[1]: playerElos[1],
 		}
 
-		prob1 := math.Round(GetPlayerWinProbability(playerElos[0], playerElos[1])*1000) / 1000
-		prob2 := math.Round(GetPlayerWinProbability(playerElos[1], playerElos[0])*1000) / 1000
+		pHome := GetPlayerWinProbability(playerElos[0], playerElos[1])
+		pAway := GetPlayerWinProbability(playerElos[1], playerElos[0])
+		probDraw := GetPlayerDrawProbability(playerElos[0], playerElos[1])
 
-		p.PlayerWinningProbabilities = map[int]float64{
-			p.Players[0]: prob1,
-			p.Players[1]: prob2,
+		if isDrawPossible {
+			pHome = pHome * (1 - probDraw)
+			pAway = pAway * (1 - probDraw)
 		}
 
-		p.PlayerOdds = map[int]float32{
-			p.Players[0]: float32(math.Round(1.0/GetPlayerWinProbability(playerElos[0], playerElos[1])*1000) / 1000),
-			p.Players[1]: float32(math.Round(1.0/GetPlayerWinProbability(playerElos[1], playerElos[0])*1000) / 1000),
+		p.PlayerWinningProbabilities = map[int]float64{
+			p.Players[0]: math.Round(pHome*1000) / 1000,
+			p.Players[1]: math.Round(pAway*1000) / 1000,
+		}
+
+		p.PlayerOdds = map[int]float64{
+			p.Players[0]: math.Round(1.0/pHome*1000) / 1000,
+			p.Players[1]: math.Round(1.0/pAway*1000) / 1000,
+		}
+		if isDrawPossible {
+			p.PlayerWinningProbabilities[0] = math.Round(probDraw*1000) / 1000
+			p.PlayerOdds[0] = math.Round(1.0/probDraw*1000) / 1000
 		}
 
 		probabilities = p
@@ -341,7 +358,7 @@ func GetMatch(id int) (*models.Match, error) {
 			MAX(l.updated_at) AS 'last_throw',
 			MIN(s.created_at) AS 'first_throw',
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
-			m.tournament_id, t.id, t.name, t.office_id, tg.id, tg.name
+			m.tournament_id, t.id, t.name, t.office_id, tg.id, tg.name, t.is_playoffs
 		FROM matches m
 			JOIN match_type mt ON mt.id = m.match_type_id
 			JOIN match_mode mm ON mm.id = m.match_mode_id
@@ -357,7 +374,7 @@ func GetMatch(id int) (*models.Match, error) {
 		&m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 		&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired, &m.MatchMode.TieBreakMatchTypeID,
 		&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &m.FirstThrow, &players, &m.TournamentID, &tournament.TournamentID,
-		&tournament.TournamentName, &tournament.OfficeID, &tournament.TournamentGroupID, &tournament.TournamentGroupName)
+		&tournament.TournamentName, &tournament.OfficeID, &tournament.TournamentGroupID, &tournament.TournamentGroupName, &tournament.IsPlayoffs)
 	if err != nil {
 		return nil, err
 	}

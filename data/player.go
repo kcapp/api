@@ -525,6 +525,56 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			}
 			scores[prev.PlayerID].CurrentScore = 0
 		}
+	} else if matchType == models.SCAM {
+		stopperOrder := 1
+		for _, player := range scores {
+			if player.Order == stopperOrder {
+				player.SetStopper()
+			} else {
+				player.SetScorer()
+			}
+			player.CurrentScore = 0
+			player.Hits = make(models.HitsMap)
+		}
+
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+
+		hits := make(models.HitsMap)
+		for _, visit := range visits {
+			player := scores[visit.PlayerID]
+			if player.IsStopper.Bool {
+				hits.Add(visit.FirstDart)
+				hits.Add(visit.SecondDart)
+				hits.Add(visit.ThirdDart)
+				player.Hits = hits
+
+				visit.IsStopper = null.BoolFrom(true)
+				if hits.Contains(models.SINGLE, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) {
+					stopperOrder++
+					for _, player := range scores {
+						if player.Order == stopperOrder {
+							player.SetStopper()
+						} else {
+							player.SetScorer()
+						}
+					}
+					hits = make(models.HitsMap)
+				}
+			} else if player.IsScorer.Bool {
+				if hits.GetHits(visit.FirstDart.ValueRaw(), models.SINGLE) < 1 {
+					player.CurrentScore += visit.FirstDart.GetScore()
+				}
+				if hits.GetHits(visit.SecondDart.ValueRaw(), models.SINGLE) < 1 {
+					player.CurrentScore += visit.SecondDart.GetScore()
+				}
+				if hits.GetHits(visit.ThirdDart.ValueRaw(), models.SINGLE) < 1 {
+					player.CurrentScore += visit.ThirdDart.GetScore()
+				}
+			}
+		}
 	}
 	return scores, nil
 }
@@ -1133,4 +1183,14 @@ func calculateElo(winnerElo int, winnerMatches int, looserElo int, looserMatches
 func GetPlayerWinProbability(player1Elo int, player2Elo int) float64 {
 	// Pr(A) = 1 / (10^(-ELODIFF/400) + 1)
 	return 1 / (math.Pow(10, float64(-(player1Elo-player2Elo))/400) + 1)
+}
+
+func GetPlayerDrawProbability(player1Elo int, player2Elo int) float64 {
+	// Quants Magic using Binomial Regression and Elos from 800 matches
+	// Caveat: Model won´t be accurate for extreme cases (Elo Diff >500)
+	// Formula:
+	//   pDraw = 1 / (1 + exp(-(-1.479018 - 0.000001434670 * abs(eloDiff)^2)))
+	eloDiff := math.Abs(float64(player1Elo - player2Elo))
+	pDraw := 1 / (1 + math.Exp(-(-1.479018 - float64(0.000001434670)*eloDiff*eloDiff)))
+	return pDraw
 }

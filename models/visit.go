@@ -25,6 +25,8 @@ type Visit struct {
 	Score       int         `json:"score"`
 	Marks       int         `json:"marks"`
 	Scores      map[int]int `json:"scores"`
+	// Used for SCAM match type
+	IsStopper null.Bool `json:"is_stopper,omitempty"`
 }
 
 type comparingMatrix [][]bool
@@ -110,9 +112,10 @@ func (visit *Visit) SetIsBustAbove(currentScore int, targetScore int) {
 	currentScore = currentScore + visit.FirstDart.GetScore()
 	if !isBust && currentScore < targetScore {
 		isBust = visit.SecondDart.IsBustAbove(currentScore, targetScore)
-		currentScore = currentScore - visit.SecondDart.GetScore()
+		currentScore = currentScore + visit.SecondDart.GetScore()
 		if !isBust && currentScore < targetScore {
 			isBust = visit.ThirdDart.IsBustAbove(currentScore, targetScore)
+			currentScore = currentScore + visit.ThirdDart.GetScore()
 		} else {
 			// Invalidate third dart if second was bust
 			visit.ThirdDart.Value = null.IntFromPtr(nil)
@@ -538,6 +541,51 @@ func (visit *Visit) CalculateJDCPracticeScore(round int) int {
 		}
 	}
 	return score
+}
+
+// CalculateScamScore will calculate score for the given visit
+func (visit *Visit) CalculateScamScore(scores map[int]*Player2Leg) int {
+	score := 0
+
+	var stopper *Player2Leg
+	for _, player := range scores {
+		if player.IsStopper.Bool {
+			stopper = player
+		}
+	}
+	if stopper.Hits.GetHits(visit.FirstDart.ValueRaw(), SINGLE) < 1 && !visit.FirstDart.IsBull() {
+		score += visit.FirstDart.GetScore()
+	}
+	if stopper.Hits.GetHits(visit.SecondDart.ValueRaw(), SINGLE) < 1 && !visit.SecondDart.IsBull() {
+		score += visit.SecondDart.GetScore()
+	}
+	if stopper.Hits.GetHits(visit.ThirdDart.ValueRaw(), SINGLE) < 1 && !visit.ThirdDart.IsBull() {
+		score += visit.ThirdDart.GetScore()
+	}
+	return score
+}
+
+// CalculateScamMarks will calculate marks hit for the given visit
+func (visit *Visit) CalculateScamMarks(scores map[int]*Player2Leg) int {
+	marks := 0
+
+	hits := scores[visit.PlayerID].Hits
+	if hits.GetHits(visit.FirstDart.ValueRaw(), SINGLE) < 1 && visit.FirstDart.IsSingle() && !visit.FirstDart.IsMiss() {
+		marks++
+	}
+	hits.Add(visit.FirstDart)
+
+	if hits.GetHits(visit.SecondDart.ValueRaw(), SINGLE) < 1 && visit.SecondDart.IsSingle() && !visit.SecondDart.IsMiss() {
+		marks++
+	}
+	hits.Add(visit.SecondDart)
+
+	if hits.GetHits(visit.ThirdDart.ValueRaw(), SINGLE) < 1 && visit.ThirdDart.IsSingle() && !visit.ThirdDart.IsMiss() {
+		marks++
+	}
+	hits.Add(visit.ThirdDart)
+
+	return marks
 }
 
 // IsShanghai will check if the given visit is a "Shanghai". A Shanghai visit is one where a single, double and triple multipler is hit with each dart

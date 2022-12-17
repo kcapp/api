@@ -8,21 +8,22 @@ import (
 // GetGlobalStatistics will return global statistics for all matches
 func GetGlobalStatistics() (map[int]*models.GlobalStatistics, error) {
 	rows, err := models.DB.Query(`
-		SELECT
-			office_id,
-			COUNT(DISTINCT m.id) AS 'matches',
-			COUNT(DISTINCT l.id) AS 'legs',
-			COUNT(DISTINCT s.id) AS 'visits',
-			COUNT(first_dart) + SUM(IF(second_dart is null, 0, 1)) + SUM(IF(third_dart is null, 0, 1)) as darts,
-			SUM(s.first_dart * s.first_dart_multiplier + IFNULL(s.second_dart, 0) * s.second_dart_multiplier + IFNULL(s.third_dart, 0) * s.third_dart_multiplier) as 'points',
-			SUM(IF(s.is_bust = 1, s.first_dart * s.first_dart_multiplier + IFNULL(s.second_dart, 0) * s.second_dart_multiplier + IFNULL(s.third_dart, 0) * s.third_dart_multiplier, 0)) as 'points_busted',
-			SUM(IF(first_dart = 20 AND first_dart_multiplier = 3 AND second_dart = 20 AND second_dart_multiplier = 3 AND third_dart = 20 AND third_dart_multiplier = 3, 1, 0)) as '180s',
-			SUM(IF((first_dart = 25 AND first_dart_multiplier = 2) OR (second_dart = 25 AND second_dart_multiplier = 2) OR (third_dart = 25 AND third_dart_multiplier = 2), 1, 0)) as 'bullseyes'
-		FROM matches m
-			LEFT JOIN leg l on l.match_id = m.id
-			LEFT JOIN score s on s.leg_id = l.id
-		WHERE m.is_finished = 1 AND m.is_abandoned = 0
-		GROUP BY office_id`)
+			SELECT
+				m.office_id,
+				COUNT(DISTINCT m.id) AS 'matches',
+				COUNT(DISTINCT l.id) AS 'legs',
+				COUNT(DISTINCT s.id) AS 'visits',
+				COUNT(first_dart) + SUM(IF(second_dart is null, 0, 1)) + SUM(IF(third_dart is null, 0, 1)) as darts,
+				SUM(s.first_dart * s.first_dart_multiplier + IFNULL(s.second_dart, 0) * s.second_dart_multiplier + IFNULL(s.third_dart, 0) * s.third_dart_multiplier) - SUM(IF(s.is_bust = 1, s.first_dart * s.first_dart_multiplier + IFNULL(s.second_dart, 0) * s.second_dart_multiplier + IFNULL(s.third_dart, 0) * s.third_dart_multiplier, 0)) as 'points',
+				SUM(IF(s.is_bust = 1, s.first_dart * s.first_dart_multiplier + IFNULL(s.second_dart, 0) * s.second_dart_multiplier + IFNULL(s.third_dart, 0) * s.third_dart_multiplier, 0)) as 'points_busted',
+				SUM(IF(s.is_bust, 0, IF(first_dart = 20 AND first_dart_multiplier = 3 AND second_dart = 20 AND second_dart_multiplier = 3 AND third_dart = 20 AND third_dart_multiplier = 3, 1, 0))) as '180s',
+				SUM(IF(s.is_bust, 0, IF((first_dart = 25 AND first_dart_multiplier = 2) OR (second_dart = 25 AND second_dart_multiplier = 2) OR (third_dart = 25 AND third_dart_multiplier = 2), 1, 0))) as 'bullseyes'
+			FROM matches m
+				LEFT JOIN leg l on l.match_id = m.id
+				LEFT JOIN score s on s.leg_id = l.id
+				LEFT JOIN player p on p.id = s.player_id
+			WHERE m.is_finished = 1 AND m.is_abandoned = 0 AND p.is_bot = 0
+			GROUP BY m.office_id`)
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +62,8 @@ func GetGlobalStatistics() (map[int]*models.GlobalStatistics, error) {
 		all.PointsBusted += s.PointsBusted
 		all.Score180s += s.Score180s
 		all.ScoreBullseyes += s.ScoreBullseyes
-		all.FishNChips += s.FishNChips
 	}
+	all.FishNChips = fnc[0].FishNChips
 	stats[0] = all
 
 	return stats, nil

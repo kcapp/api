@@ -16,5 +16,5 @@ type Probability struct {
 	Players                    []int           `json:"players"`
 	Elos                       map[int]int     `json:"player_elo"`
 	PlayerWinningProbabilities map[int]float64 `json:"player_winning_probabilities"`
-	PlayerOdds                 map[int]float32 `json:"player_odds"`
+	PlayerOdds                 map[int]float64 `json:"player_odds"`
 }

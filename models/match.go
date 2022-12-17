@@ -48,6 +48,8 @@ const (
 	JDCPRACTICE = 14
 	// KNOCKOUT constant representing type 15
 	KNOCKOUT = 15
+	// SCAM constant representing type 16
+	SCAM = 16
 )
 
 var MatchTypes = map[int]string{
@@ -266,6 +268,7 @@ type MatchTournament struct {
 	TournamentGroupID   null.Int    `json:"tournament_group_id"`
 	TournamentGroupName null.String `json:"tournament_group_name"`
 	OfficeID            null.Int    `json:"office_id"`
+	IsPlayoffs          null.Bool   `json:"is_playoffs"`
 }
 
 // MatchMetadata struct used for storing metadata about matches

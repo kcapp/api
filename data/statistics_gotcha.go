@@ -259,17 +259,21 @@ func getPlayersReset(visit *models.Visit, players map[int]*models.Player2Leg) in
 			resets++
 		}
 	}
-	currentScore += visit.SecondDart.GetScore()
-	for _, player := range players {
-		if visit.PlayerID != player.PlayerID && player.CurrentScore == currentScore {
-			resets++
+	if !visit.SecondDart.IsMiss() {
+		currentScore += visit.SecondDart.GetScore()
+		for _, player := range players {
+			if visit.PlayerID != player.PlayerID && player.CurrentScore == currentScore {
+				resets++
+			}
 		}
 	}
 
-	currentScore += visit.ThirdDart.GetScore()
-	for _, player := range players {
-		if visit.PlayerID != player.PlayerID && player.CurrentScore == currentScore {
-			resets++
+	if !visit.ThirdDart.IsMiss() {
+		currentScore += visit.ThirdDart.GetScore()
+		for _, player := range players {
+			if visit.PlayerID != player.PlayerID && player.CurrentScore == currentScore {
+				resets++
+			}
 		}
 	}
 	return resets

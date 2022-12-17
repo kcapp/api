@@ -216,6 +216,14 @@ func GetStatisticsForLeg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
+	} else if matchType == models.SCAM {
+		stats, err := data.GetScamStatisticsForLeg(legID)
+		if err != nil {
+			log.Println("Unable to get Scam statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
 	} else {
 		stats, err := data.GetX01StatisticsForLeg(legID)
 		if err != nil {
