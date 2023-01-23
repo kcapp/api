@@ -1216,8 +1216,8 @@ func GetPlayerDrawProbability(player1Elo int, player2Elo int) float64 {
 	// Quants Magic using Binomial Regression and Elos from 800 matches
 	// Caveat: Model won´t be accurate for extreme cases (Elo Diff >500)
 	// Formula:
-	//   pDraw = 1 / (1 + exp(-(-1.479018 - 0.000001434670 * abs(eloDiff)^2)))
+	//   pDraw = 1 / (1 + exp(-(-0.001215 * absDiff - 0.0000005372533 * absDiff ^ 2)))
 	eloDiff := math.Abs(float64(player1Elo - player2Elo))
-	pDraw := 1 / (1 + math.Exp(-(-1.479018 - float64(0.000001434670)*eloDiff*eloDiff)))
+	pDraw := 1 / (1 + math.Exp(-(-0.001215*eloDiff - float64(0.0000005372533)*eloDiff*eloDiff)))
 	return pDraw
 }
