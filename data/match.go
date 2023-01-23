@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"math"
 	"time"
@@ -70,6 +71,13 @@ func NewMatch(match models.Match) (*models.Match, error) {
 			return nil, err
 		}
 		if config, ok := match.BotPlayerConfig[playerID]; ok {
+			if config.Skill.ValueOrZero() == 0 {
+				_, err = GetRandomLegForPlayer(playerID, startingScore)
+				if err != nil {
+					tx.Rollback()
+					return nil, &models.MatchConfigError{Err: errors.New("no leg to use when configuring mock bot")}
+				}
+			}
 			player2LegID, err := res.LastInsertId()
 			if err != nil {
 				tx.Rollback()
