@@ -52,8 +52,8 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 	if matchType == nil {
 		matchType = &match.MatchType.ID
 	}
+	scores, err := GetPlayersScore(int(match.CurrentLegID.Int64))
 	if *matchType == models.X01HANDICAP {
-		scores, err := GetPlayersScore(int(match.CurrentLegID.Int64))
 		if err != nil {
 			return nil, err
 		}
@@ -80,11 +80,25 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 
 	for idx, playerID := range players {
 		order := idx + 1
-		_, err = tx.Exec("INSERT INTO player2leg (player_id, leg_id, `order`, match_id, handicap) VALUES (?, ?, ?, ?, ?)",
+		res, err = tx.Exec("INSERT INTO player2leg (player_id, leg_id, `order`, match_id, handicap) VALUES (?, ?, ?, ?, ?)",
 			playerID, legID, order, matchID, handicaps[playerID])
 		if err != nil {
 			tx.Rollback()
 			return nil, err
+		}
+
+		if scores[playerID].BotConfig != nil {
+			player2LegID, err := res.LastInsertId()
+			config := scores[playerID].BotConfig
+			if err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+			_, err = tx.Exec("INSERT INTO bot2player2leg (player2leg_id, player_id, skill_level) VALUES (?, ?, ?)", player2LegID, config.PlayerID, config.Skill)
+			if err != nil {
+				tx.Rollback()
+				return nil, err
+			}
 		}
 	}
 	tx.Commit()

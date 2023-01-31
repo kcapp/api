@@ -1,6 +1,9 @@
 # Changelog
 
 ## [2.5.0] - TBD
+#### Feature
+- Insert BotConfig on next Legs
+
 #### Changed
 - Removed bots and busts from Global statistics
 
