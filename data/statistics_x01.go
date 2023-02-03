@@ -631,8 +631,10 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
 		WHERE s.player_id IN (?)
-			AND l.starting_score IN (?)`, ids, startingScores)
+			AND l.starting_score IN (?)
+			AND IFNULL(l.leg_type_id, m.match_type_id) = 1`, ids, startingScores)
 	if err != nil {
 		return err
 	}
