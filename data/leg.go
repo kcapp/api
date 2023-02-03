@@ -851,6 +851,7 @@ func GetLeg(id int) (*models.Leg, error) {
 
 	scores := make(map[int]*models.Player2Leg)
 	for i := 0; i < len(leg.Players); i++ {
+		playerID := leg.Players[i]
 		p2l := new(models.Player2Leg)
 		p2l.Hits = make(models.HitsMap)
 		if matchType == models.DARTSATX || matchType == models.AROUNDTHECLOCK || matchType == models.AROUNDTHEWORLD || matchType == models.SHANGHAI ||
@@ -863,14 +864,19 @@ func GetLeg(id int) (*models.Leg, error) {
 		} else if matchType == models.FOURTWENTY {
 			p2l.CurrentScore = 420
 		} else if matchType == models.X01HANDICAP {
-			// TODO
+			players, err := GetPlayersScore(id)
+			if err != nil {
+				return nil, err
+			}
+			p2l.CurrentScore = leg.StartingScore + int(players[playerID].Handicap.ValueOrZero())
+			p2l.StartingScore = leg.StartingScore + int(players[playerID].Handicap.ValueOrZero())
 		} else {
 			p2l.CurrentScore = leg.StartingScore
 			p2l.StartingScore = leg.StartingScore
 		}
 		p2l.Order = i + 1
 		p2l.DartsThrown = 0
-		scores[leg.Players[i]] = p2l
+		scores[playerID] = p2l
 	}
 
 	specialNums := make([]int, 0)
@@ -921,7 +927,6 @@ func GetLeg(id int) (*models.Leg, error) {
 				scores[visit.PlayerID].CurrentScore += score
 			} else if matchType == models.CRICKET {
 				score = visit.CalculateCricketScore(scores)
-				scores[visit.PlayerID].CurrentScore += score
 			} else if matchType == models.AROUNDTHECLOCK {
 				score = visit.CalculateAroundTheClockScore(scores[visit.PlayerID].CurrentScore)
 				scores[visit.PlayerID].CurrentScore += score
