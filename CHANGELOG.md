@@ -2,7 +2,8 @@
 
 ## [2.5.0] - TBD
 #### Feature
-- Insert BotConfig on next Legs
+- Insert BotConfig on next Leg
+- Support for Player Options
 
 #### Changed
 - Removed bots and busts from Global statistics
