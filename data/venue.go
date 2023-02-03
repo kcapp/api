@@ -65,21 +65,21 @@ func UpdateVenue(venueID int, venue models.Venue) error {
 }
 
 // GetVenues will return all venues
-func GetVenues() ([]*models.Venue, error) {
+func GetVenues() (map[int]*models.Venue, error) {
 	rows, err := models.DB.Query("SELECT id, name, office_id, description FROM venue")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	venues := make([]*models.Venue, 0)
+	venues := make(map[int]*models.Venue, 0)
 	for rows.Next() {
 		venue := new(models.Venue)
 		err := rows.Scan(&venue.ID, &venue.Name, &venue.OfficeID, &venue.Description)
 		if err != nil {
 			return nil, err
 		}
-		venues = append(venues, venue)
+		venues[int(venue.ID.Int64)] = venue
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func SpectateVenue(venueID int) ([]*models.Match, error) {
 		err := rows.Scan(&m.ID, &m.IsFinished, &m.CurrentLegID, &m.WinnerID, &m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID,
 			&m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
-			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)
+			&ot.ID, &ot.Name, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)
 		if err != nil {
 			return nil, err
 		}
@@ -252,7 +252,7 @@ func GetActiveVenueMatches(venueId int) ([]*models.Match, error) {
 		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice,
 			&m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
-			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)
+			&ot.ID, &ot.Name, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)
 		if err != nil {
 			return nil, err
 		}

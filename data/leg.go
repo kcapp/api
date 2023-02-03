@@ -463,7 +463,7 @@ func FinishLeg(visit models.Visit) error {
 					tx.Rollback()
 					return err
 				}
-				log.Printf("Added owes of %s from player %d to player %d", match.OweType.Item.String, playerID, visit.PlayerID)
+				log.Printf("Added owes of %s from player %d to player %d", match.OweType.Name.String, playerID, visit.PlayerID)
 			}
 		}
 		log.Printf("Match %d finished with player %d winning", match.ID, winnerID.ValueOrZero())

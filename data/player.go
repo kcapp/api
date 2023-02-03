@@ -1,15 +1,14 @@
 package data
 
 import (
+	"github.com/guregu/null"
+	"github.com/jmoiron/sqlx"
+	"github.com/kcapp/api/data/queries"
+	"github.com/kcapp/api/models"
+	"github.com/kcapp/api/util"
 	"log"
 	"math"
 	"sort"
-
-	"github.com/guregu/null"
-
-	"github.com/jmoiron/sqlx"
-	"github.com/kcapp/api/models"
-	"github.com/kcapp/api/util"
 )
 
 // GetPlayers returns a map of all players
@@ -19,11 +18,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 		return nil, err
 	}
 
-	rows, err := models.DB.Query(`
-		SELECT
-			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color, p.profile_pic_url, p.smartcard_uid,
-			 p.board_stream_url, p.board_stream_css, p.active, p.office_id, p.is_bot, p.is_placeholder, p.created_at, p.updated_at
-		FROM player p`)
+	rows, err := models.DB.Query(queries.QueryAllPlayers())
 	if err != nil {
 		return nil, err
 	}
@@ -37,6 +32,7 @@ func GetPlayers() (map[int]*models.Player, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		players[p.ID] = p
 
 		if val, ok := played[p.ID]; ok {
@@ -53,20 +49,14 @@ func GetPlayers() (map[int]*models.Player, error) {
 	return players, nil
 }
 
-// GetActivePlayers returns a map of all active players
+// GetActivePlayers returns an array of all active players
 func GetActivePlayers() (map[int]*models.Player, error) {
 	played, err := GetMatchesPlayedPerPlayer()
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := models.DB.Query(`
-		SELECT
-			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color, p.profile_pic_url,
-			p.smartcard_uid, p.board_stream_url, p.board_stream_css, p.office_id, p.active, p.is_bot, p.is_placeholder,
-			p.created_at, p.updated_at
-		FROM player p
-		WHERE active = 1`)
+	rows, err := models.DB.Query(queries.QueryActivePlayers())
 	if err != nil {
 		return nil, err
 	}
@@ -76,10 +66,11 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
-			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt)
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.IsActive, &p.OfficeID, &p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
+
 		players[p.ID] = p
 
 		if val, ok := played[p.ID]; ok {
@@ -96,148 +87,27 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	return players, nil
 }
 
-// GetPlayer returns the player for the given ID
-func GetPlayer(id int) (*models.Player, error) {
-	p := new(models.Player)
-	err := models.DB.QueryRow(`
-		SELECT
-			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname,
-			p.slack_handle, p.color, p.profile_pic_url, p.smartcard_uid, p.board_stream_url, p.board_stream_css,
-			p.office_id, p.active, p.is_bot, p.is_placeholder, p.created_at, p.updated_at, pe.current_elo, pe.tournament_elo
-		FROM player p
-		JOIN player_elo pe on pe.player_id = p.id
-		WHERE p.id = ?`, id).
-		Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
-			&p.Color, &p.ProfilePicURL, &p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive,
-			&p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt, &p.CurrentElo, &p.TournamentElo)
-	if err != nil {
-		return nil, err
-	}
-
-	pld, err := GetMatchesPlayedPerPlayer()
-	if err != nil {
-		return nil, err
-	}
-	played := pld[p.ID]
-	if played != nil {
-		p.MatchesPlayed = played.MatchesPlayed
-		p.MatchesWon = played.MatchesWon
-		p.LegsPlayed = played.LegsPlayed
-		p.LegsWon = played.LegsWon
-	}
-
-	return p, nil
-}
-
-// GetPlayerEloChangelog returns the elo changelog for the given player
-func GetPlayerEloChangelog(id int, start int, limit int) (*models.PlayerEloChangelogs, error) {
-	var total int
-	err := models.DB.QueryRow(`SELECT COUNT(id) FROM player_elo_changelog WHERE player_id = ?`, id).Scan(&total)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := models.DB.Query(`
-		SELECT
-			home.id, home.match_id, m.updated_at,
-			if(m.tournament_id is null, false, true) as 'is_official',
-			mm.short_name as 'match_mode',
-			mt.name as 'match_type', m.winner_id,
-			home.player_id, home.old_elo, home.new_elo, home.old_tournament_elo, home.new_tournament_elo,
-			away.player_id, away.old_elo, away.new_elo, away.old_tournament_elo, away.new_tournament_elo
-		FROM player_elo_changelog home
-			JOIN player_elo_changelog away ON away.match_id = home.match_id AND away.player_id <> home.player_id
-			JOIN matches m on m.id = home.match_id
-			JOIN match_type mt on m.match_type_id = mt.id
-			JOIN match_mode mm on m.match_mode_id = mm.id
-		WHERE home.player_id = ?
-		ORDER BY home.id DESC
-		LIMIT ?, ?`, id, start, limit)
+// GetMatchesPlayedPerPlayer will get the number of matches and legs played and won for each player
+func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
+	rows, err := models.DB.Query(queries.QueryMatchesPlayed())
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	if err != nil {
-		return nil, err
-	}
-	changelogs := new(models.PlayerEloChangelogs)
-	changelogs.Total = total
-	changelogs.Changelog = make([]*models.PlayerEloChangelog, 0)
+	played := make(map[int]*models.Player)
 	for rows.Next() {
-		change := new(models.PlayerEloChangelog)
-
-		home := new(models.PlayerElo)
-		away := new(models.PlayerElo)
-
-		err := rows.Scan(&change.ID, &change.MatchID, &change.FinishedAt, &change.IsOfficial, &change.MatchMode,
-			&change.MatchType, &change.WinnerID,
-			&home.PlayerID, &home.CurrentElo, &home.CurrentEloNew, &home.TournamentElo, &home.TournamentEloNew,
-			&away.PlayerID, &away.CurrentElo, &away.CurrentEloNew, &away.TournamentElo, &away.TournamentEloNew)
+		p := new(models.Player)
+		err := rows.Scan(&p.ID, &p.MatchesPlayed, &p.MatchesWon, &p.LegsPlayed, &p.LegsWon)
 		if err != nil {
 			return nil, err
 		}
-		change.HomePlayer = home
-		change.AwayPlayer = away
-		changelogs.Changelog = append(changelogs.Changelog, change)
+		played[p.ID] = p
 	}
-	return changelogs, nil
-}
-
-// AddPlayer will add a new player to the database
-func AddPlayer(player models.Player) error {
-	tx, err := models.DB.Begin()
-	if err != nil {
-		return err
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
-
-	// Prepare statement for inserting data
-	res, err := tx.Exec(`INSERT INTO player (first_name, last_name, vocal_name, nickname, slack_handle, color,
-			profile_pic_url, smartcard_uid, board_stream_url, board_stream_css, office_id, is_bot)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-		player.FirstName, player.LastName, player.VocalName, player.Nickname, player.SlackHandle, player.Color, player.ProfilePicURL,
-		player.SmartcardUID, player.BoardStreamURL, player.BoardStreamCSS, player.OfficeID)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	playerID, err := res.LastInsertId()
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	_, err = tx.Exec("INSERT INTO player_elo (player_id) VALUES (?)", playerID)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	log.Printf("Created new player (%d) %s", playerID, player.FirstName)
-	tx.Commit()
-	return nil
-}
-
-// UpdatePlayer will update the given player
-func UpdatePlayer(playerID int, player models.Player) error {
-	// Prepare statement for inserting data
-	stmt, err := models.DB.Prepare(`
-		UPDATE player SET
-			first_name = ?, last_name = ?, vocal_name = ?, nickname = ?, slack_handle = ?,
-			color = ?, profile_pic_url = ?, smartcard_uid = ?, board_stream_url = ?, board_stream_css = ?, office_id = ?,
-			updated_at = NOW()
-		WHERE id = ?`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec(player.FirstName, player.LastName, player.VocalName, player.Nickname, player.SlackHandle, player.Color,
-		player.ProfilePicURL, player.SmartcardUID, player.BoardStreamURL, player.BoardStreamCSS, player.OfficeID, playerID)
-	if err != nil {
-		return err
-	}
-	log.Printf("Updated player %s (%v)", player.FirstName, player)
-	return nil
+	return played, nil
 }
 
 // GetPlayerScore will get the score for the given player in the given leg
@@ -579,6 +449,143 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 	return scores, nil
 }
 
+// GetPlayer returns the player for the given ID
+func GetPlayer(id int) (*models.Player, error) {
+	p := new(models.Player)
+	err := models.DB.QueryRow(queries.QueryPlayer(), id).
+		Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
+			&p.Color, &p.ProfilePicURL, &p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive,
+			&p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt, &p.CurrentElo, &p.TournamentElo)
+	if err != nil {
+		return nil, err
+	}
+
+	pld, err := GetMatchesPlayedPerPlayer()
+	if err != nil {
+		return nil, err
+	}
+	played := pld[p.ID]
+	if played != nil {
+		p.MatchesPlayed = played.MatchesPlayed
+		p.MatchesWon = played.MatchesWon
+		p.LegsPlayed = played.LegsPlayed
+		p.LegsWon = played.LegsWon
+	}
+
+	return p, nil
+}
+
+// GetPlayerEloChangelog returns the elo changelog for the given player
+func GetPlayerEloChangelog(id int, start int, limit int) (*models.PlayerEloChangelogs, error) {
+	var total int
+	err := models.DB.QueryRow(`SELECT COUNT(id) FROM player_elo_changelog WHERE player_id = ?`, id).Scan(&total)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := models.DB.Query(`
+		SELECT
+			home.id, home.match_id, m.updated_at,
+			if(m.tournament_id is null, false, true) as 'is_official',
+			mm.short_name as 'match_mode',
+			mt.name as 'match_type', m.winner_id,
+			home.player_id, home.old_elo, home.new_elo, home.old_tournament_elo, home.new_tournament_elo,
+			away.player_id, away.old_elo, away.new_elo, away.old_tournament_elo, away.new_tournament_elo
+		FROM player_elo_changelog home
+			JOIN player_elo_changelog away ON away.match_id = home.match_id AND away.player_id <> home.player_id
+			JOIN matches m on m.id = home.match_id
+			JOIN match_type mt on m.match_type_id = mt.id
+			JOIN match_mode mm on m.match_mode_id = mm.id
+		WHERE home.player_id = ?
+		ORDER BY home.id DESC
+		LIMIT ?, ?`, id, start, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if err != nil {
+		return nil, err
+	}
+	changelogs := new(models.PlayerEloChangelogs)
+	changelogs.Total = total
+	changelogs.Changelog = make([]*models.PlayerEloChangelog, 0)
+	for rows.Next() {
+		change := new(models.PlayerEloChangelog)
+
+		home := new(models.PlayerElo)
+		away := new(models.PlayerElo)
+
+		err := rows.Scan(&change.ID, &change.MatchID, &change.FinishedAt, &change.IsOfficial, &change.MatchMode,
+			&change.MatchType, &change.WinnerID,
+			&home.PlayerID, &home.CurrentElo, &home.CurrentEloNew, &home.TournamentElo, &home.TournamentEloNew,
+			&away.PlayerID, &away.CurrentElo, &away.CurrentEloNew, &away.TournamentElo, &away.TournamentEloNew)
+		if err != nil {
+			return nil, err
+		}
+		change.HomePlayer = home
+		change.AwayPlayer = away
+		changelogs.Changelog = append(changelogs.Changelog, change)
+	}
+	return changelogs, nil
+}
+
+// AddPlayer will add a new player to the database
+func AddPlayer(player models.Player) error {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Prepare statement for inserting data
+	res, err := tx.Exec(`INSERT INTO player (first_name, last_name, vocal_name, nickname, slack_handle, color,
+			profile_pic_url, smartcard_uid, board_stream_url, board_stream_css, office_id, is_bot)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+		player.FirstName, player.LastName, player.VocalName, player.Nickname, player.SlackHandle, player.Color, player.ProfilePicURL,
+		player.SmartcardUID, player.BoardStreamURL, player.BoardStreamCSS, player.OfficeID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	playerID, err := res.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	_, err = tx.Exec("INSERT INTO player_elo (player_id) VALUES (?)", playerID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	log.Printf("Created new player (%d) %s", playerID, player.FirstName)
+	tx.Commit()
+	return nil
+}
+
+// UpdatePlayer will update the given player
+func UpdatePlayer(playerID int, player models.Player) error {
+	// Prepare statement for inserting data
+	stmt, err := models.DB.Prepare(`
+		UPDATE player SET
+			first_name = ?, last_name = ?, vocal_name = ?, nickname = ?, slack_handle = ?,
+			color = ?, profile_pic_url = ?, smartcard_uid = ?, board_stream_url = ?, board_stream_css = ?, office_id = ?,
+			updated_at = NOW()
+		WHERE id = ?`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(player.FirstName, player.LastName, player.VocalName, player.Nickname, player.SlackHandle, player.Color,
+		player.ProfilePicURL, player.SmartcardUID, player.BoardStreamURL, player.BoardStreamCSS, player.OfficeID, playerID)
+	if err != nil {
+		return err
+	}
+	log.Printf("Updated player %s (%v)", player.FirstName, player)
+	return nil
+}
+
 // GetPlayersInLeg will get all players in a given leg
 func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
@@ -619,61 +626,6 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 		return nil, err
 	}
 	return players, nil
-}
-
-// GetMatchesPlayedPerPlayer will get the number of matches and legs played and won for each player
-func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
-	rows, err := models.DB.Query(`
-		SELECT
-			player_id,
-			MAX(matches_played) AS 'matches_played',
-			MAX(matches_won) AS 'matches_won',
-			MAX(legs_played) AS 'legs_played',
-			MAX(legs_won) AS 'legs_won'
-		FROM (
-			SELECT
-				p2l.player_id,
-				COUNT(DISTINCT p2l.match_id) AS 'matches_played',
-				0 AS 'matches_won',
-				COUNT(m.id)  AS 'legs_played',
-				SUM(CASE WHEN p2l.player_id = m.winner_id THEN 1 ELSE 0 END) AS 'legs_won'
-			FROM player2leg p2l
-				JOIN leg l ON l.id = p2l.leg_id
-				JOIN matches m ON m.id = p2l.match_id
-			WHERE l.is_finished = 1 AND m.is_abandoned = 0
-			GROUP BY p2l.player_id
-			UNION ALL
-			SELECT
-				p2l.player_id,
-				0 AS 'matches_played',
-				COUNT(DISTINCT m.id) AS 'matches_won',
-				0 AS 'legs_played',
-				0 AS 'legs_won'
-			FROM matches m
-				JOIN leg l ON l.match_id = m.id
-				JOIN player2leg p2l ON p2l.player_id = m.winner_id AND p2l.match_id = m.id
-			WHERE l.is_finished = 1 AND m.is_abandoned = 0
-			GROUP BY m.winner_id
-		) matches
-		GROUP BY player_id`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	played := make(map[int]*models.Player)
-	for rows.Next() {
-		p := new(models.Player)
-		err := rows.Scan(&p.ID, &p.MatchesPlayed, &p.MatchesWon, &p.LegsPlayed, &p.LegsWon)
-		if err != nil {
-			return nil, err
-		}
-		played[p.ID] = p
-	}
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-	return played, nil
 }
 
 // GetPlayerCheckouts will return a list containing all checkouts done by the given player
@@ -864,7 +816,7 @@ func GetPlayerOfficialMatches(playerID int) ([]*models.Match, error) {
 		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice, &m.CreatedAt, &m.UpdatedAt,
 			&m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
-			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)
+			&ot.ID, &ot.Name, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)
 		if err != nil {
 			return nil, err
 		}

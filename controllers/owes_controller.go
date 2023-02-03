@@ -2,47 +2,15 @@ package controllers
 
 import (
 	"encoding/json"
+	"github.com/kcapp/api/data"
+	"github.com/kcapp/api/util"
 	"log"
 	"net/http"
-
-	"github.com/kcapp/api/data"
-	"github.com/kcapp/api/models"
 )
-
-// GetOwes will return a list of all matches
-func GetOwes(w http.ResponseWriter, r *http.Request) {
-	SetHeaders(w)
-	owes, err := data.GetOwes()
-	if err != nil {
-		log.Println("Unable to get owes", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(owes)
-}
-
-// RegisterPayback will register a payback between the given players
-func RegisterPayback(w http.ResponseWriter, r *http.Request) {
-	SetHeaders(w)
-	var owe models.Owe
-	err := json.NewDecoder(r.Body).Decode(&owe)
-	if err != nil {
-		log.Println("Unable to deserialize body", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	err = data.RegisterPayback(owe)
-	if err != nil {
-		log.Println("Unable to register payback", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
 
 // GetOweTypes will return all owe types
 func GetOweTypes(w http.ResponseWriter, r *http.Request) {
-	SetHeaders(w)
+	util.SetHeaders(w)
 	owes, err := data.GetOweTypes()
 	if err != nil {
 		log.Println("Unable to get owe types", err)

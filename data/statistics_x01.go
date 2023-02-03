@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"github.com/kcapp/api/data/queries"
 	"log"
 
 	"github.com/guregu/null"
@@ -162,19 +163,116 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 	return stats, nil
 }
 
-// GetPlayerX01Statistics will get statistics about the given player id
-func GetPlayerX01Statistics(id int) (*models.StatisticsX01, error) {
-	ids := []int{id}
-	statistics, err := GetPlayersX01Statistics(ids)
+func getPlayerCurrentX01Statistics(id int) (*models.StatisticsX01, error) {
+	s := new(models.StatisticsX01)
+
+	err := models.DB.QueryRow(queries.QueryPlayerCurrentX01Statistics(), id).
+		Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD,
+			&s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s,
+			&s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
 	if err != nil {
 		return nil, err
 	}
-	if len(statistics) > 0 {
-		return statistics[0], nil
-	}
-	s := new(models.StatisticsX01)
-	s.PlayerID = id
+
 	return s, nil
+}
+
+func getPlayerPreviousX01Statistics(id int) (*models.StatisticsX01, error) {
+	s := new(models.StatisticsX01)
+
+	err := models.DB.QueryRow(queries.QueryPlayerPreviousX01Statistics(), id).
+		Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD,
+			&s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s,
+			&s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+// GetPlayerX01Statistics will get statistics about the given player id
+func GetPlayerX01Statistics(id int) (map[string]*models.StatisticsX01, error) {
+	s := make(map[string]*models.StatisticsX01)
+	stats, err := getPlayerCurrentX01Statistics(id)
+	if err != nil {
+		return nil, err
+	}
+
+	s["current"] = stats
+
+	stats, err = getPlayerPreviousX01Statistics(id)
+	if err != nil {
+		return nil, err
+	}
+	s["previous"] = stats
+
+	return s, nil
+
+	//
+	//ids := []int{id}
+	//
+	//startingScores := []int{301, 501, 701}
+	//
+	//q, args, err := sqlx.In(queries.QueryPlayersX01Statistics(), ids, startingScores, ids, startingScores)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//rows, err := models.DB.Query(q, args...)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//defer rows.Close()
+	//
+	//var statisticsMap []*models.StatisticsX01
+	//for rows.Next() {
+	//	s := new(models.StatisticsX01)
+	//	err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD,
+	//		&s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s,
+	//		&s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	statisticsMap = append(statisticsMap, s)
+	//}
+	//if err = rows.Err(); err != nil {
+	//	return nil, err
+	//}
+	//
+	//// Calculate Best PPD, Best First 9, Best 301 and Best 501
+	//if len(statisticsMap) > 0 {
+	//	err = getBestStatistics(ids, statisticsMap, startingScores...)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	err = getHighestCheckout(ids, statisticsMap, startingScores...)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//
+	//	for id, stats := range statisticsMap {
+	//		visits, err := GetPlayerVisits(id)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		stats.Hits, stats.DartsThrown = models.GetHitsMap(visits)
+	//	}
+	//}
+	//statistics := make([]*models.StatisticsX01, 0)
+	//for _, s := range statisticsMap {
+	//	statistics = append(statistics, s)
+	//}
+	//
+	//if err != nil {
+	//	return nil, err
+	//}
+	//if len(statistics) > 0 {
+	//	return statistics[0], nil
+	//}
+
+	//s := new(models.StatisticsX01)
+	//s.PlayerID = id
 }
 
 // GetPlayerX01PreviousStatistics will get statistics about the given player id
@@ -200,37 +298,7 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 	if len(startingScores) == 0 {
 		startingScores = []int{301, 501, 701}
 	}
-	q, args, err := sqlx.In(`
-		SELECT
-			p.id AS 'player_id',
-			COUNT(DISTINCT m.id) AS 'matches_played',
-			COUNT(DISTINCT m2.id) AS 'matches_won',
-			COUNT(DISTINCT l.id) AS 'legs_played',
-			COUNT(DISTINCT l2.id) AS 'legs_won',
-			SUM(s.ppd_score) / SUM(s.darts_thrown) AS 'ppd',
-			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
-			(SUM(s.ppd_score) / SUM(s.darts_thrown)) * 3 AS 'three_dart_avg',
-			(SUM(s.first_nine_ppd) / COUNT(p.id)) * 3 AS 'first_nine_three_dart_avg',
-			SUM(s.60s_plus) AS '60s_plus',
-			SUM(s.100s_plus) AS '100s_plus',
-			SUM(s.140s_plus) AS '140s_plus',
-			SUM(s.180s) AS '180s',
-			SUM(s.accuracy_20) / COUNT(s.accuracy_20) AS 'accuracy_20s',
-			SUM(s.accuracy_19) / COUNT(s.accuracy_19) AS 'accuracy_19s',
-			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
-			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
-		FROM statistics_x01 s
-			JOIN player p ON p.id = s.player_id
-			JOIN leg l ON l.id = s.leg_id
-			JOIN matches m ON m.id = l.match_id
-			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
-			LEFT JOIN matches m2 ON m2.id = l2.match_id AND l2.winner_id = p.id
-		WHERE s.player_id IN (?)
-			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
-			AND m.match_type_id = 1
-		GROUP BY s.player_id
-		ORDER BY p.id`, ids, startingScores)
+	q, args, err := sqlx.In(queries.QueryPlayersX01StatisticsComparison(), ids, startingScores)
 	if err != nil {
 		return nil, err
 	}
@@ -287,39 +355,7 @@ func GetPlayersX01PreviousStatistics(ids []int, startingScores ...int) ([]*model
 	if len(startingScores) == 0 {
 		startingScores = []int{301, 501, 701}
 	}
-	q, args, err := sqlx.In(`
-		SELECT
-			p.id AS 'player_id',
-			COUNT(DISTINCT m.id) AS 'matches_played',
-			COUNT(DISTINCT m2.id) AS 'matches_won',
-			COUNT(DISTINCT l.id) AS 'legs_played',
-			COUNT(DISTINCT l2.id) AS 'legs_won',
-			SUM(s.ppd_score) / SUM(s.darts_thrown) AS 'ppd',
-			SUM(s.first_nine_ppd) / COUNT(p.id) AS 'first_nine_ppd',
-			(SUM(s.ppd_score) / SUM(s.darts_thrown)) * 3 AS 'three_dart_avg',
-			SUM(s.first_nine_ppd) / COUNT(p.id) * 3 AS 'first_nine_three_dart_avg',
-			SUM(s.60s_plus) AS '60s_plus',
-			SUM(s.100s_plus) AS '100s_plus',
-			SUM(s.140s_plus) AS '140s_plus',
-			SUM(s.180s) AS '180s',
-			SUM(s.accuracy_20) / COUNT(s.accuracy_20) AS 'accuracy_20s',
-			SUM(s.accuracy_19) / COUNT(s.accuracy_19) AS 'accuracy_19s',
-			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
-			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
-		FROM statistics_x01 s
-			JOIN player p ON p.id = s.player_id
-			JOIN leg l ON l.id = s.leg_id
-			JOIN matches m ON m.id = l.match_id
-			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
-			LEFT JOIN matches m2 ON m2.id = l2.match_id AND l2.winner_id = p.id
-		WHERE s.player_id IN (?)
-			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
-			AND m.match_type_id = 1
-			-- Exclude all matches played this week
-			AND m.updated_at < (CURRENT_DATE - INTERVAL WEEKDAY(CURRENT_DATE) DAY)
-		GROUP BY s.player_id
-		ORDER BY p.id`, ids, startingScores)
+	q, args, err := sqlx.In(queries.QueryPreviousPlayersX01Statistics(), ids, startingScores)
 	if err != nil {
 		return nil, err
 	}
@@ -365,36 +401,13 @@ func GetPlayersX01PreviousStatistics(ids []int, startingScores ...int) ([]*model
 
 // GetPlayerProgression will get progression of statistics over time for the given player
 func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
-	rows, err := models.DB.Query(`
-		SELECT
-			s.player_id AS 'player_id',
-			SUM(s.ppd_score) / SUM(s.darts_thrown) AS 'ppd',
-			SUM(s.first_nine_ppd) / COUNT(s.player_id) AS 'first_nine_ppd',
-			(SUM(s.ppd_score) / SUM(s.darts_thrown)) * 3 AS 'three_dart_avg',
-			SUM(s.first_nine_ppd) / COUNT(s.player_id) * 3 AS 'first_nine_three_dart_avg',
-			SUM(s.60s_plus) AS '60s_plus',
-			SUM(s.100s_plus) AS '100s_plus',
-			SUM(s.140s_plus) AS '140s_plus',
-			SUM(s.180s) AS '180s',
-			SUM(s.accuracy_20) / COUNT(s.accuracy_20) AS 'accuracy_20s',
-			SUM(s.accuracy_19) / COUNT(s.accuracy_19) AS 'accuracy_19s',
-			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
-			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage',
-			DATE(m.updated_at) AS 'date'
-		FROM statistics_x01 s
-			JOIN leg l ON l.id = s.leg_id
-			JOIN matches m ON m.id = l.match_id
-		WHERE s.player_id = ?
-			AND m.match_type_id = 1
-			AND m.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
-		GROUP BY YEAR(m.updateD_at), WEEK(m.updated_at)
-		ORDER BY date DESC`, id)
+	rows, err := models.DB.Query(queries.QueryPlayerProgression(), id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	statisticsMap := make(map[string]*models.StatisticsX01)
+	statistics := make(map[string]*models.StatisticsX01)
 	for rows.Next() {
 		var date string
 		s := new(models.StatisticsX01)
@@ -403,13 +416,13 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 		if err != nil {
 			return nil, err
 		}
-		statisticsMap[date] = s
+		statistics[date] = s
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return statisticsMap, nil
+	return statistics, nil
 }
 
 // GetX01StatisticsForPlayer will return X01 statistics for the given player
@@ -618,21 +631,7 @@ func CalculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 
 // getBestStatistics will calculate Best PPD, Best First 9, Best 301 and Best 501 for the given players
 func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, startingScores ...int) error {
-	q, args, err := sqlx.In(`
-		SELECT
-			p.id,
-			l.winner_id,
-			l.id,
-			(s.ppd_score * 3) / s.darts_thrown,
-			((s.first_nine_ppd_score) * 3 / if(s.darts_thrown < 9, s.darts_thrown, 9)),
-			s.checkout_percentage,
-			s.darts_thrown,
-			l.starting_score
-		FROM statistics_x01 s
-			JOIN player p ON p.id = s.player_id
-			JOIN leg l ON l.id = s.leg_id
-		WHERE s.player_id IN (?)
-			AND l.starting_score IN (?)`, ids, startingScores)
+	q, args, err := sqlx.In(queries.QueryBestStatistics(), ids, startingScores)
 	if err != nil {
 		return err
 	}
@@ -657,7 +656,7 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 
 	for _, stat := range rawStatistics {
 		real := statisticsMap[stat.PlayerID]
-		// Only count best statistics when the player actually won the leg
+		// Only count the best statistics when the player actually won the leg
 		if stat.WinnerID == stat.PlayerID {
 			if stat.StartingScore.Int64 == 301 {
 				if real.Best301 == nil {
@@ -707,26 +706,7 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 
 // getHighestCheckout will calculate the highest checkout for the given players
 func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, startingScores ...int) error {
-	q, args, err := sqlx.In(`
-		SELECT
-			player_id,
-			leg_id,
-			MAX(checkout)
-		FROM (SELECT
-				s.player_id,
-				s.leg_id,
-				IFNULL(s.first_dart * s.first_dart_multiplier, 0) +
-					IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
-					IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
-			FROM score s
-			JOIN leg l ON l.id = s.leg_id
-			WHERE l.winner_id = s.player_id
-				AND s.player_id IN (?)
-				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id WHERE l.winner_id = s.player_id GROUP BY leg_id)
-				AND l.starting_score IN (?)
-			GROUP BY s.player_id, s.id
-			ORDER BY checkout DESC) checkouts
-		GROUP BY player_id`, ids, startingScores)
+	q, args, err := sqlx.In(queries.QueryHighestCheckout(), ids, startingScores)
 	if err != nil {
 		return err
 	}

@@ -37,10 +37,10 @@ type Player struct {
 
 // PlayerStatistics used to store player statistics
 type PlayerStatistics struct {
-	X01      *StatisticsX01      `json:"x01"`
-	Shootout *StatisticsShootout `json:"shootout"`
-	Cricket  *StatisticsCricket  `json:"cricket"`
-	DartsAt  *StatisticsDartsAtX `json:"darts_at_x"`
+	X01      map[string]*StatisticsX01 `json:"x01"`
+	Shootout *StatisticsShootout       `json:"shootout"`
+	Cricket  *StatisticsCricket        `json:"cricket"`
+	DartsAt  *StatisticsDartsAtX       `json:"darts_at_x"`
 }
 
 // MarshalJSON will marshall the given object to JSON

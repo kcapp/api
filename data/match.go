@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"github.com/kcapp/api/data/queries"
 	"log"
 	"math"
 	"time"
@@ -121,7 +122,7 @@ func GetMatches() ([]*models.Match, error) {
 		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice, &m.CreatedAt, &m.UpdatedAt,
 			&m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
-			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)
+			&ot.ID, &ot.Name, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)
 		if err != nil {
 			return nil, err
 		}
@@ -177,7 +178,7 @@ func GetActiveMatches() ([]*models.Match, error) {
 		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice,
 			&m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
-			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)
+			&ot.ID, &ot.Name, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)
 		if err != nil {
 			return nil, err
 		}
@@ -314,7 +315,7 @@ func GetMatchesLimit(start int, limit int) ([]*models.Match, error) {
 		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice,
 			&m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
-			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players, &m.TournamentID, &tournament.TournamentID,
+			&ot.ID, &ot.Name, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players, &m.TournamentID, &tournament.TournamentID,
 			&tournament.TournamentName, &tournament.TournamentGroupID, &tournament.TournamentGroupName, &legsWon)
 		if err != nil {
 			return nil, err
@@ -373,7 +374,7 @@ func GetMatch(id int) (*models.Match, error) {
 		WHERE m.id = ?`, id).Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice,
 		&m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 		&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired, &m.MatchMode.TieBreakMatchTypeID,
-		&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &m.FirstThrow, &players, &m.TournamentID, &tournament.TournamentID,
+		&ot.ID, &ot.Name, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &m.FirstThrow, &players, &m.TournamentID, &tournament.TournamentID,
 		&tournament.TournamentName, &tournament.OfficeID, &tournament.TournamentGroupID, &tournament.TournamentGroupName, &tournament.IsPlayoffs)
 	if err != nil {
 		return nil, err
@@ -490,42 +491,42 @@ func DeleteMatch(id int) (*models.Match, error) {
 }
 
 // GetMatchModes will return all match modes
-func GetMatchModes() ([]*models.MatchMode, error) {
-	rows, err := models.DB.Query("SELECT id, wins_required, legs_required, tiebreak_match_type_id, `name`, short_name FROM match_mode ORDER BY wins_required")
+func GetMatchModes() (map[int]*models.MatchMode, error) {
+	rows, err := models.DB.Query(queries.QueryMatchModes())
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	modes := make([]*models.MatchMode, 0)
+	modes := make(map[int]*models.MatchMode, 0)
 	for rows.Next() {
 		mm := new(models.MatchMode)
 		err := rows.Scan(&mm.ID, &mm.WinsRequired, &mm.LegsRequired, &mm.TieBreakMatchTypeID, &mm.Name, &mm.ShortName)
 		if err != nil {
 			return nil, err
 		}
-		modes = append(modes, mm)
+		modes[mm.ID] = mm
 	}
 
 	return modes, nil
 }
 
 // GetMatchTypes will return all match types
-func GetMatchTypes() ([]*models.MatchType, error) {
-	rows, err := models.DB.Query("SELECT id, `name`, description FROM match_type")
+func GetMatchTypes() (map[int]*models.MatchType, error) {
+	rows, err := models.DB.Query(queries.QueryMatchTypes())
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	types := make([]*models.MatchType, 0)
+	types := make(map[int]*models.MatchType, 0)
 	for rows.Next() {
 		mt := new(models.MatchType)
 		err := rows.Scan(&mt.ID, &mt.Name, &mt.Description)
 		if err != nil {
 			return nil, err
 		}
-		types = append(types, mt)
+		types[mt.ID] = mt
 	}
 
 	return types, nil

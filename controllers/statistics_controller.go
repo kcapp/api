@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"github.com/kcapp/api/util"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,7 +14,7 @@ import (
 
 // GetStatistics will return statistics for the given match type
 func GetStatistics(w http.ResponseWriter, r *http.Request) {
-	SetHeaders(w)
+	util.SetHeaders(w)
 	params := mux.Vars(r)
 	matchType, err := strconv.Atoi(params["match_type"])
 	if err != nil {
@@ -192,7 +193,7 @@ func GetStatistics(w http.ResponseWriter, r *http.Request) {
 
 // GetGlobalStatistics will return some global statistics for all matches
 func GetGlobalStatistics(w http.ResponseWriter, r *http.Request) {
-	SetHeaders(w)
+	util.SetHeaders(w)
 
 	global, err := data.GetGlobalStatistics()
 	if err != nil {
@@ -205,7 +206,7 @@ func GetGlobalStatistics(w http.ResponseWriter, r *http.Request) {
 
 // GetGlobalStatisticsFnc will return global fish and chips counter
 func GetGlobalStatisticsFnc(w http.ResponseWriter, r *http.Request) {
-	SetHeaders(w)
+	util.SetHeaders(w)
 
 	global, err := data.GetGlobalStatisticsFnc()
 	if err != nil {
@@ -219,7 +220,7 @@ func GetGlobalStatisticsFnc(w http.ResponseWriter, r *http.Request) {
 // GetOfficeStatistics will return statistics for the given office
 func GetOfficeStatistics(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	SetHeaders(w)
+	util.SetHeaders(w)
 
 	id, err := strconv.Atoi(params["office_id"])
 	if err != nil {
@@ -244,7 +245,7 @@ func GetOfficeStatistics(w http.ResponseWriter, r *http.Request) {
 // GetDartStatistics will return dart statistics for all players
 func GetDartStatistics(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	SetHeaders(w)
+	util.SetHeaders(w)
 
 	dart, err := strconv.Atoi(params["dart"])
 	if err != nil {

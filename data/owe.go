@@ -2,6 +2,7 @@ package data
 
 import (
 	"errors"
+	"github.com/kcapp/api/data/queries"
 	"log"
 
 	"github.com/kcapp/api/models"
@@ -27,7 +28,7 @@ func GetOwes() ([]*models.Owe, error) {
 	for rows.Next() {
 		o := new(models.Owe)
 		o.OweType = new(models.OweType)
-		err := rows.Scan(&o.PlayerOwerID, &o.PlayerOweeID, &o.OweType.ID, &o.OweType.Item, &o.Amount)
+		err := rows.Scan(&o.PlayerOwerID, &o.PlayerOweeID, &o.OweType.ID, &o.OweType.Name, &o.Amount)
 		if err != nil {
 			return nil, err
 		}
@@ -64,21 +65,21 @@ func RegisterPayback(owe models.Owe) error {
 }
 
 // GetOweTypes will return all owe types
-func GetOweTypes() ([]*models.OweType, error) {
-	rows, err := models.DB.Query("SELECT id, item FROM owe_type")
+func GetOweTypes() (map[int]*models.OweType, error) {
+	rows, err := models.DB.Query(queries.QueryOweTypes())
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	types := make([]*models.OweType, 0)
+	types := make(map[int]*models.OweType, 0)
 	for rows.Next() {
 		ot := new(models.OweType)
-		err := rows.Scan(&ot.ID, &ot.Item)
+		err := rows.Scan(&ot.ID, &ot.Name)
 		if err != nil {
 			return nil, err
 		}
-		types = append(types, ot)
+		types[int(ot.ID.Int64)] = ot
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err

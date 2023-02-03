@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"github.com/kcapp/api/util"
 	"log"
 	"net/http"
 	"strconv"
@@ -57,7 +58,7 @@ func UpdateOffice(w http.ResponseWriter, r *http.Request) {
 
 // GetOffices will return all offices
 func GetOffices(w http.ResponseWriter, r *http.Request) {
-	SetHeaders(w)
+	util.SetHeaders(w)
 	offices, err := data.GetOffices()
 	if err != nil {
 		log.Println("Unable to get offices", err)
@@ -69,7 +70,7 @@ func GetOffices(w http.ResponseWriter, r *http.Request) {
 
 // GetOffice will return a office with the given ID
 func GetOffice(w http.ResponseWriter, r *http.Request) {
-	SetHeaders(w)
+	util.SetHeaders(w)
 	params := mux.Vars(r)
 	id, err := strconv.Atoi(params["id"])
 	if err != nil {

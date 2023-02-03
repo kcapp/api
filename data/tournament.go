@@ -11,7 +11,7 @@ import (
 )
 
 // GetTournaments will return all tournaments
-func GetTournaments() ([]*models.Tournament, error) {
+func GetTournaments() (map[int]*models.Tournament, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, office_id, start_time, end_time
@@ -23,7 +23,7 @@ func GetTournaments() ([]*models.Tournament, error) {
 	}
 	defer rows.Close()
 
-	tournaments := make([]*models.Tournament, 0)
+	tournaments := make(map[int]*models.Tournament, 0)
 	for rows.Next() {
 		tournament := new(models.Tournament)
 		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
@@ -31,7 +31,8 @@ func GetTournaments() ([]*models.Tournament, error) {
 		if err != nil {
 			return nil, err
 		}
-		tournaments = append(tournaments, tournament)
+
+		tournaments[tournament.ID] = tournament
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
@@ -792,7 +793,7 @@ func GetTournamentMatchesForPlayer(tournamentID int, playerID int) ([]*models.Ma
 		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice, &m.CreatedAt, &m.UpdatedAt,
 			&m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
-			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players, &m.TournamentID, &m.TournamentID, &m.Tournament.TournamentID,
+			&ot.ID, &ot.Name, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players, &m.TournamentID, &m.TournamentID, &m.Tournament.TournamentID,
 			&m.Tournament.TournamentName, &m.Tournament.TournamentGroupID, &m.Tournament.TournamentGroupName, &legsWon)
 		if err != nil {
 			return nil, err
