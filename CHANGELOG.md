@@ -9,6 +9,7 @@
 
 #### Fixed
 - Correctly calculate Gotcha statistics
+- Ensure x01 statistics only count x01 legs
 
 ## [2.4.0] - 2022-10-21
 #### Feature
