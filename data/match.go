@@ -150,6 +150,16 @@ func GetMatches() ([]*models.Match, error) {
 	return matches, nil
 }
 
+// GetMatchesCount returns count of all matches
+func GetMatchesCount() (int, error) {
+	var count int
+	err := models.DB.QueryRow(`SELECT count(m.id) FROM matches m WHERE m.created_at <= NOW()`).Scan(&count)
+	if err != nil {
+		return -1, err
+	}
+	return count, nil
+}
+
 // GetActiveMatches returns all active matches
 func GetActiveMatches() ([]*models.Match, error) {
 	rows, err := models.DB.Query(`

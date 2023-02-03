@@ -147,6 +147,13 @@ func GetMatchesLimit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	count, err := data.GetMatchesCount()
+	if err != nil {
+		log.Println("Unable to get matches", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("X-Total-Count", strconv.Itoa(count))
 	json.NewEncoder(w).Encode(matches)
 }
 
