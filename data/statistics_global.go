@@ -73,11 +73,12 @@ func GetGlobalStatistics() (map[int]*models.GlobalStatistics, error) {
 func GetGlobalStatisticsFnc() (map[int]*models.GlobalStatistics, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			office_id,
+			m.office_id,
 			COUNT(s.id) AS 'Fish-n-Chips'
 		FROM score s
 			LEFT JOIN leg l ON l.id = s.leg_id
 			LEFT JOIN matches m ON m.id = l.match_id
+			LEFT JOIN player p ON p.id = s.player_id
 		WHERE
 			first_dart IN (1,20,5) AND first_dart_multiplier = 1 AND
 			second_dart IN (1,20,5) AND second_dart_multiplier = 1 AND
@@ -85,6 +86,7 @@ func GetGlobalStatisticsFnc() (map[int]*models.GlobalStatistics, error) {
 			((first_dart * first_dart_multiplier) + (second_dart * second_dart_multiplier) +
 			(third_dart * third_dart_multiplier) = 26)
 			AND m.is_abandoned <> 1
+			AND p.is_bot = 0
 		GROUP BY m.office_id`)
 	if err != nil {
 		return nil, err

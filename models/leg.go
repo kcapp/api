@@ -305,6 +305,10 @@ type PlayerModifiers struct {
 // AddVisitStatistics adds information about the given visit
 func (p2l *Player2Leg) AddVisitStatistics(leg Leg) {
 	p2l.VisitStatistics = new(VisitStatistics)
+	if p2l.Player.IsBot {
+		// Don't add visit statistics for bots
+		return
+	}
 	for _, visit := range leg.Visits {
 		if visit.PlayerID == p2l.PlayerID {
 			if visit.IsFishAndChips() {
