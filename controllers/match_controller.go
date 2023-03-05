@@ -176,6 +176,34 @@ func GetMatch(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(match)
 }
 
+// SetScore will set the score of a given match
+func SetScore(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var input models.MatchResult
+	err = json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		log.Println("Unable to deserialize body", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	match, err := data.SetScore(id, input)
+	if err != nil {
+		log.Println("Unable to set score for match: ", err)
+		http.Error(w, "Unable to set score for match", http.StatusBadRequest)
+		return
+	}
+	json.NewEncoder(w).Encode(match)
+}
+
 // GetMatchMetadata will return metadata for the given match
 func GetMatchMetadata(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

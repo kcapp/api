@@ -678,7 +678,7 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 			FROM player2leg p2l
 				JOIN leg l ON l.id = p2l.leg_id
 				JOIN matches m ON m.id = p2l.match_id
-			WHERE l.is_finished = 1 AND m.is_abandoned = 0
+			WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			GROUP BY p2l.player_id
 			UNION ALL
 			SELECT
@@ -690,7 +690,7 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 			FROM matches m
 				JOIN leg l ON l.match_id = m.id
 				JOIN player2leg p2l ON p2l.player_id = m.winner_id AND p2l.match_id = m.id
-			WHERE l.is_finished = 1 AND m.is_abandoned = 0
+			WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			GROUP BY m.winner_id
 		) matches
 		GROUP BY player_id`)
@@ -870,7 +870,7 @@ func GetPlayerTournamentStandings(playerID int) ([]*models.PlayerTournamentStand
 func GetPlayerOfficialMatches(playerID int) ([]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.current_leg_id, m.winner_id, m.office_id, m.is_practice,
+			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id, m.winner_id, m.office_id, m.is_practice,
 			m.created_at, m.updated_at, m.owe_type_id, m.venue_id, mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name,
 			mm.wins_required, mm.legs_required, ot.id, ot.item, v.id, v.name, v.description, l.updated_at as 'last_throw',
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
@@ -899,7 +899,7 @@ func GetPlayerOfficialMatches(playerID int) ([]*models.Match, error) {
 		ot := new(models.OweType)
 		venue := new(models.Venue)
 		var players string
-		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice, &m.CreatedAt, &m.UpdatedAt,
+		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.IsBye, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice, &m.CreatedAt, &m.UpdatedAt,
 			&m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
 			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)

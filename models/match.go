@@ -127,6 +127,7 @@ type Match struct {
 	IsFinished      bool               `json:"is_finished"`
 	IsAbandoned     bool               `json:"is_abandoned"`
 	IsWalkover      bool               `json:"is_walkover"`
+	IsBye           bool               `json:"is_bye"`
 	IsStarted       bool               `json:"is_started"`
 	OfficeID        null.Int           `json:"office_id,omitempty"`
 	OweTypeID       null.Int           `json:"owe_type_id"`
@@ -161,6 +162,7 @@ func (match Match) MarshalJSON() ([]byte, error) {
 		IsFinished       bool               `json:"is_finished"`
 		IsAbandoned      bool               `json:"is_abandoned"`
 		IsWalkover       bool               `json:"is_walkover"`
+		IsBye            bool               `json:"is_bye"`
 		OfficeID         null.Int           `json:"office_id,omitempty"`
 		OweTypeID        null.Int           `json:"owe_type_id"`
 		VenueID          null.Int           `json:"venue_id"`
@@ -200,6 +202,7 @@ func (match Match) MarshalJSON() ([]byte, error) {
 		IsFinished:       match.IsFinished,
 		IsAbandoned:      match.IsAbandoned,
 		IsWalkover:       match.IsWalkover,
+		IsBye:            match.IsBye,
 		OfficeID:         match.OfficeID,
 		OweTypeID:        match.OweTypeID,
 		VenueID:          match.VenueID,
@@ -218,6 +221,13 @@ func (match Match) MarshalJSON() ([]byte, error) {
 		EloChange:        match.EloChange,
 		LegsWon:          match.LegsWon,
 	})
+}
+
+type MatchResult struct {
+	WinnerID    int `json:"winner_id"`
+	WinnerScore int `json:"winner_score"`
+	LooserID    int `json:"looser_id"`
+	LooserScore int `json:"looser_score"`
 }
 
 // MatchType struct used for storing match types
