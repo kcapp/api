@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"math"
 	"time"
@@ -70,6 +71,13 @@ func NewMatch(match models.Match) (*models.Match, error) {
 			return nil, err
 		}
 		if config, ok := match.BotPlayerConfig[playerID]; ok {
+			if config.Skill.ValueOrZero() == 0 {
+				_, err = GetRandomLegForPlayer(playerID, startingScore)
+				if err != nil {
+					tx.Rollback()
+					return nil, &models.MatchConfigError{Err: errors.New("no leg to use when configuring mock bot")}
+				}
+			}
 			player2LegID, err := res.LastInsertId()
 			if err != nil {
 				tx.Rollback()
@@ -140,6 +148,16 @@ func GetMatches() ([]*models.Match, error) {
 	}
 
 	return matches, nil
+}
+
+// GetMatchesCount returns count of all matches
+func GetMatchesCount() (int, error) {
+	var count int
+	err := models.DB.QueryRow(`SELECT count(m.id) FROM matches m WHERE m.created_at <= NOW()`).Scan(&count)
+	if err != nil {
+		return -1, err
+	}
+	return count, nil
 }
 
 // GetActiveMatches returns all active matches
