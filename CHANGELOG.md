@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.5.0] - TBD
+## [2.5.0] - 2023-03-10
 #### Feature
 - Insert BotConfig on next Leg
 - Support for Player Options
@@ -120,7 +120,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
-[2.5.0]: https://github.com/kcapp/api/compare/v2.4.0...develop
+[2.5.0]: https://github.com/kcapp/api/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/kcapp/api/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/kcapp/api/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/kcapp/api/compare/v2.1.0...v2.2.0
