@@ -52,8 +52,8 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 	if matchType == nil {
 		matchType = &match.MatchType.ID
 	}
+	scores, err := GetPlayersScore(int(match.CurrentLegID.Int64))
 	if *matchType == models.X01HANDICAP {
-		scores, err := GetPlayersScore(int(match.CurrentLegID.Int64))
 		if err != nil {
 			return nil, err
 		}
@@ -80,11 +80,25 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 
 	for idx, playerID := range players {
 		order := idx + 1
-		_, err = tx.Exec("INSERT INTO player2leg (player_id, leg_id, `order`, match_id, handicap) VALUES (?, ?, ?, ?, ?)",
+		res, err = tx.Exec("INSERT INTO player2leg (player_id, leg_id, `order`, match_id, handicap) VALUES (?, ?, ?, ?, ?)",
 			playerID, legID, order, matchID, handicaps[playerID])
 		if err != nil {
 			tx.Rollback()
 			return nil, err
+		}
+
+		if scores[playerID].BotConfig != nil {
+			player2LegID, err := res.LastInsertId()
+			config := scores[playerID].BotConfig
+			if err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+			_, err = tx.Exec("INSERT INTO bot2player2leg (player2leg_id, player_id, skill_level) VALUES (?, ?, ?)", player2LegID, config.PlayerID, config.Skill)
+			if err != nil {
+				tx.Rollback()
+				return nil, err
+			}
 		}
 	}
 	tx.Commit()
@@ -869,6 +883,7 @@ func GetLeg(id int) (*models.Leg, error) {
 
 	scores := make(map[int]*models.Player2Leg)
 	for i := 0; i < len(leg.Players); i++ {
+		playerID := leg.Players[i]
 		p2l := new(models.Player2Leg)
 		p2l.Hits = make(models.HitsMap)
 		if matchType == models.DARTSATX || matchType == models.AROUNDTHECLOCK || matchType == models.AROUNDTHEWORLD || matchType == models.SHANGHAI ||
@@ -881,14 +896,19 @@ func GetLeg(id int) (*models.Leg, error) {
 		} else if matchType == models.FOURTWENTY {
 			p2l.CurrentScore = 420
 		} else if matchType == models.X01HANDICAP {
-			// TODO
+			players, err := GetPlayersScore(id)
+			if err != nil {
+				return nil, err
+			}
+			p2l.CurrentScore = leg.StartingScore + int(players[playerID].Handicap.ValueOrZero())
+			p2l.StartingScore = leg.StartingScore + int(players[playerID].Handicap.ValueOrZero())
 		} else {
 			p2l.CurrentScore = leg.StartingScore
 			p2l.StartingScore = leg.StartingScore
 		}
 		p2l.Order = i + 1
 		p2l.DartsThrown = 0
-		scores[leg.Players[i]] = p2l
+		scores[playerID] = p2l
 	}
 
 	specialNums := make([]int, 0)
@@ -939,7 +959,6 @@ func GetLeg(id int) (*models.Leg, error) {
 				scores[visit.PlayerID].CurrentScore += score
 			} else if matchType == models.CRICKET {
 				score = visit.CalculateCricketScore(scores)
-				scores[visit.PlayerID].CurrentScore += score
 			} else if matchType == models.AROUNDTHECLOCK {
 				score = visit.CalculateAroundTheClockScore(scores[visit.PlayerID].CurrentScore)
 				scores[visit.PlayerID].CurrentScore += score

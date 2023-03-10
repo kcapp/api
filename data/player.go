@@ -64,8 +64,9 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color, p.profile_pic_url,
 			p.smartcard_uid, p.board_stream_url, p.board_stream_css, p.office_id, p.active, p.is_bot, p.is_placeholder,
-			p.created_at, p.updated_at
+			p.created_at, p.updated_at, po.subtract_per_dart, po.show_checkout_guide
 		FROM player p
+			LEFT JOIN player_option po on po.player_id = p.id
 		WHERE active = 1`)
 	if err != nil {
 		return nil, err
@@ -75,8 +76,10 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
+		p.PlayerOptions = new(models.PlayerOptions)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
-			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt)
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.IsPlaceholder, &p.CreatedAt,
+			&p.UpdatedAt, &p.PlayerOptions.SubtractPerDart, &p.PlayerOptions.ShowCheckoutGuide)
 		if err != nil {
 			return nil, err
 		}
@@ -99,17 +102,21 @@ func GetActivePlayers() (map[int]*models.Player, error) {
 // GetPlayer returns the player for the given ID
 func GetPlayer(id int) (*models.Player, error) {
 	p := new(models.Player)
+	p.PlayerOptions = new(models.PlayerOptions)
 	err := models.DB.QueryRow(`
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname,
 			p.slack_handle, p.color, p.profile_pic_url, p.smartcard_uid, p.board_stream_url, p.board_stream_css,
-			p.office_id, p.active, p.is_bot, p.is_placeholder, p.created_at, p.updated_at, pe.current_elo, pe.tournament_elo
+			p.office_id, p.active, p.is_bot, p.is_placeholder, p.created_at, p.updated_at, pe.current_elo, pe.tournament_elo,
+			po.subtract_per_dart, po.show_checkout_guide
 		FROM player p
-		JOIN player_elo pe on pe.player_id = p.id
+			JOIN player_elo pe on pe.player_id = p.id
+			LEFT JOIN player_option po on po.player_id = p.id
 		WHERE p.id = ?`, id).
 		Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle,
 			&p.Color, &p.ProfilePicURL, &p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive,
-			&p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt, &p.CurrentElo, &p.TournamentElo)
+			&p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt, &p.CurrentElo, &p.TournamentElo, &p.PlayerOptions.SubtractPerDart,
+			&p.PlayerOptions.ShowCheckoutGuide)
 	if err != nil {
 		return nil, err
 	}
@@ -212,6 +219,16 @@ func AddPlayer(player models.Player) error {
 		tx.Rollback()
 		return err
 	}
+
+	if player.PlayerOptions != nil {
+		_, err = tx.Exec(`INSERT INTO player_option (player_id, subtract_per_dart, show_checkout_guide) VALUES(?, ?, ?)`,
+			playerID, player.PlayerOptions.SubtractPerDart, player.PlayerOptions.ShowCheckoutGuide)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
 	log.Printf("Created new player (%d) %s", playerID, player.FirstName)
 	tx.Commit()
 	return nil
@@ -219,23 +236,38 @@ func AddPlayer(player models.Player) error {
 
 // UpdatePlayer will update the given player
 func UpdatePlayer(playerID int, player models.Player) error {
-	// Prepare statement for inserting data
-	stmt, err := models.DB.Prepare(`
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
 		UPDATE player SET
 			first_name = ?, last_name = ?, vocal_name = ?, nickname = ?, slack_handle = ?,
 			color = ?, profile_pic_url = ?, smartcard_uid = ?, board_stream_url = ?, board_stream_css = ?, office_id = ?,
 			updated_at = NOW()
-		WHERE id = ?`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec(player.FirstName, player.LastName, player.VocalName, player.Nickname, player.SlackHandle, player.Color,
+		WHERE id = ?`, player.FirstName, player.LastName, player.VocalName, player.Nickname, player.SlackHandle, player.Color,
 		player.ProfilePicURL, player.SmartcardUID, player.BoardStreamURL, player.BoardStreamCSS, player.OfficeID, playerID)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
+
+	if player.PlayerOptions != nil {
+		_, err = tx.Exec(`DELETE FROM player_option WHERE player_id = ?`, playerID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		_, err = tx.Exec(`INSERT INTO player_option (player_id, subtract_per_dart, show_checkout_guide) VALUES(?, ?, ?)`,
+			playerID, player.PlayerOptions.SubtractPerDart, player.PlayerOptions.ShowCheckoutGuide)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	tx.Commit()
 	log.Printf("Updated player %s (%v)", player.FirstName, player)
 	return nil
 }
@@ -597,9 +629,13 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 			p.office_id,
 			p.active,
 			p.is_bot,
-			p.is_placeholder
+			p.is_placeholder,
+			po.subtract_per_dart,
+			po.show_checkout_guide
 		FROM player2leg p2l
-		LEFT JOIN player p ON p.id = p2l.player_id WHERE p2l.leg_id = ?`, legID)
+			LEFT JOIN player p ON p.id = p2l.player_id
+			LEFT JOIN player_option po on po.player_id = p.id
+		WHERE p2l.leg_id = ?`, legID)
 	if err != nil {
 		return nil, err
 	}
@@ -608,8 +644,10 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 	players := make(map[int]*models.Player)
 	for rows.Next() {
 		p := new(models.Player)
+		p.PlayerOptions = new(models.PlayerOptions)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
-			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.IsPlaceholder)
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.OfficeID, &p.IsActive, &p.IsBot, &p.IsPlaceholder,
+			&p.PlayerOptions.SubtractPerDart, &p.PlayerOptions.ShowCheckoutGuide)
 		if err != nil {
 			return nil, err
 		}
@@ -1189,8 +1227,8 @@ func GetPlayerDrawProbability(player1Elo int, player2Elo int) float64 {
 	// Quants Magic using Binomial Regression and Elos from 800 matches
 	// Caveat: Model won´t be accurate for extreme cases (Elo Diff >500)
 	// Formula:
-	//   pDraw = 1 / (1 + exp(-(-1.479018 - 0.000001434670 * abs(eloDiff)^2)))
+	//   pDraw = 1 / (1 + exp(-(-0.001215 * absDiff - 0.0000005372533 * absDiff ^ 2)))
 	eloDiff := math.Abs(float64(player1Elo - player2Elo))
-	pDraw := 1 / (1 + math.Exp(-(-1.479018 - float64(0.000001434670)*eloDiff*eloDiff)))
+	pDraw := 1 / (1 + math.Exp(-(-0.001215*eloDiff - float64(0.0000005372533)*eloDiff*eloDiff)))
 	return pDraw
 }

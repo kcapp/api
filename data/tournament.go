@@ -713,7 +713,7 @@ func getTournamentGeneralStatistics(tournamentID int) (*models.TournamentGeneral
 			AND second_dart IN (1, 20, 5) AND second_dart_multiplier = 1
 			AND third_dart IN (1, 20, 5) AND third_dart_multiplier = 1
 			AND first_dart + second_dart + third_dart = 26
-			AND m.tournament_id = ? AND l.is_finished = 1
+			AND m.tournament_id = ? AND l.is_finished = 1 AND s.is_bust = 0
 		UNION ALL
 			SELECT
 				0, 0, 0, 0, 0, count(leg_id) as 'checkout_d1', 0, 0
@@ -734,7 +734,7 @@ func getTournamentGeneralStatistics(tournamentID int) (*models.TournamentGeneral
 			FROM score s
 				LEFT JOIN leg l ON l.id = s.leg_id
 				LEFT JOIN matches m ON m.id = l.match_id
-			WHERE m.tournament_id = ? AND l.is_finished
+			WHERE m.tournament_id = ? AND l.is_finished AND s.is_bust = 0
 		) statistics`, tournamentID, tournamentID, tournamentID, tournamentID, tournamentID).Scan(&tgs.Score60sPlus, &tgs.Score100sPlus, &tgs.Score140sPlus,
 		&tgs.Score180s, &tgs.ScoreFishNChips, &tgs.D1Checkouts, &tgs.ScoreBullseye, &tgs.ScoreDoubleBullseye)
 	if err != nil {

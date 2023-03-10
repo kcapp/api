@@ -227,7 +227,7 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 		WHERE s.player_id IN (?)
 			AND l.starting_score IN (?)
 			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
-			AND m.match_type_id = 1
+			AND IFNULL(l.leg_type_id, m.match_type_id) = 1
 		GROUP BY s.player_id
 		ORDER BY p.id`, ids, startingScores)
 	if err != nil {
@@ -631,8 +631,10 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
 		WHERE s.player_id IN (?)
-			AND l.starting_score IN (?)`, ids, startingScores)
+			AND l.starting_score IN (?)
+			AND IFNULL(l.leg_type_id, m.match_type_id) = 1`, ids, startingScores)
 	if err != nil {
 		return err
 	}
@@ -719,11 +721,13 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, 
 					IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
 					IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
 			FROM score s
-			JOIN leg l ON l.id = s.leg_id
+				JOIN leg l ON l.id = s.leg_id
+				JOIN matches m ON m.id = l.match_id
 			WHERE l.winner_id = s.player_id
 				AND s.player_id IN (?)
 				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id WHERE l.winner_id = s.player_id GROUP BY leg_id)
 				AND l.starting_score IN (?)
+				AND IFNULL(l.leg_type_id, m.match_type_id) = 1
 			GROUP BY s.player_id, s.id
 			ORDER BY checkout DESC) checkouts
 		GROUP BY player_id`, ids, startingScores)

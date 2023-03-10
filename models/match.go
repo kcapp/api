@@ -300,3 +300,12 @@ type Target struct {
 	multipliers []int64
 	score       int
 }
+
+// MatchConfigError used when starting a match with incorrect configuration
+type MatchConfigError struct {
+	Err error
+}
+
+func (e *MatchConfigError) Error() string {
+	return e.Err.Error()
+}

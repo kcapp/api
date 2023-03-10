@@ -206,7 +206,7 @@ type Player2Leg struct {
 	PlayerName      string           `json:"player_name"`
 	Order           int              `json:"order"`
 	CurrentScore    int              `json:"current_score"`
-	StartingScore   int              `json:"-"`
+	StartingScore   int              `json:"starting_score"`
 	IsCurrentPlayer bool             `json:"is_current_player"`
 	Wins            int              `json:"wins,omitempty"`
 	VisitStatistics *VisitStatistics `json:"visit_statistics,omitempty"`
@@ -305,6 +305,10 @@ type PlayerModifiers struct {
 // AddVisitStatistics adds information about the given visit
 func (p2l *Player2Leg) AddVisitStatistics(leg Leg) {
 	p2l.VisitStatistics = new(VisitStatistics)
+	if p2l.Player.IsBot {
+		// Don't add visit statistics for bots
+		return
+	}
 	for _, visit := range leg.Visits {
 		if visit.PlayerID == p2l.PlayerID {
 			if visit.IsFishAndChips() {

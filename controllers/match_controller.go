@@ -26,8 +26,14 @@ func NewMatch(w http.ResponseWriter, r *http.Request) {
 
 	match, err := data.NewMatch(matchInput)
 	if err != nil {
-		log.Println("Unable to start new match", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		switch t := err.(type) {
+		default:
+			log.Println("Unable to start new match", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		case *models.MatchConfigError:
+			log.Println("Unable to start new match", t)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
 		return
 	}
 	json.NewEncoder(w).Encode(match)
@@ -141,6 +147,13 @@ func GetMatchesLimit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	count, err := data.GetMatchesCount()
+	if err != nil {
+		log.Println("Unable to get matches", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("X-Total-Count", strconv.Itoa(count))
 	json.NewEncoder(w).Encode(matches)
 }
 
