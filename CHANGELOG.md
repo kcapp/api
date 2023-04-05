@@ -1,7 +1,8 @@
 # Changelog
 
 ## [2.6.0] - TBD
-
+#### Feature
+- Added commands for recalculating statistics, resetting elo etc
 
 ## [2.5.0] - 2023-03-10
 #### Feature
