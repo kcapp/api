@@ -1,7 +1,8 @@
 # Changelog
 
 ## [2.6.0] - TBD
-
+#### Fixed
+- Correctly set First 9 Avg. if leg was won in <9 darts
 
 ## [2.5.0] - 2023-03-10
 #### Feature
