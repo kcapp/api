@@ -3,6 +3,7 @@
 ## [2.6.0] - TBD
 #### Fixed
 - Correctly set First 9 Avg. if leg was won in <9 darts
+- Return statistics about all `9 Dart Shootout` legs on player statistics
 
 ## [2.5.0] - 2023-03-10
 #### Feature
