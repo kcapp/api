@@ -1,8 +1,13 @@
 # Changelog
 
-## [2.6.0] - TBD
+## [2.7.0] - TBD
 #### Feature
 - Added commands for recalculating statistics, resetting elo etc
+
+## [2.6.0] - 2023-06-30
+#### Fixed
+- Correctly set First 9 Avg. if leg was won in <9 darts
+- Return statistics about all `9 Dart Shootout` legs on player statistics
 
 ## [2.5.0] - 2023-03-10
 #### Feature
@@ -124,7 +129,8 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
-[2.6.0]: https://github.com/kcapp/api/compare/v2.5.0...develop
+[2.7.0]: https://github.com/kcapp/api/compare/v2.6.0...develop
+[2.6.0]: https://github.com/kcapp/api/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/kcapp/api/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/kcapp/api/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/kcapp/api/compare/v2.2.0...v2.3.0
