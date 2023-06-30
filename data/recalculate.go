@@ -21,6 +21,7 @@ func RecalculateStatistics(matchType int, legID int, since string, dryRun bool) 
 		s := since
 		if s == "" {
 			s = "(All Time)"
+			since = "1970-01-01"
 		}
 		log.Printf("Recalculating %s statistics since=%s", models.MatchTypes[matchType], s)
 		ids, err := GetLegsToRecalculate(matchType, since)
