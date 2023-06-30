@@ -610,7 +610,12 @@ func CalculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 
 		// Set PPD and First 9 PPD
 		stats.PPD = float32(stats.PPDScore) / float32(stats.DartsThrown)
-		stats.FirstNinePPD = float32(stats.FirstNinePPDScore) / float32(9)
+		if stats.DartsThrown < 9 {
+			// In 301, we could win in less than 9 darts, so use DartsThrown instead of 9
+			stats.FirstNinePPD = float32(stats.FirstNinePPDScore) / float32(stats.DartsThrown)
+		} else {
+			stats.FirstNinePPD = float32(stats.FirstNinePPDScore) / float32(9)
+		}
 	}
 
 	return statisticsMap, nil
