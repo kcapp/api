@@ -32,6 +32,7 @@ type StatisticsX01 struct {
 	FirstNineThreeDartAvg float32             `json:"first_nine_three_dart_avg"`
 	CheckoutPercentage    null.Float          `json:"checkout_percentage"`
 	CheckoutAttempts      int                 `json:"checkout_attempts,omitempty"`
+	Checkout              null.Int            `json:"checkout,omitempty"`
 	DartsThrown           int                 `json:"darts_thrown,omitempty"`
 	TotalVisits           int                 `json:"total_visits,omitempty"`
 	Score60sPlus          int                 `json:"scores_60s_plus"`

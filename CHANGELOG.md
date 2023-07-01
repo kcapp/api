@@ -5,6 +5,10 @@
 #### Feature
 - Added commands for recalculating statistics, resetting elo etc
 
+#### Changed
+- Store `checkout` value for each `x01` leg explicitly
+- Improved a lot of queries when loading player statistics to reduce load times
+
 ## [2.6.0] - 2023-06-30
 #### Fixed
 - Correctly set First 9 Avg. if leg was won in <9 darts

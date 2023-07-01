@@ -664,35 +664,34 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			player_id,
-			MAX(matches_played) AS 'matches_played',
-			MAX(matches_won) AS 'matches_won',
-			MAX(legs_played) AS 'legs_played',
-			MAX(legs_won) AS 'legs_won'
+			MAX(matches_played) AS matches_played,
+			MAX(matches_won) AS matches_won,
+			MAX(legs_played) AS legs_played,
+			MAX(legs_won) AS legs_won
 		FROM (
 			SELECT
 				p2l.player_id,
-				COUNT(DISTINCT p2l.match_id) AS 'matches_played',
-				0 AS 'matches_won',
-				COUNT(m.id)  AS 'legs_played',
-				SUM(CASE WHEN p2l.player_id = m.winner_id THEN 1 ELSE 0 END) AS 'legs_won'
+				COUNT(DISTINCT p2l.match_id) AS matches_played,
+				0 AS matches_won,
+				COUNT(p2l.leg_id) AS legs_played,
+				SUM(CASE WHEN p2l.player_id = m.winner_id THEN 1 ELSE 0 END) AS legs_won
 			FROM player2leg p2l
-				JOIN leg l ON l.id = p2l.leg_id
 				JOIN matches m ON m.id = p2l.match_id
+				JOIN leg l ON l.id = p2l.leg_id AND l.match_id = m.id
 			WHERE l.is_finished = 1 AND m.is_abandoned = 0
 			GROUP BY p2l.player_id
 			UNION ALL
 			SELECT
-				p2l.player_id,
-				0 AS 'matches_played',
-				COUNT(DISTINCT m.id) AS 'matches_won',
-				0 AS 'legs_played',
-				0 AS 'legs_won'
+				m.winner_id AS player_id,
+				0 AS matches_played,
+				COUNT(DISTINCT m.id) AS matches_won,
+				0 AS legs_played,
+				0 AS legs_won
 			FROM matches m
-				JOIN leg l ON l.match_id = m.id
-				JOIN player2leg p2l ON p2l.player_id = m.winner_id AND p2l.match_id = m.id
-			WHERE l.is_finished = 1 AND m.is_abandoned = 0
+			WHERE m.is_abandoned = 0
 			GROUP BY m.winner_id
-		) matches
+		) AS subquery
+		WHERE player_id IS NOT NULL
 		GROUP BY player_id`)
 	if err != nil {
 		return nil, err
@@ -718,18 +717,19 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			s.player_id,
+			x.player_id,
 			s.first_dart, s.first_dart_multiplier,
 			s.second_dart, s.second_dart_multiplier,
 			s.third_dart, s.third_dart_multiplier,
-			(IFNULL(s.first_dart, 0) * s.first_dart_multiplier +
+			x.checkout,
+			COUNT(*) as 'count'
+		FROM statistics_x01 x
+			LEFT JOIN leg l on x.leg_id = l.id
+			LEFT JOIN score s on l.id = s.leg_id
+		WHERE x.player_id = ? AND x.checkout IS NOT NULL AND
+				(IFNULL(s.first_dart, 0) * s.first_dart_multiplier +
 				IFNULL(s.second_dart, 0) * s.second_dart_multiplier +
-				IFNULL(s.third_dart, 0) * s.third_dart_multiplier) AS 'checkout',
-			COUNT(*)
-		FROM score s
-		WHERE s.id IN (SELECT MAX(id) FROM score WHERE leg_id IN (
-				SELECT l.id FROM leg l JOIN matches m ON m.id = l.match_id
-				WHERE m.match_type_id = 1 AND l.winner_id = ?) GROUP BY leg_id)
+				IFNULL(s.third_dart, 0) * s.third_dart_multiplier) = x.checkout
 		GROUP BY s.first_dart, s.first_dart_multiplier,
 			s.second_dart, s.second_dart_multiplier,
 			s.third_dart, s.third_dart_multiplier

@@ -423,10 +423,10 @@ func FinishLeg(visit models.Visit) error {
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_x01
-					(leg_id, player_id, ppd, ppd_score, first_nine_ppd, first_nine_ppd_score, checkout_percentage, checkout_attempts, darts_thrown, 60s_plus,
+					(leg_id, player_id, ppd, ppd_score, first_nine_ppd, first_nine_ppd_score, checkout_percentage, checkout_attempts, checkout, darts_thrown, 60s_plus,
 					 100s_plus, 140s_plus, 180s, accuracy_20, accuracy_19, overall_accuracy)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.PPD, stats.PPDScore, stats.FirstNinePPD, stats.FirstNinePPDScore,
-				stats.CheckoutPercentage, stats.CheckoutAttempts, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.PPD, stats.PPDScore, stats.FirstNinePPD, stats.FirstNinePPDScore,
+				stats.CheckoutPercentage, stats.CheckoutAttempts, stats.Checkout, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
 				stats.Score180s, stats.AccuracyStatistics.Accuracy20, stats.AccuracyStatistics.Accuracy19, stats.AccuracyStatistics.AccuracyOverall)
 			if err != nil {
 				tx.Rollback()
@@ -779,9 +779,9 @@ func GetLegsToRecalculate(matchType int, since string) ([]int, error) {
 		SELECT l.id
 		FROM leg l
 			JOIN matches m on m.id = l.match_id
-		WHERE l.has_scores = 1 AND (m.match_type_id = ? OR l.leg_type_id = ?)
+		WHERE l.has_scores = 1 AND (m.match_type_id = ? AND l.leg_type_id IS NULL OR l.leg_type_id = ?)
 			AND l.updated_at >= DATE_FORMAT(STR_TO_DATE(?, '%Y-%m-%d %T'), "%Y-%m-%d %T")
-			AND m.is_abandoned = 0 AND l.is_finished = 1 AND l.has_scores = 1
+			AND m.is_abandoned = 0 AND l.is_finished = 1
 		GROUP BY l.id
 		ORDER BY l.id ASC`, matchType, matchType, since)
 	if err != nil {

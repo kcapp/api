@@ -544,6 +544,9 @@ func CalculateX01Statistics(legID int) (map[int]*models.StatisticsX01, error) {
 		stats := statisticsMap[visit.PlayerID]
 
 		currentScore := player.CurrentScore
+		if visit.IsCheckout(currentScore) {
+			stats.Checkout = null.IntFrom(int64(currentScore))
+		}
 		if visit.FirstDart.IsCheckoutAttempt(currentScore, 1) {
 			stats.CheckoutAttempts++
 		}
@@ -716,26 +719,20 @@ func getBestStatistics(ids []int, statisticsMap map[int]*models.StatisticsX01, s
 func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, startingScores ...int) error {
 	q, args, err := sqlx.In(`
 		SELECT
-			player_id,
-			leg_id,
-			MAX(checkout)
-		FROM (SELECT
-				s.player_id,
-				s.leg_id,
-				IFNULL(s.first_dart * s.first_dart_multiplier, 0) +
-					IFNULL(s.second_dart * s.second_dart_multiplier, 0) +
-					IFNULL(s.third_dart * s.third_dart_multiplier, 0) AS 'checkout'
-			FROM score s
-				JOIN leg l ON l.id = s.leg_id
-				JOIN matches m ON m.id = l.match_id
-			WHERE l.winner_id = s.player_id
-				AND s.player_id IN (?)
-				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id WHERE l.winner_id = s.player_id GROUP BY leg_id)
-				AND l.starting_score IN (?)
-				AND IFNULL(l.leg_type_id, m.match_type_id) = 1
-			GROUP BY s.player_id, s.id
-			ORDER BY checkout DESC) checkouts
-		GROUP BY player_id`, ids, startingScores)
+			max.player_id,
+			l.id,
+			max.checkout
+		FROM (
+			SELECT player_id, MAX(checkout) AS checkout
+			FROM (
+				SELECT s.player_id, checkout
+				FROM statistics_x01 s LEFT JOIN leg l ON l.id = s.leg_id
+				WHERE s.player_id IN (?) AND l.starting_score IN (?)
+			) AS max_checkout
+			GROUP BY player_id
+		) AS max
+		JOIN statistics_x01 s2 ON s2.player_id = max.player_id AND s2.checkout = max.checkout
+		LEFT JOIN leg l ON l.id = s2.leg_id`, ids, startingScores)
 	if err != nil {
 		return err
 	}
@@ -901,6 +898,9 @@ func RecalculateX01Statistics(legs []int) ([]string, error) {
 			}
 			if stat.AccuracyStatistics.Accuracy20.Valid {
 				query += fmt.Sprintf(", accuracy_20 = %f", stat.AccuracyStatistics.Accuracy20.Float64)
+			}
+			if stat.Checkout.Valid {
+				query += fmt.Sprintf(", checkout = %d", stat.Checkout.Int64)
 			}
 			query += fmt.Sprintf(" WHERE leg_id = %d AND player_id = %d;", legID, playerID)
 			queries = append(queries, query)
