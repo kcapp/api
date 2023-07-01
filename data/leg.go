@@ -415,7 +415,7 @@ func FinishLeg(visit models.Visit) error {
 			log.Printf("[%d] Inserting Scam statistics for player %d", visit.LegID, playerID)
 		}
 	} else {
-		statisticsMap, err := CalculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
+		statisticsMap, err := CalculateX01Statistics(visit.LegID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -765,6 +765,38 @@ func GetLegsOfType(matchType int, loadVisits bool) ([]*models.Leg, error) {
 			}
 		}
 		legs = append(legs, leg)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return legs, nil
+}
+
+// GetLegsToRecalculate returns all legs since the given date which can be recalculated
+func GetLegsToRecalculate(matchType int, since string) ([]int, error) {
+	rows, err := models.DB.Query(`
+		SELECT l.id
+		FROM leg l
+			JOIN matches m on m.id = l.match_id
+		WHERE l.has_scores = 1 AND (m.match_type_id = ? OR l.leg_type_id = ?)
+			AND l.updated_at >= DATE_FORMAT(STR_TO_DATE(?, '%Y-%m-%d %T'), "%Y-%m-%d %T")
+			AND m.is_abandoned = 0 AND l.is_finished = 1 AND l.has_scores = 1
+		GROUP BY l.id
+		ORDER BY l.id ASC`, matchType, matchType, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	legs := make([]int, 0)
+	for rows.Next() {
+		var legId int
+		err := rows.Scan(&legId)
+		if err != nil {
+			return nil, err
+		}
+		legs = append(legs, legId)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err

@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/kcapp/api/models"
 )
@@ -279,25 +279,18 @@ func getPlayersReset(visit *models.Visit, players map[int]*models.Player2Leg) in
 	return resets
 }
 
-// ReCalculateGotchaStatistics will recaulcate statistics for Gotcha legs
-func ReCalculateGotchaStatistics() (map[int]map[int]*models.StatisticsGotcha, error) {
-	legs, err := GetLegsOfType(models.GOTCHA, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.StatisticsGotcha)
-	for _, leg := range legs {
-		stats, err := CalculateGotchaStatistics(leg.ID)
+// RecalculateGotchaStatistics will recaulcate statistics for Gotcha legs
+func RecalculateGotchaStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateGotchaStatistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_gotcha SET darts_thrown = %d, highest_score = %d, times_reset = %d, others_reset = %d, score = %d WHERE leg_id = %d AND player_id = %d;`,
-				stat.DartsThrown, stat.HighestScore, stat.TimesReset, stat.OthersReset, stat.Score, leg.ID, playerID)
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_gotcha SET darts_thrown = %d, highest_score = %d, times_reset = %d, others_reset = %d, score = %d WHERE leg_id = %d AND player_id = %d;`,
+				stat.DartsThrown, stat.HighestScore, stat.TimesReset, stat.OthersReset, stat.Score, legID, playerID))
 		}
-		s[leg.ID] = stats
 	}
-
-	return s, err
+	return queries, nil
 }

@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/kcapp/api/models"
 )
@@ -236,4 +237,20 @@ func CalculateTicTacToeStatistics(legID int) (map[int]*models.StatisticsTicTacTo
 		}
 	}
 	return statisticsMap, nil
+}
+
+// RecalculateTicTacToeStatistics will recaulcate statistics for the given Tic Tac Toe legs
+func RecalculateTicTacToeStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateTicTacToeStatistics(legID)
+		if err != nil {
+			return nil, err
+		}
+		for playerID, stat := range stats {
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_tic_tac_toe SET darts_thrown = %d, score = %d, numbers_closed = %d, highest_closed = %d WHERE leg_id = %d AND player_id = %d;`,
+				stat.DartsThrown, stat.Score, stat.NumbersClosed, stat.HighestClosed, legID, playerID))
+		}
+	}
+	return queries, nil
 }

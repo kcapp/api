@@ -2,6 +2,8 @@
 
 ## [2.7.0] - TBD
 
+#### Feature
+- Added commands for recalculating statistics, resetting elo etc
 
 ## [2.6.0] - 2023-06-30
 #### Fixed

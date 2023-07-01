@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/kcapp/api/models"
 )
@@ -252,26 +252,18 @@ func CalculateKnockoutStatistics(legID int) (map[int]*models.StatisticsKnockout,
 	return statisticsMap, nil
 }
 
-// ReCalculateKnockoutStatistics will recaulcate statistics for Knockout legs
-func ReCalculateKnockoutStatistics() (map[int]map[int]*models.StatisticsKnockout, error) {
-	legs, err := GetLegsOfType(models.KNOCKOUT, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.StatisticsKnockout)
-	for _, leg := range legs {
-		stats, err := CalculateKnockoutStatistics(leg.ID)
+// RecalculateKnockoutStatistics will recaulcate statistics for Knockout legs
+func RecalculateKnockoutStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateKnockoutStatistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_knockout SET darts_thrown = %d, avg_score = %f, lives_lost = %d, lives_taken = %d,
-			final_position = %d WHERE leg_id = %d AND player_id = %d;`,
-				stat.DartsThrown, stat.AvgScore, stat.LivesLost, stat.LivesTaken, stat.FinalPosition, leg.ID, playerID)
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_knockout SET darts_thrown = %d, avg_score = %f, lives_lost = %d, lives_taken = %d, final_position = %d WHERE leg_id = %d AND player_id = %d;`,
+				stat.DartsThrown, stat.AvgScore, stat.LivesLost, stat.LivesTaken, stat.FinalPosition, legID, playerID))
 		}
-		s[leg.ID] = stats
 	}
-
-	return s, err
+	return queries, nil
 }

@@ -1033,7 +1033,6 @@ func UpdateEloForMatch(matchID int) error {
 		// matches which were walkovers
 		return nil
 	}
-	//log.Printf("Updating Elo for players %v in match %d", match.Players, matchID)
 
 	elos, err := GetPlayersElo(match.Players...)
 	if err != nil {
@@ -1162,36 +1161,6 @@ func updateElo(matchID int, player1 *models.PlayerElo, player2 *models.PlayerElo
 	return nil
 }
 
-// RecalculateElo will recalculate Elo for all players
-func RecalculateElo() error {
-	rows, err := models.DB.Query(`SELECT id FROM matches ORDER BY updated_at`)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	matches := make([]int, 0)
-	for rows.Next() {
-		var id int
-		err := rows.Scan(&id)
-		if err != nil {
-			return err
-		}
-		matches = append(matches, id)
-	}
-	if err = rows.Err(); err != nil {
-		return err
-	}
-
-	for _, id := range matches {
-		err = UpdateEloForMatch(id)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // CalculateElo will calculate the Elo for each player based on the given information. Returned value is new Elo for player1 and player2 respectively
 func CalculateElo(player1Elo int, player1Matches int, player1Score int, player2Elo int, player2Matches int, player2Score int) (int, int) {
 	if player1Matches == 0 {
@@ -1205,8 +1174,9 @@ func CalculateElo(player1Elo int, player1Matches int, player1Score int, player2E
 	// P2 = Looser
 	// PD = Points Difference
 	// Multiplier = ln(abs(PD) + 1) * (2.2 / ((P1(old)-P2(old)) * 0.001 + 2.2))
-	// Elo Winner = P1(old) + 800/num_matches * (1 - 1/(1 + 10 ^ (P2(old) - P1(old) / 400) ) )
-	// Elo Looser = P2(old) + 800/num_matches * (0 - 1/(1 + 10 ^ (P2(old) - P1(old) / 400) ) )
+	// k-factor = max(800/num_matches, k_factor_min)
+	// Elo Winner = P1(old) + k-factor * (1 - 1/(1 + 10 ^ (P2(old) - P1(old) / 400) ) )
+	// Elo Looser = P2(old) + k-factor * (0 - 1/(1 + 10 ^ (P2(old) - P1(old) / 400) ) )
 
 	if player1Score > player2Score {
 		multiplier := math.Log(math.Abs(float64(player1Score-player2Score))+1) * (2.2 / ((float64(player1Elo-player2Elo))*0.001 + 2.2))
@@ -1229,6 +1199,9 @@ func CalculateElo(player1Elo int, player1Matches int, player1Score int, player2E
 
 func calculateElo(winnerElo int, winnerMatches int, looserElo int, looserMatches int, multiplier float64, isDraw bool) (int, int) {
 	constant := 800.0
+	// k-factor indicates the strength of a player, which we set as "800 / matchesPlayed",
+	// but to avoid it going to low, we set a cap of the kFactor here, to avoid it getting to low, and elo changes not being reflected
+	kFactor := 20.0
 
 	Wwinner := 1.0
 	Wlooser := 0.0
@@ -1236,10 +1209,10 @@ func calculateElo(winnerElo int, winnerMatches int, looserElo int, looserMatches
 		Wwinner = 0.5
 		Wlooser = 0.5
 	}
-	changeWinner := int((constant / float64(winnerMatches) * (Wwinner - (1 / (1 + math.Pow(10, float64(looserElo-winnerElo)/400))))) * multiplier)
+	changeWinner := int((math.Max(constant/float64(winnerMatches), kFactor) * (Wwinner - (1 / (1 + math.Pow(10, float64(looserElo-winnerElo)/400))))) * multiplier)
 	calculatedWinner := winnerElo + changeWinner
 
-	changeLooser := int((constant / float64(looserMatches) * (Wlooser - (1 / (1 + math.Pow(10, float64(winnerElo-looserElo)/400))))) * multiplier)
+	changeLooser := int((math.Max(constant/float64(looserMatches), kFactor) * (Wlooser - (1 / (1 + math.Pow(10, float64(winnerElo-looserElo)/400))))) * multiplier)
 	calculatedLooser := looserElo + changeLooser
 
 	return calculatedWinner, calculatedLooser

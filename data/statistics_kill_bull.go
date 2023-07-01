@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/kcapp/api/models"
 )
@@ -307,25 +307,18 @@ func CalculateKillBullStatistics(legID int) (map[int]*models.StatisticsKillBull,
 	return statisticsMap, nil
 }
 
-// ReCalculateKillBullStatistics will recaulcate statistics for Kill Bull legs
-func ReCalculateKillBullStatistics() (map[int]map[int]*models.StatisticsKillBull, error) {
-	legs, err := GetLegsOfType(models.KILLBULL, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.StatisticsKillBull)
-	for _, leg := range legs {
-		stats, err := CalculateKillBullStatistics(leg.ID)
+// RecalculateKillBullStatistics will recaulcate statistics for Kill Bull legs
+func RecalculateKillBullStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateKillBullStatistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_kill_bull SET darts_thrown = %d, score = %d, marks3 = %d, marks4 = %d, marks5 = %d, marks6 = %d, longest_streak = %d, times_busted = %d, total_hit_rate = %f
-			WHERE leg_id = %d AND player_id = %d;`, stat.DartsThrown, stat.Score, stat.Marks3, stat.Marks4, stat.Marks5, stat.Marks6, stat.LongestStreak, stat.TimesBusted, stat.TotalHitRate, leg.ID, playerID)
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_kill_bull SET darts_thrown = %d, score = %d, marks3 = %d, marks4 = %d, marks5 = %d, marks6 = %d, longest_streak = %d, times_busted = %d, total_hit_rate = %f WHERE leg_id = %d AND player_id = %d;`,
+				stat.DartsThrown, stat.Score, stat.Marks3, stat.Marks4, stat.Marks5, stat.Marks6, stat.LongestStreak, stat.TimesBusted, stat.TotalHitRate, legID, playerID))
 		}
-		s[leg.ID] = stats
 	}
-
-	return s, err
+	return queries, nil
 }

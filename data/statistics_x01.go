@@ -2,12 +2,11 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/guregu/null"
 	"github.com/jmoiron/sqlx"
 	"github.com/kcapp/api/models"
-	"github.com/kcapp/api/util"
 )
 
 // GetX01Statistics will return statistics for all players active duing the given period
@@ -515,11 +514,12 @@ func GetX01HistoryForPlayer(id int, limit int, matchType int) ([]*models.Leg, er
 }
 
 // CalculateX01Statistics will calculate x01 statistics for the given leg
-func CalculateX01Statistics(legID int, winnerID int, startingScore int) (map[int]*models.StatisticsX01, error) {
+func CalculateX01Statistics(legID int) (map[int]*models.StatisticsX01, error) {
 	visits, err := GetLegVisits(legID)
 	if err != nil {
 		return nil, err
 	}
+	winnerID := visits[len(visits)-1].PlayerID
 
 	players, err := GetPlayersScore(legID)
 	if err != nil {
@@ -533,7 +533,7 @@ func CalculateX01Statistics(legID int, winnerID int, startingScore int) (map[int
 		statisticsMap[player.PlayerID] = stats
 
 		playersMap[player.PlayerID] = player
-		player.CurrentScore = startingScore
+		player.CurrentScore = player.StartingScore
 		if player.Handicap.Valid {
 			player.CurrentScore += int(player.Handicap.Int64)
 		}
@@ -882,79 +882,29 @@ func GetOfficeStatisticsForOffice(officeID int, from string, to string) ([]*mode
 }
 
 // RecalculateX01Statistics will recalculate x01 statistics for all legs
-func RecalculateX01Statistics() (map[int]map[int]*models.StatisticsX01, error) {
-	rows, err := models.DB.Query(`
-		SELECT
-			l.id, l.end_time, l.starting_score, l.is_finished,
-			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
-			l.match_id, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
-		FROM leg l
-			JOIN matches m on m.id = l.match_id
-			JOIN player2leg p2l ON p2l.leg_id = l.id
-		WHERE
-			l.has_scores = 1
-			AND m.match_type_id = 1
-		GROUP BY l.id
-		ORDER BY l.id`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	legs := make([]*models.Leg, 0)
-	for rows.Next() {
-		m := new(models.Leg)
-		var players string
-		err := rows.Scan(&m.ID, &m.Endtime, &m.StartingScore, &m.IsFinished, &m.CurrentPlayerID, &m.WinnerPlayerID, &m.CreatedAt, &m.UpdatedAt,
-			&m.MatchID, &players)
-		if err != nil {
-			return nil, err
-		}
-		m.Players = util.StringToIntArray(players)
-		legs = append(legs, m)
-	}
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	m := make(map[int]map[int]*models.StatisticsX01)
-	for _, leg := range legs {
-		stats, err := CalculateX01Statistics(leg.ID, int(leg.WinnerPlayerID.Int64), leg.StartingScore)
+func RecalculateX01Statistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateX01Statistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
+			query := fmt.Sprintf("UPDATE statistics_x01 SET ppd = %f, ppd_score = %d, first_nine_ppd = %f, first_nine_ppd_score = %d, checkout_attempts = %d, darts_thrown = %d, `60s_plus` = %d, `100s_plus` = %d, `140s_plus` = %d, `180s` = %d, overall_accuracy = %f",
+				stat.PPD, stat.PPDScore, stat.FirstNinePPD, stat.FirstNinePPDScore, stat.CheckoutAttempts, stat.DartsThrown, stat.Score60sPlus, stat.Score100sPlus, stat.Score140sPlus, stat.Score180s, stat.AccuracyStatistics.AccuracyOverall.Float64)
+
 			if stat.CheckoutPercentage.Valid {
-				log.Printf("UPDATE statistics_x01 SET checkout_attempts = %d, checkout_percentage = %f WHERE leg_id = %d AND player_id = %d;",
-					stat.CheckoutAttempts, stat.CheckoutPercentage.Float64, leg.ID, playerID)
-			} else {
-				log.Printf("UPDATE statistics_x01 SET checkout_attempts = %d, checkout_percentage = NULL WHERE leg_id = %d AND player_id = %d;",
-					stat.CheckoutAttempts, leg.ID, playerID)
+				query += fmt.Sprintf(", checkout_percentage = %f", stat.CheckoutPercentage.Float64)
 			}
-
-		}
-		m[leg.ID] = stats
-	}
-
-	/*s := make([]*models.CheckoutStatistics, 0)
-	for _, leg := range legs {
-		log.Printf("Getting statistics for %d", leg.ID)
-		stats, err := getCheckoutStatistics(leg.ID, leg.StartingScore)
-		if err != nil {
-			return nil, err
-		}
-		s = append(s, stats)
-	}
-
-	all := make(map[int]int)
-	for _, stats := range s {
-		log.Printf("Checkout: %d, Total: %d, Attempts: %d", stats.Checkout, stats.Count, stats.CheckoutAttempts)
-
-		for checkout, count := range stats.CheckoutAttempts {
-			all[checkout] += count
+			if stat.AccuracyStatistics.Accuracy19.Valid {
+				query += fmt.Sprintf(", accuracy_19 = %f", stat.AccuracyStatistics.Accuracy19.Float64)
+			}
+			if stat.AccuracyStatistics.Accuracy20.Valid {
+				query += fmt.Sprintf(", accuracy_20 = %f", stat.AccuracyStatistics.Accuracy20.Float64)
+			}
+			query += fmt.Sprintf(" WHERE leg_id = %d AND player_id = %d;", legID, playerID)
+			queries = append(queries, query)
 		}
 	}
-	log.Printf("All: %v", all)*/
-
-	return m, err
+	return queries, nil
 }

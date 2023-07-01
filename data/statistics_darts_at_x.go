@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
@@ -310,6 +311,22 @@ func CalculateDartsAtXStatistics(legID int) (map[int]*models.StatisticsDartsAtX,
 		stat.HitRate = float32(stat.Singles+stat.Doubles+stat.Triples) / 99
 	}
 	return statisticsMap, nil
+}
+
+// RecalculateDartsAtXStatistics will recaulcate statistics for Darts at X legs
+func RecalculateDartsAtXStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateDartsAtXStatistics(legID)
+		if err != nil {
+			return nil, err
+		}
+		for playerID, stat := range stats {
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_darts_at_x SET score = %d, singles = %d, doubles = %d, triples = %d, hit_rate = %f, hits5 = %d, hits6 = %d, hits7 = %d, hits8 = %d, hits9 = %d WHERE leg_id = %d AND player_id = %d;`,
+				stat.Score.Int64, stat.Singles, stat.Doubles, stat.Triples, stat.HitRate, stat.Hits5, stat.Hits6, stat.Hits7, stat.Hits8, stat.Hits9, legID, playerID))
+		}
+	}
+	return queries, nil
 }
 
 func addDart(number int, dart *models.Dart, stats *models.StatisticsDartsAtX) int {
