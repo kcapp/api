@@ -7,7 +7,7 @@
 
 #### Changed
 - Store `checkout` value for each `x01` leg explicitly
-- Improved a lot of queries when loading player statistics to reduce load times
+- Improved a lot of queries when loading player statistics to reduce load times by ~70% for players with a lot of data
 
 ## [2.6.0] - 2023-06-30
 #### Fixed
