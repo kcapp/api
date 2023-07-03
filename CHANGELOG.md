@@ -9,6 +9,9 @@
 - Store `checkout` value for each `x01` leg explicitly
 - Improved a lot of queries when loading player statistics to reduce load times by ~70% for players with a lot of data
 
+#### Fixed
+- Only return `x01` legs when requesting a random leg for a player
+
 ## [2.6.0] - 2023-06-30
 #### Fixed
 - Correctly set First 9 Avg. if leg was won in <9 darts

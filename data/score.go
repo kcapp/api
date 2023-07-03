@@ -546,7 +546,9 @@ func GetRandomLegForPlayer(playerID int, startingScore int) ([]*models.Visit, er
 			l.id
 		FROM leg l
 			JOIN player2leg p2l ON p2l.leg_id = l.id
+			JOIN matches m on m.id = l.match_id
 		WHERE l.is_finished = 1 AND l.winner_id = ? AND l.starting_score = ? AND l.has_scores = 1
+			AND IFNULL(l.leg_type_id, m.match_type_id) = 1 -- X01
 		GROUP BY l.id
 			HAVING COUNT(DISTINCT p2l.player_id) = 2
 		ORDER BY RAND()
