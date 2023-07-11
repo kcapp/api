@@ -25,6 +25,14 @@ var serveCmd = &cobra.Command{
 		models.InitDB(config.GetMysqlConnectionString())
 
 		router := mux.NewRouter()
+		router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Access-Control-Request-Headers, Access-Control-Request-Method, Connection, Host, Origin, User-Agent, Referer, Cache-Control, X-header")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		})
+
 		router.HandleFunc("/health", controllers.Healthcheck).Methods("HEAD")
 
 		router.HandleFunc("/match", controllers.NewMatch).Methods("POST")
@@ -60,6 +68,7 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/player/{id}", controllers.GetPlayer).Methods("GET")
 		router.HandleFunc("/player/{id}", controllers.UpdatePlayer).Methods("PUT")
 		router.HandleFunc("/player/{id}/statistics", controllers.GetPlayerStatistics).Methods("GET")
+		router.HandleFunc("/player/{id}/hits", controllers.GetPlayerHits).Methods("PUT")
 		router.HandleFunc("/player/{id}/statistics/previous", controllers.GetPlayerX01PreviousStatistics).Methods("GET")
 		router.HandleFunc("/player/{id}/progression", controllers.GetPlayerProgression).Methods("GET")
 		router.HandleFunc("/player/{id}/checkouts", controllers.GetPlayerCheckouts).Methods("GET")

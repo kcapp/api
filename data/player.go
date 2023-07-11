@@ -730,10 +730,11 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 				(IFNULL(s.first_dart, 0) * s.first_dart_multiplier +
 				IFNULL(s.second_dart, 0) * s.second_dart_multiplier +
 				IFNULL(s.third_dart, 0) * s.third_dart_multiplier) = x.checkout
+				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id WHERE l.winner_id = s.player_id AND s.player_id = ? GROUP BY leg_id)
 		GROUP BY s.first_dart, s.first_dart_multiplier,
 			s.second_dart, s.second_dart_multiplier,
 			s.third_dart, s.third_dart_multiplier
-		ORDER BY checkout DESC`, playerID)
+		ORDER BY checkout DESC`, playerID, playerID)
 	if err != nil {
 		return nil, err
 	}
@@ -1231,4 +1232,50 @@ func GetPlayerDrawProbability(player1Elo int, player2Elo int) float64 {
 	eloDiff := math.Abs(float64(player1Elo - player2Elo))
 	pDraw := 1 / (1 + math.Exp(-(-0.001215*eloDiff - float64(0.0000005372533)*eloDiff*eloDiff)))
 	return pDraw
+}
+
+// GetPlayerHits will return a map containing which darts the player hits after hitting the first and second provided
+func GetPlayerHits(playerID int, visit models.Visit) ([]*models.Visit, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			first_dart,
+			first_dart_multiplier,
+			second_dart,
+			second_dart_multiplier,
+			third_dart,
+			third_dart_multiplier,
+			COUNT(s.id) AS 'count'
+		FROM score s
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+		WHERE player_id = ? AND IFNULL(l.leg_type_id, m.match_type_id) = 1
+			AND first_dart = ? AND first_dart_multiplier = ?
+			AND ((? = 0) OR (second_dart = ? AND second_dart_multiplier = ?))
+		GROUP BY first_dart, first_dart_multiplier, second_dart, second_dart_multiplier, third_dart, third_dart_multiplier
+		ORDER BY count DESC`, playerID, visit.FirstDart.Value, visit.FirstDart.Multiplier, visit.SecondDart.Multiplier, visit.SecondDart.ValueRaw(), visit.SecondDart.Multiplier)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	hits := make([]*models.Visit, 0)
+	for rows.Next() {
+		v := new(models.Visit)
+		v.FirstDart = new(models.Dart)
+		v.SecondDart = new(models.Dart)
+		v.ThirdDart = new(models.Dart)
+		err := rows.Scan(
+			&v.FirstDart.Value, &v.FirstDart.Multiplier,
+			&v.SecondDart.Value, &v.SecondDart.Multiplier,
+			&v.ThirdDart.Value, &v.ThirdDart.Multiplier,
+			&v.Count)
+		if err != nil {
+			return nil, err
+		}
+		hits = append(hits, v)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return hits, nil
 }

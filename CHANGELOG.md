@@ -1,9 +1,9 @@
 # Changelog
 
 ## [2.7.0] - TBD
-
 #### Feature
 - Added commands for recalculating statistics, resetting elo etc
+- New endpoint for getting player hits
 
 #### Changed
 - Store `checkout` value for each `x01` leg explicitly
