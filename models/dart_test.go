@@ -11,15 +11,32 @@ import (
 // TestIsBust will check that the given dart is bust
 func TestIsBust(t *testing.T) {
 	dart := Dart{Value: null.IntFrom(20), Multiplier: 1}
-	assert.Equal(t, dart.IsBust(20), true, "should be bust")
+	assert.Equal(t, dart.IsBust(20, OUTSHOTDOUBLE), true, "should be bust")
 
 	dart = Dart{Value: null.IntFrom(10), Multiplier: 2}
-	assert.Equal(t, dart.IsBust(20), false, "should not be bust")
+	assert.Equal(t, dart.IsBust(20, OUTSHOTDOUBLE), false, "should not be bust")
 
 	dart = Dart{Value: null.NewInt(-1, false), Multiplier: 1}
-	assert.Equal(t, dart.IsBust(301), false, "should be bust")
+	assert.Equal(t, dart.IsBust(301, OUTSHOTDOUBLE), false, "should be bust")
 	assert.Equal(t, dart.Value.Valid, true, "should be valid")
 	assert.Equal(t, dart.Value.Int64, int64(0), "should be 0")
+
+	dart = Dart{Value: null.IntFrom(3), Multiplier: 1}
+	assert.Equal(t, dart.IsBust(4, OUTSHOTDOUBLE), true, "should be bust")
+
+	dart = Dart{Value: null.IntFrom(3), Multiplier: 1}
+	assert.Equal(t, dart.IsBust(4, OUTSHOTANY), false, "should not be bust")
+}
+
+func TestIsBust_ScoreIsZero(t *testing.T) {
+	dart := Dart{Value: null.IntFrom(3), Multiplier: 1}
+	assert.Equal(t, dart.IsBust(3, OUTSHOTANY), false, "should not be bust")
+
+	dart = Dart{Value: null.IntFrom(3), Multiplier: 2}
+	assert.Equal(t, dart.IsBust(6, OUTSHOTDOUBLE), false, "should not be bust")
+
+	dart = Dart{Value: null.IntFrom(3), Multiplier: 3}
+	assert.Equal(t, dart.IsBust(9, OUTSHOTMASTER), false, "should not be bust")
 }
 
 // TestIsBustAbove will check that the given dart is bust above
@@ -132,27 +149,51 @@ func TestGetJDCPracticeScore(t *testing.T) {
 	assert.Equal(t, score, 0, "score should be 0")
 }
 
-// TestIsCheckoutAttempt will check if the given dart is a checkout attempt
-func TestIsCheckoutAttempt(t *testing.T) {
+// TestIsCheckoutAttempt_Doubles will check if the given dart is a checkout attempt
+func TestIsCheckoutAttempt_Doubles(t *testing.T) {
 	// Invalid dart
 	dart := Dart{Value: null.NewInt(0, false), Multiplier: 2}
-	assert.Equal(t, dart.IsCheckoutAttempt(301, 1), false, "should be false")
+	assert.Equal(t, dart.IsCheckoutAttempt(301, 1, OUTSHOTDOUBLE), false, "should be false")
 
 	// Not checkout
 	dart = Dart{Value: null.IntFrom(20), Multiplier: 3}
-	assert.Equal(t, dart.IsCheckoutAttempt(301, 1), false, "should be false")
+	assert.Equal(t, dart.IsCheckoutAttempt(301, 1, OUTSHOTDOUBLE), false, "should be false")
 
 	// Successful checkout
 	dart = Dart{Value: null.IntFrom(20), Multiplier: 2}
-	assert.Equal(t, dart.IsCheckoutAttempt(40, 1), true, "should be true")
+	assert.Equal(t, dart.IsCheckoutAttempt(40, 1, OUTSHOTDOUBLE), true, "should be true")
 
 	// Checkout attempt
 	dart = Dart{Value: null.IntFrom(8), Multiplier: 1}
-	assert.Equal(t, dart.IsCheckoutAttempt(32, 1), true, "should be true")
+	assert.Equal(t, dart.IsCheckoutAttempt(32, 1, OUTSHOTDOUBLE), true, "should be true")
 
 	// Checkout attempt bull
 	dart = Dart{Value: null.IntFrom(18), Multiplier: 1}
-	assert.Equal(t, dart.IsCheckoutAttempt(50, 3), true, "should be true")
+	assert.Equal(t, dart.IsCheckoutAttempt(50, 3, OUTSHOTDOUBLE), true, "should be true")
+}
+
+// TestIsCheckoutAttempt_Any will check if the given dart is a checkout attempt
+func TestIsCheckoutAttempt_Any(t *testing.T) {
+	dart := Dart{Value: null.IntFrom(20), Multiplier: 3}
+	assert.Equal(t, dart.IsCheckoutAttempt(20, 1, OUTSHOTANY), true, "should be true")
+
+	dart = Dart{Value: null.IntFrom(20), Multiplier: 2}
+	assert.Equal(t, dart.IsCheckoutAttempt(40, 1, OUTSHOTANY), true, "should be true")
+
+	dart = Dart{Value: null.IntFrom(20), Multiplier: 1}
+	assert.Equal(t, dart.IsCheckoutAttempt(60, 1, OUTSHOTANY), true, "should be true")
+}
+
+// TestIsCheckoutAttempt_Master will check if the given dart is a checkout attempt
+func TestIsCheckoutAttempt_Master(t *testing.T) {
+	dart := Dart{Value: null.IntFrom(20), Multiplier: 1}
+	assert.Equal(t, dart.IsCheckoutAttempt(23, 1, OUTSHOTMASTER), false, "should not be true")
+
+	dart = Dart{Value: null.IntFrom(20), Multiplier: 1}
+	assert.Equal(t, dart.IsCheckoutAttempt(40, 1, OUTSHOTMASTER), true, "should be true")
+
+	dart = Dart{Value: null.IntFrom(20), Multiplier: 1}
+	assert.Equal(t, dart.IsCheckoutAttempt(60, 1, OUTSHOTMASTER), true, "should be true")
 }
 
 // TestGetString will check that dart string is created correctly

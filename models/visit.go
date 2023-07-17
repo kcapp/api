@@ -69,15 +69,15 @@ func (visit Visit) ValidateInput() error {
 }
 
 // SetIsBust will set IsBust for the given visit
-func (visit *Visit) SetIsBust(currentScore int) {
+func (visit *Visit) SetIsBust(currentScore int, outshotTypeId int) {
 	isBust := false
-	isBust = visit.FirstDart.IsBust(currentScore)
+	isBust = visit.FirstDart.IsBust(currentScore, outshotTypeId)
 	currentScore = currentScore - visit.FirstDart.GetScore()
 	if !isBust && currentScore > 0 {
-		isBust = visit.SecondDart.IsBust(currentScore)
+		isBust = visit.SecondDart.IsBust(currentScore, outshotTypeId)
 		currentScore = currentScore - visit.SecondDart.GetScore()
 		if !isBust && currentScore > 0 {
-			isBust = visit.ThirdDart.IsBust(currentScore)
+			isBust = visit.ThirdDart.IsBust(currentScore, outshotTypeId)
 		} else {
 			// Invalidate third dart if second was bust
 			visit.ThirdDart.Value = null.IntFromPtr(nil)
@@ -144,9 +144,22 @@ func (visit *Visit) SetIsBustAbove(currentScore int, targetScore int) {
 }
 
 // IsCheckout will check if the given visit is a checkout (remaining score is 0 and last dart thrown is a double)
-func (visit Visit) IsCheckout(currentScore int) bool {
+func (visit Visit) IsCheckout(currentScore int, outshotTypeId int) bool {
 	remaining := currentScore - visit.GetScore()
 	if remaining == 0 {
+		if outshotTypeId == OUTSHOTANY {
+			// With ANY outshot, as long as score is 0 we are good
+			return true
+		} else if outshotTypeId == OUTSHOTMASTER {
+			if visit.ThirdDart.Value.Valid {
+				return visit.ThirdDart.IsTriple()
+			} else if visit.SecondDart.Value.Valid {
+				return visit.SecondDart.IsTriple()
+			} else {
+				return visit.FirstDart.IsTriple()
+			}
+		}
+		// OUTSHOTMASTER can also be double, so we need to check outside the if
 		if visit.ThirdDart.Value.Valid {
 			return visit.ThirdDart.IsDouble()
 		} else if visit.SecondDart.Value.Valid {

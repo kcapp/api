@@ -4,6 +4,7 @@
 #### Feature
 - Added commands for recalculating statistics, resetting elo etc
 - New endpoint for getting player hits
+- Support for `ANY` and `MASTER` out for `x01` legs
 
 #### Changed
 - Store `checkout` value for each `x01` leg explicitly

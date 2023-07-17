@@ -725,12 +725,14 @@ func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 			COUNT(*) as 'count'
 		FROM statistics_x01 x
 			LEFT JOIN leg l on x.leg_id = l.id
+			LEFT JOIN leg_parameters lp on l.id = lp.leg_id
 			LEFT JOIN score s on l.id = s.leg_id
 		WHERE x.player_id = ? AND x.checkout IS NOT NULL AND
 				(IFNULL(s.first_dart, 0) * s.first_dart_multiplier +
 				IFNULL(s.second_dart, 0) * s.second_dart_multiplier +
 				IFNULL(s.third_dart, 0) * s.third_dart_multiplier) = x.checkout
 				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id WHERE l.winner_id = s.player_id AND s.player_id = ? GROUP BY leg_id)
+				AND (lp.outshot_type_id = 2 OR lp.outshot_type_id IS NULL) -- Only count DOUBLEOUT legs
 		GROUP BY s.first_dart, s.first_dart_multiplier,
 			s.second_dart, s.second_dart_multiplier,
 			s.third_dart, s.third_dart_multiplier

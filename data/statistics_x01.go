@@ -30,7 +30,8 @@ func GetX01Statistics(from string, to string, matchType int, startingScores ...i
 			SUM(accuracy_20) / COUNT(accuracy_20) AS 'accuracy_20s',
 			SUM(accuracy_19) / COUNT(accuracy_19) AS 'accuracy_19s',
 			SUM(overall_accuracy) / COUNT(overall_accuracy) AS 'accuracy_overall',
-			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
+			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage',
+			MAX(s.checkout) AS 'checkout'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -58,7 +59,7 @@ func GetX01Statistics(from string, to string, matchType int, startingScores ...i
 		s := new(models.StatisticsX01)
 		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID, &s.PPD,
 			&s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus,
-			&s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
+			&s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage, &s.Checkout)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +87,8 @@ func GetX01StatisticsForLeg(id int) ([]*models.StatisticsX01, error) {
 			s.overall_accuracy,
 			s.darts_thrown,
 			s.checkout_attempts,
-			IFNULL(s.checkout_percentage, 0) AS 'checkout_percentage'
+			IFNULL(s.checkout_percentage, 0) AS 'checkout_percentage',
+			s.checkout
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -106,7 +108,7 @@ func GetX01StatisticsForLeg(id int) ([]*models.StatisticsX01, error) {
 		s := new(models.StatisticsX01)
 		err := rows.Scan(&s.LegID, &s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus,
 			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.DartsThrown,
-			&s.CheckoutAttempts, &s.CheckoutPercentage)
+			&s.CheckoutAttempts, &s.CheckoutPercentage, &s.Checkout)
 		if err != nil {
 			return nil, err
 		}
@@ -132,7 +134,8 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 			SUM(s.accuracy_19) / COUNT(s.accuracy_19) AS 'accuracy_19s',
 			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
 			SUM(s.checkout_attempts) AS 'checkout_attempts',
-			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
+			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage',
+			MAX(s.checkout) AS 'checkout'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -152,7 +155,7 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 		s := new(models.StatisticsX01)
 		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus,
 			&s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutAttempts,
-			&s.CheckoutPercentage)
+			&s.CheckoutPercentage, &s.Checkout)
 		if err != nil {
 			return nil, err
 		}
@@ -217,7 +220,8 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 			SUM(s.accuracy_20) / COUNT(s.accuracy_20) AS 'accuracy_20s',
 			SUM(s.accuracy_19) / COUNT(s.accuracy_19) AS 'accuracy_19s',
 			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
-			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
+			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage',
+			MAX(s.checkout) AS 'checkout'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -245,7 +249,7 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 		s := new(models.StatisticsX01)
 		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD,
 			&s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s,
-			&s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
+			&s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage, &s.Checkout)
 		if err != nil {
 			return nil, err
 		}
@@ -304,7 +308,8 @@ func GetPlayersX01PreviousStatistics(ids []int, startingScores ...int) ([]*model
 			SUM(s.accuracy_20) / COUNT(s.accuracy_20) AS 'accuracy_20s',
 			SUM(s.accuracy_19) / COUNT(s.accuracy_19) AS 'accuracy_19s',
 			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
-			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
+			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage',
+			MAX(s.checkout) AS 'checkout'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -334,7 +339,7 @@ func GetPlayersX01PreviousStatistics(ids []int, startingScores ...int) ([]*model
 		s := new(models.StatisticsX01)
 		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD,
 			&s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s,
-			&s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage)
+			&s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage, &s.Checkout)
 		if err != nil {
 			return nil, err
 		}
@@ -379,6 +384,7 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 			SUM(s.accuracy_19) / COUNT(s.accuracy_19) AS 'accuracy_19s',
 			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
 			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage',
+			MAX(s.checkout) AS 'checkout',
 			DATE(m.updated_at) AS 'date'
 		FROM statistics_x01 s
 			JOIN leg l ON l.id = s.leg_id
@@ -386,7 +392,7 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 		WHERE s.player_id = ?
 			AND m.match_type_id = 1
 			AND m.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
-		GROUP BY YEAR(m.updateD_at), WEEK(m.updated_at)
+		GROUP BY YEAR(m.updated_at), WEEK(m.updated_at)
 		ORDER BY date DESC`, id)
 	if err != nil {
 		return nil, err
@@ -398,7 +404,8 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 		var date string
 		s := new(models.StatisticsX01)
 		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus,
-			&s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage, &date)
+			&s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage,
+			&s.Checkout, &date)
 		if err != nil {
 			return nil, err
 		}
@@ -432,7 +439,8 @@ func GetX01StatisticsForPlayer(id int, matchType int) (*models.StatisticsX01, er
 			SUM(accuracy_20) / COUNT(accuracy_20) AS 'accuracy_20s',
 			SUM(accuracy_19) / COUNT(accuracy_19) AS 'accuracy_19s',
 			SUM(overall_accuracy) / COUNT(overall_accuracy) AS 'accuracy_overall',
-			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage'
+			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage',
+			MAX(s.checkout) AS 'checkout'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -444,7 +452,7 @@ func GetX01StatisticsForPlayer(id int, matchType int) (*models.StatisticsX01, er
 			AND m.match_type_id = ?
 		GROUP BY p.id`, id, matchType).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg,
 		&s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19,
-		&s.AccuracyOverall, &s.CheckoutPercentage)
+		&s.AccuracyOverall, &s.CheckoutPercentage, &s.Checkout)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return new(models.StatisticsX01), nil
@@ -482,7 +490,8 @@ func GetX01HistoryForPlayer(id int, limit int, matchType int) ([]*models.Leg, er
 			s.overall_accuracy,
 			s.darts_thrown,
 			s.checkout_attempts,
-			IFNULL(s.checkout_percentage, 0) AS 'checkout_percentage'
+			IFNULL(s.checkout_percentage, 0) AS 'checkout_percentage',
+			s.checkout AS 'checkout'
 		FROM statistics_x01 s
 			LEFT JOIN player p ON p.id = s.player_id
 			LEFT JOIN leg l ON l.id = s.leg_id
@@ -502,7 +511,7 @@ func GetX01HistoryForPlayer(id int, limit int, matchType int) ([]*models.Leg, er
 		s := new(models.StatisticsX01)
 		err := rows.Scan(&s.LegID, &s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus,
 			&s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.DartsThrown,
-			&s.CheckoutAttempts, &s.CheckoutPercentage)
+			&s.CheckoutAttempts, &s.CheckoutPercentage, &s.Checkout)
 		if err != nil {
 			return nil, err
 		}
@@ -515,10 +524,12 @@ func GetX01HistoryForPlayer(id int, limit int, matchType int) ([]*models.Leg, er
 
 // CalculateX01Statistics will calculate x01 statistics for the given leg
 func CalculateX01Statistics(legID int) (map[int]*models.StatisticsX01, error) {
-	visits, err := GetLegVisits(legID)
+	leg, err := GetLeg(legID)
 	if err != nil {
 		return nil, err
 	}
+
+	visits := leg.Visits
 	winnerID := visits[len(visits)-1].PlayerID
 
 	players, err := GetPlayersScore(legID)
@@ -544,18 +555,18 @@ func CalculateX01Statistics(legID int) (map[int]*models.StatisticsX01, error) {
 		stats := statisticsMap[visit.PlayerID]
 
 		currentScore := player.CurrentScore
-		if visit.IsCheckout(currentScore) {
+		if visit.IsCheckout(currentScore, leg.Parameters.OutshotType.ID) {
 			stats.Checkout = null.IntFrom(int64(currentScore))
 		}
-		if visit.FirstDart.IsCheckoutAttempt(currentScore, 1) {
+		if visit.FirstDart.IsCheckoutAttempt(currentScore, 1, leg.Parameters.OutshotType.ID) {
 			stats.CheckoutAttempts++
 		}
 		currentScore -= visit.FirstDart.GetScore()
-		if visit.SecondDart.IsCheckoutAttempt(currentScore, 2) {
+		if visit.SecondDart.IsCheckoutAttempt(currentScore, 2, leg.Parameters.OutshotType.ID) {
 			stats.CheckoutAttempts++
 		}
 		currentScore -= visit.SecondDart.GetScore()
-		if visit.ThirdDart.IsCheckoutAttempt(currentScore, 3) {
+		if visit.ThirdDart.IsCheckoutAttempt(currentScore, 3, leg.Parameters.OutshotType.ID) {
 			stats.CheckoutAttempts++
 		}
 		currentScore -= visit.ThirdDart.GetScore()
@@ -726,8 +737,11 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, 
 			SELECT player_id, MAX(checkout) AS checkout
 			FROM (
 				SELECT s.player_id, checkout
-				FROM statistics_x01 s LEFT JOIN leg l ON l.id = s.leg_id
+				FROM statistics_x01 s
+					LEFT JOIN leg l ON l.id = s.leg_id
+					LEFT JOIN leg_parameters lp on l.id = lp.leg_id
 				WHERE s.player_id IN (?) AND l.starting_score IN (?)
+					AND (lp.outshot_type_id = 2 OR lp.outshot_type_id IS NULL)
 			) AS max_checkout
 			GROUP BY player_id
 		) AS max

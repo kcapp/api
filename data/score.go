@@ -48,8 +48,8 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 	isFinished := false
 	// Invalidate extra darts not thrown, and check if leg is finished
 	if matchType == models.X01 || matchType == models.X01HANDICAP {
-		visit.SetIsBust(players[visit.PlayerID].CurrentScore)
-		isFinished = !visit.IsBust && visit.IsCheckout(players[visit.PlayerID].CurrentScore)
+		visit.SetIsBust(players[visit.PlayerID].CurrentScore, leg.Parameters.OutshotType.ID)
+		isFinished = !visit.IsBust && visit.IsCheckout(players[visit.PlayerID].CurrentScore, leg.Parameters.OutshotType.ID)
 	} else if matchType == models.SHOOTOUT {
 		isFinished = ((len(leg.Visits) + 1) * 3) >= (9 * len(leg.Players))
 		if isFinished {
