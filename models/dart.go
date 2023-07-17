@@ -33,7 +33,7 @@ func (dart *Dart) IsBust(currentScore int, outshotTypeId int) bool {
 	if scoreAfterThrow == 0 {
 		if outshotTypeId == OUTSHOTANY ||
 			(outshotTypeId == OUTSHOTDOUBLE && dart.IsDouble()) ||
-			(outshotTypeId == OUTSHOTMASTER && dart.IsTriple()) {
+			(outshotTypeId == OUTSHOTMASTER && (dart.IsDouble() || dart.IsTriple())) {
 			return false
 		}
 	}

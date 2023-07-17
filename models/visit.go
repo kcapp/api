@@ -152,11 +152,11 @@ func (visit Visit) IsCheckout(currentScore int, outshotTypeId int) bool {
 			return true
 		} else if outshotTypeId == OUTSHOTMASTER {
 			if visit.ThirdDart.Value.Valid {
-				return visit.ThirdDart.IsTriple()
+				return visit.ThirdDart.IsDouble() || visit.ThirdDart.IsTriple()
 			} else if visit.SecondDart.Value.Valid {
-				return visit.SecondDart.IsTriple()
+				return visit.SecondDart.IsDouble() || visit.SecondDart.IsTriple()
 			} else {
-				return visit.FirstDart.IsTriple()
+				return visit.FirstDart.IsDouble() || visit.FirstDart.IsTriple()
 			}
 		}
 		// OUTSHOTMASTER can also be double, so we need to check outside the if

@@ -37,6 +37,9 @@ func TestIsBust_ScoreIsZero(t *testing.T) {
 
 	dart = Dart{Value: null.IntFrom(3), Multiplier: 3}
 	assert.Equal(t, dart.IsBust(9, OUTSHOTMASTER), false, "should not be bust")
+
+	dart = Dart{Value: null.IntFrom(3), Multiplier: 2}
+	assert.Equal(t, dart.IsBust(6, OUTSHOTMASTER), false, "should not be bust")
 }
 
 // TestIsBustAbove will check that the given dart is bust above
