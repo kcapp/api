@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
@@ -274,26 +274,18 @@ func CalculateJDCPracticeStatistics(legID int) (map[int]*models.StatisticsJDCPra
 	return statisticsMap, nil
 }
 
-// ReCalculateJDCPracticeStatistics will recaulcate statistics for JDC Practice legs
-func ReCalculateJDCPracticeStatistics() (map[int]map[int]*models.StatisticsJDCPractice, error) {
-	legs, err := GetLegsOfType(models.JDCPRACTICE, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.StatisticsJDCPractice)
-	for _, leg := range legs {
-		stats, err := CalculateJDCPracticeStatistics(leg.ID)
+// RecalculateJDCPracticeStatistics will recaulcate statistics for JDC Practice legs
+func RecalculateJDCPracticeStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateJDCPracticeStatistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_jdc_practice SET darts_thrown = %d, score = %d, mpr = %f,
-				shanghai_count = %d, doubles_hitrate = %f WHERE leg_id = %d AND player_id = %d;`,
-				stat.DartsThrown, stat.Score, stat.MPR.Float64, stat.ShanghaiCount, stat.DoublesHitrate, leg.ID, playerID)
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_jdc_practice SET darts_thrown = %d, score = %d, mpr = %f, shanghai_count = %d, doubles_hitrate = %f WHERE leg_id = %d AND player_id = %d;`,
+				stat.DartsThrown, stat.Score, stat.MPR.Float64, stat.ShanghaiCount, stat.DoublesHitrate, legID, playerID))
 		}
-		s[leg.ID] = stats
 	}
-
-	return s, err
+	return queries, nil
 }

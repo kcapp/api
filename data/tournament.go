@@ -264,6 +264,37 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 	return matches, nil
 }
 
+// GetTournamentPlayers will return all players for the given tournament
+func GetTournamentPlayers(id int) ([]*models.Player, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color, p.profile_pic_url, p.smartcard_uid,
+			 p.board_stream_url, p.board_stream_css, p.active, p.office_id, p.is_bot, p.created_at
+		FROM player p
+		LEFT JOIN player2tournament p2t ON p2t.player_id = p.id
+		WHERE p2t.tournament_id = ?`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	players := make([]*models.Player, 0)
+	for rows.Next() {
+		p := new(models.Player)
+		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.IsActive, &p.OfficeID, &p.IsBot, &p.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		players = append(players, p)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return players, nil
+}
+
 // GetTournamentProbabilities will return all matches for the given tournament with winning probabilities for players
 func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
 	rows, err := models.DB.Query(`

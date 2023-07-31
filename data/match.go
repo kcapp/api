@@ -43,7 +43,14 @@ func NewMatch(match models.Match) (*models.Match, error) {
 		tx.Rollback()
 		return nil, err
 	}
-	if match.MatchType.ID == models.TICTACTOE {
+	if match.MatchType.ID == models.X01 || match.MatchType.ID == models.X01HANDICAP {
+		params := match.Legs[0].Parameters
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id) VALUES (?, ?)", legID, params.OutshotType.ID)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	} else if match.MatchType.ID == models.TICTACTOE {
 		params := match.Legs[0].Parameters
 		params.GenerateTicTacToeNumbers(startingScore)
 		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -668,7 +675,7 @@ func GetMatchTypes() ([]*models.MatchType, error) {
 
 // GetOutshotTypes will return all outshot types
 func GetOutshotTypes() ([]*models.OutshotType, error) {
-	rows, err := models.DB.Query("SELECT id, `name`, short_name FROM outshot_type")
+	rows, err := models.DB.Query("SELECT id, `name`, short_name FROM outshot_type ORDER BY FIELD(id, 3, 1, 2)")
 	if err != nil {
 		return nil, err
 	}

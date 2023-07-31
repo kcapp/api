@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/kcapp/api/models"
 )
@@ -247,24 +247,18 @@ func CalculateScamStatistics(legID int) (map[int]*models.StatisticsScam, error) 
 }
 
 // ReCalculateScamStatistics will recaulcate statistics for Scam legs
-func ReCalculateScamStatistics() (map[int]map[int]*models.StatisticsScam, error) {
-	legs, err := GetLegsOfType(models.SCAM, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.StatisticsScam)
-	for _, leg := range legs {
-		stats, err := CalculateScamStatistics(leg.ID)
+func ReCalculateScamStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateScamStatistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_scam SET darts_thrown_stopper = %d, darts_thrown_scorer = %d, mpr = %f, score = %d, WHERE leg_id = %d AND player_id = %d;`,
-				stat.DartsThrownStopper, stat.DartsThrownScorer, stat.MPR, stat.Score, leg.ID, playerID)
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_scam SET darts_thrown_stopper = %d, darts_thrown_scorer = %d, mpr = %f, score = %d, WHERE leg_id = %d AND player_id = %d;`,
+				stat.DartsThrownStopper, stat.DartsThrownScorer, stat.MPR, stat.Score, legID, playerID))
 		}
-		s[leg.ID] = stats
 	}
 
-	return s, err
+	return queries, nil
 }

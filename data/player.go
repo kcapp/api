@@ -664,35 +664,35 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			player_id,
-			MAX(matches_played) AS 'matches_played',
-			MAX(matches_won) AS 'matches_won',
-			MAX(legs_played) AS 'legs_played',
-			MAX(legs_won) AS 'legs_won'
+			MAX(matches_played) AS matches_played,
+			MAX(matches_won) AS matches_won,
+			MAX(legs_played) AS legs_played,
+			MAX(legs_won) AS legs_won
 		FROM (
 			SELECT
 				p2l.player_id,
-				COUNT(DISTINCT p2l.match_id) AS 'matches_played',
-				0 AS 'matches_won',
-				COUNT(m.id)  AS 'legs_played',
-				SUM(CASE WHEN p2l.player_id = m.winner_id THEN 1 ELSE 0 END) AS 'legs_won'
+				COUNT(DISTINCT p2l.match_id) AS matches_played,
+				SUM(CASE WHEN p2l.player_id = m.winner_id THEN 1 ELSE 0 END) AS matches_won,
+				COUNT(p2l.leg_id) AS legs_played,
+				SUM(CASE WHEN p2l.player_id = m.winner_id THEN 1 ELSE 0 END) AS legs_won
 			FROM player2leg p2l
-				JOIN leg l ON l.id = p2l.leg_id
 				JOIN matches m ON m.id = p2l.match_id
+				JOIN leg l ON l.id = p2l.leg_id AND l.match_id = m.id
 			WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			GROUP BY p2l.player_id
 			UNION ALL
 			SELECT
-				p2l.player_id,
-				0 AS 'matches_played',
-				COUNT(DISTINCT m.id) AS 'matches_won',
-				0 AS 'legs_played',
-				0 AS 'legs_won'
+				m.winner_id AS player_id,
+				0 AS matches_played,
+				COUNT(DISTINCT m.id) AS matches_won,
+				0 AS legs_played,
+				0 AS legs_won
 			FROM matches m
 				JOIN leg l ON l.match_id = m.id
-				JOIN player2leg p2l ON p2l.player_id = m.winner_id AND p2l.match_id = m.id
 			WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			GROUP BY m.winner_id
-		) matches
+		) AS subquery
+		WHERE player_id IS NOT NULL
 		GROUP BY player_id`)
 	if err != nil {
 		return nil, err
@@ -718,22 +718,26 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 func GetPlayerCheckouts(playerID int) ([]*models.CheckoutStatistics, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			s.player_id,
+			x.player_id,
 			s.first_dart, s.first_dart_multiplier,
 			s.second_dart, s.second_dart_multiplier,
 			s.third_dart, s.third_dart_multiplier,
-			(IFNULL(s.first_dart, 0) * s.first_dart_multiplier +
+			x.checkout,
+			COUNT(*) as 'count'
+		FROM statistics_x01 x
+			LEFT JOIN leg l on x.leg_id = l.id
+			LEFT JOIN leg_parameters lp on l.id = lp.leg_id
+			LEFT JOIN score s on l.id = s.leg_id
+		WHERE x.player_id = ? AND x.checkout IS NOT NULL AND
+				(IFNULL(s.first_dart, 0) * s.first_dart_multiplier +
 				IFNULL(s.second_dart, 0) * s.second_dart_multiplier +
-				IFNULL(s.third_dart, 0) * s.third_dart_multiplier) AS 'checkout',
-			COUNT(*)
-		FROM score s
-		WHERE s.id IN (SELECT MAX(id) FROM score WHERE leg_id IN (
-				SELECT l.id FROM leg l JOIN matches m ON m.id = l.match_id
-				WHERE m.match_type_id = 1 AND l.winner_id = ?) GROUP BY leg_id)
+				IFNULL(s.third_dart, 0) * s.third_dart_multiplier) = x.checkout
+				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id WHERE l.winner_id = s.player_id AND s.player_id = ? GROUP BY leg_id)
+				AND (lp.outshot_type_id = 2 OR lp.outshot_type_id IS NULL) -- Only count DOUBLEOUT legs
 		GROUP BY s.first_dart, s.first_dart_multiplier,
 			s.second_dart, s.second_dart_multiplier,
 			s.third_dart, s.third_dart_multiplier
-		ORDER BY checkout DESC`, playerID)
+		ORDER BY checkout DESC`, playerID, playerID)
 	if err != nil {
 		return nil, err
 	}
@@ -1033,7 +1037,6 @@ func UpdateEloForMatch(matchID int) error {
 		// matches which were walkovers
 		return nil
 	}
-	//log.Printf("Updating Elo for players %v in match %d", match.Players, matchID)
 
 	elos, err := GetPlayersElo(match.Players...)
 	if err != nil {
@@ -1162,36 +1165,6 @@ func updateElo(matchID int, player1 *models.PlayerElo, player2 *models.PlayerElo
 	return nil
 }
 
-// RecalculateElo will recalculate Elo for all players
-func RecalculateElo() error {
-	rows, err := models.DB.Query(`SELECT id FROM matches ORDER BY updated_at`)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	matches := make([]int, 0)
-	for rows.Next() {
-		var id int
-		err := rows.Scan(&id)
-		if err != nil {
-			return err
-		}
-		matches = append(matches, id)
-	}
-	if err = rows.Err(); err != nil {
-		return err
-	}
-
-	for _, id := range matches {
-		err = UpdateEloForMatch(id)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // CalculateElo will calculate the Elo for each player based on the given information. Returned value is new Elo for player1 and player2 respectively
 func CalculateElo(player1Elo int, player1Matches int, player1Score int, player2Elo int, player2Matches int, player2Score int) (int, int) {
 	if player1Matches == 0 {
@@ -1205,8 +1178,9 @@ func CalculateElo(player1Elo int, player1Matches int, player1Score int, player2E
 	// P2 = Looser
 	// PD = Points Difference
 	// Multiplier = ln(abs(PD) + 1) * (2.2 / ((P1(old)-P2(old)) * 0.001 + 2.2))
-	// Elo Winner = P1(old) + 800/num_matches * (1 - 1/(1 + 10 ^ (P2(old) - P1(old) / 400) ) )
-	// Elo Looser = P2(old) + 800/num_matches * (0 - 1/(1 + 10 ^ (P2(old) - P1(old) / 400) ) )
+	// k-factor = max(800/num_matches, k_factor_min)
+	// Elo Winner = P1(old) + k-factor * (1 - 1/(1 + 10 ^ (P2(old) - P1(old) / 400) ) )
+	// Elo Looser = P2(old) + k-factor * (0 - 1/(1 + 10 ^ (P2(old) - P1(old) / 400) ) )
 
 	if player1Score > player2Score {
 		multiplier := math.Log(math.Abs(float64(player1Score-player2Score))+1) * (2.2 / ((float64(player1Elo-player2Elo))*0.001 + 2.2))
@@ -1229,6 +1203,9 @@ func CalculateElo(player1Elo int, player1Matches int, player1Score int, player2E
 
 func calculateElo(winnerElo int, winnerMatches int, looserElo int, looserMatches int, multiplier float64, isDraw bool) (int, int) {
 	constant := 800.0
+	// k-factor indicates the strength of a player, which we set as "800 / matchesPlayed",
+	// but to avoid it going to low, we set a cap of the kFactor here, to avoid it getting to low, and elo changes not being reflected
+	kFactor := 20.0
 
 	Wwinner := 1.0
 	Wlooser := 0.0
@@ -1236,10 +1213,10 @@ func calculateElo(winnerElo int, winnerMatches int, looserElo int, looserMatches
 		Wwinner = 0.5
 		Wlooser = 0.5
 	}
-	changeWinner := int((constant / float64(winnerMatches) * (Wwinner - (1 / (1 + math.Pow(10, float64(looserElo-winnerElo)/400))))) * multiplier)
+	changeWinner := int((math.Max(constant/float64(winnerMatches), kFactor) * (Wwinner - (1 / (1 + math.Pow(10, float64(looserElo-winnerElo)/400))))) * multiplier)
 	calculatedWinner := winnerElo + changeWinner
 
-	changeLooser := int((constant / float64(looserMatches) * (Wlooser - (1 / (1 + math.Pow(10, float64(winnerElo-looserElo)/400))))) * multiplier)
+	changeLooser := int((math.Max(constant/float64(looserMatches), kFactor) * (Wlooser - (1 / (1 + math.Pow(10, float64(winnerElo-looserElo)/400))))) * multiplier)
 	calculatedLooser := looserElo + changeLooser
 
 	return calculatedWinner, calculatedLooser
@@ -1258,4 +1235,50 @@ func GetPlayerDrawProbability(player1Elo int, player2Elo int) float64 {
 	eloDiff := math.Abs(float64(player1Elo - player2Elo))
 	pDraw := 1 / (1 + math.Exp(-(-0.001215*eloDiff - float64(0.0000005372533)*eloDiff*eloDiff)))
 	return pDraw
+}
+
+// GetPlayerHits will return a map containing which darts the player hits after hitting the first and second provided
+func GetPlayerHits(playerID int, visit models.Visit) ([]*models.Visit, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			first_dart,
+			first_dart_multiplier,
+			second_dart,
+			second_dart_multiplier,
+			third_dart,
+			third_dart_multiplier,
+			COUNT(s.id) AS 'count'
+		FROM score s
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+		WHERE player_id = ? AND IFNULL(l.leg_type_id, m.match_type_id) = 1
+			AND first_dart = ? AND first_dart_multiplier = ?
+			AND ((? = 0) OR (second_dart = ? AND second_dart_multiplier = ?))
+		GROUP BY first_dart, first_dart_multiplier, second_dart, second_dart_multiplier, third_dart, third_dart_multiplier
+		ORDER BY count DESC`, playerID, visit.FirstDart.Value, visit.FirstDart.Multiplier, visit.SecondDart.Multiplier, visit.SecondDart.ValueRaw(), visit.SecondDart.Multiplier)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	hits := make([]*models.Visit, 0)
+	for rows.Next() {
+		v := new(models.Visit)
+		v.FirstDart = new(models.Dart)
+		v.SecondDart = new(models.Dart)
+		v.ThirdDart = new(models.Dart)
+		err := rows.Scan(
+			&v.FirstDart.Value, &v.FirstDart.Multiplier,
+			&v.SecondDart.Value, &v.SecondDart.Multiplier,
+			&v.ThirdDart.Value, &v.ThirdDart.Multiplier,
+			&v.Count)
+		if err != nil {
+			return nil, err
+		}
+		hits = append(hits, v)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return hits, nil
 }
