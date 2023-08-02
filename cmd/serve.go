@@ -117,6 +117,8 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/venue/{id}/matches", controllers.GetActiveVenueMatches).Methods("GET")
 
 		router.HandleFunc("/tournament", controllers.NewTournament).Methods("POST")
+		router.HandleFunc("/tournament/generate", controllers.GenerateTournament).Methods("POST")
+		router.HandleFunc("/tournament/generate/playoffs/{id}", controllers.GeneratePlayoffsTournament).Methods("POST")
 		router.HandleFunc("/tournament", controllers.GetTournaments).Methods("GET")
 		router.HandleFunc("/tournament/current", controllers.GetCurrentTournament).Methods("GET")
 		router.HandleFunc("/tournament/current/{office_id}", controllers.GetCurrentTournamentForOffice).Methods("GET")
