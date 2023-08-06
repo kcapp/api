@@ -700,6 +700,27 @@ func GetPlayerTournamentStandings(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(standings)
 }
 
+// GetPlayerBadges returns all badges for a given player
+func GetPlayerBadges(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	badges, err := data.GetPlayerBadges(id)
+	if err != nil {
+		log.Println("Unable to get player badges")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(badges)
+}
+
 // GetPlayerHeadToHead will return head to head statistics between the given players
 func GetPlayerHeadToHead(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

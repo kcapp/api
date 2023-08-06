@@ -869,6 +869,48 @@ func GetPlayerTournamentStandings(playerID int) ([]*models.PlayerTournamentStand
 	return standings, nil
 }
 
+func GetPlayerBadges(playerID int) ([]*models.PlayerBadge, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			b.id,
+			b.name,
+			b.description,
+			b.filename,
+			p2b.player_id,
+			p2b.leg_id,
+			p2b.created_at
+		FROM player2badge p2b
+			LEFT JOIN badge b ON b.id = p2b.badge_id
+		WHERE p2b.player_id = ?`, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	badges := make([]*models.PlayerBadge, 0)
+	for rows.Next() {
+		badge := new(models.PlayerBadge)
+		badge.Badge = new(models.Badge)
+		err := rows.Scan(
+			&badge.Badge.ID,
+			&badge.Badge.Name,
+			&badge.Badge.Description,
+			&badge.Badge.Filename,
+			&badge.PlayerID,
+			&badge.LegID,
+			&badge.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		badges = append(badges, badge)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return badges, nil
+}
+
 // GetPlayerOfficialMatches will return an overview of all official matches for the given player
 func GetPlayerOfficialMatches(playerID int) ([]*models.Match, error) {
 	rows, err := models.DB.Query(`
