@@ -759,7 +759,7 @@ func NewTournament(tournament models.Tournament) (*models.Tournament, error) {
 
 	res, err := tx.Exec(`
 		INSERT INTO tournament (name, short_name, is_finished, is_playoffs, playoffs_tournament_id, preset_id, office_id, start_time, end_time) VALUES
-		(?, ?, ?, ?, ?, ?, ?, ?, ?)`, tournament.Name, tournament.ShortName, 0, tournament.IsPlayoffs, tournament.PresetID, tournament.PlayoffsTournamentID,
+		(?, ?, ?, ?, ?, ?, ?, ?, ?)`, tournament.Name, tournament.ShortName, 0, tournament.IsPlayoffs, tournament.PlayoffsTournamentID, tournament.PresetID,
 		tournament.OfficeID, tournament.StartTime, tournament.EndTime)
 	if err != nil {
 		tx.Rollback()
@@ -795,6 +795,7 @@ func GenerateTournament(input models.Tournament) (*models.Tournament, error) {
 		ShortName:  input.ShortName,
 		IsPlayoffs: false,
 		OfficeID:   officeID,
+		PresetID:   input.PresetID,
 		Players:    input.Players,
 		StartTime:  null.TimeFrom(time.Now()),
 		EndTime:    null.TimeFrom(time.Now()),

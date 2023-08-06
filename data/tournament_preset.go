@@ -14,7 +14,7 @@ func GetTournamentPresets() ([]*models.TournamentPreset, error) {
 			mmqf.id, mmqf.name, mmqf.short_name,
 			mmsf.id, mmsf.name, mmsf.short_name,
 			mmgf.id, mmgf.name, mmgf.short_name,
-			tg.id, tg.name,
+			tg.id, tg.name, tg1.id, tg1.name, tg2.id, tg2.name,
 			tp.player_id_walkover, tp.player_id_placeholder_home, tp.player_id_placeholder_away
 		FROM tournament_preset tp
 			JOIN match_type mt ON mt.id = tp.match_type_id
@@ -22,7 +22,9 @@ func GetTournamentPresets() ([]*models.TournamentPreset, error) {
 			JOIN match_mode mmqf ON mmqf.id = tp.match_mode_id_quarter_final
 			JOIN match_mode mmsf ON mmsf.id = tp.match_mode_id_semi_final
 			JOIN match_mode mmgf ON mmgf.id = tp.match_mode_id_grand_final
-			JOIN tournament_group tg ON tg.id = tp.playoffs_tournament_group_id`)
+			JOIN tournament_group tg ON tg.id = tp.playoffs_tournament_group_id
+			JOIN tournament_group tg1 ON tg1.id = tp.group1_tournament_group_id
+			JOIN tournament_group tg2 ON tg2.id = tp.group2_tournament_group_id`)
 	if err != nil {
 		return nil, err
 	}
@@ -37,13 +39,16 @@ func GetTournamentPresets() ([]*models.TournamentPreset, error) {
 		tp.MatchModeGrandFinal = new(models.MatchMode)
 		tp.MatchType = new(models.MatchType)
 		tp.PlayoffsTournamentGroup = new(models.TournamentGroup)
+		tp.Group1TournamentGroup = new(models.TournamentGroup)
+		tp.Group2TournamentGroup = new(models.TournamentGroup)
 
 		err := rows.Scan(&tp.ID, &tp.Name, &tp.StartingScore, &tp.Description, &tp.MatchType.ID, &tp.MatchType.Name,
 			&tp.MatchModeLast16.ID, &tp.MatchModeLast16.Name, &tp.MatchModeLast16.ShortName,
 			&tp.MatchModeQuarterFinal.ID, &tp.MatchModeQuarterFinal.Name, &tp.MatchModeQuarterFinal.ShortName,
 			&tp.MatchModeSemiFinal.ID, &tp.MatchModeSemiFinal.Name, &tp.MatchModeSemiFinal.ShortName,
 			&tp.MatchModeGrandFinal.ID, &tp.MatchModeGrandFinal.Name, &tp.MatchModeGrandFinal.ShortName,
-			&tp.PlayoffsTournamentGroup.ID, &tp.PlayoffsTournamentGroup.Name,
+			&tp.PlayoffsTournamentGroup.ID, &tp.PlayoffsTournamentGroup.Name, &tp.Group1TournamentGroup.ID,
+			&tp.Group1TournamentGroup.Name, &tp.Group2TournamentGroup.ID, &tp.Group2TournamentGroup.Name,
 			&tp.PlayerIDWalkover, &tp.PlayerIDPlaceholderHome, &tp.PlayerIDPlaceholderAway)
 		if err != nil {
 			return nil, err
@@ -66,6 +71,8 @@ func GetTournamentPreset(id int) (*models.TournamentPreset, error) {
 	tp.MatchModeGrandFinal = new(models.MatchMode)
 	tp.MatchType = new(models.MatchType)
 	tp.PlayoffsTournamentGroup = new(models.TournamentGroup)
+	tp.Group1TournamentGroup = new(models.TournamentGroup)
+	tp.Group2TournamentGroup = new(models.TournamentGroup)
 	err := models.DB.QueryRow(`
 		SELECT
 			tp.id, tp.name, tp.starting_score, tp.description,
@@ -74,7 +81,7 @@ func GetTournamentPreset(id int) (*models.TournamentPreset, error) {
 			mmqf.id, mmqf.name, mmqf.short_name,
 			mmsf.id, mmsf.name, mmsf.short_name,
 			mmgf.id, mmgf.name, mmgf.short_name,
-			tg.id, tg.name,
+			tg.id, tg.name, tg1.id, tg1.name, tg2.id, tg2.name,
 			tp.player_id_walkover, tp.player_id_placeholder_home, tp.player_id_placeholder_away
 		FROM tournament_preset tp
 			JOIN match_type mt ON mt.id = tp.match_type_id
@@ -83,13 +90,16 @@ func GetTournamentPreset(id int) (*models.TournamentPreset, error) {
 			JOIN match_mode mmsf ON mmsf.id = tp.match_mode_id_semi_final
 			JOIN match_mode mmgf ON mmgf.id = tp.match_mode_id_grand_final
 			JOIN tournament_group tg ON tg.id = tp.playoffs_tournament_group_id
+			JOIN tournament_group tg1 ON tg1.id = tp.group1_tournament_group_id
+			JOIN tournament_group tg2 ON tg2.id = tp.group2_tournament_group_id
 		WHERE tp.id = ?`, id).
 		Scan(&tp.ID, &tp.Name, &tp.StartingScore, &tp.Description, &tp.MatchType.ID, &tp.MatchType.Name,
 			&tp.MatchModeLast16.ID, &tp.MatchModeLast16.Name, &tp.MatchModeLast16.ShortName,
 			&tp.MatchModeQuarterFinal.ID, &tp.MatchModeQuarterFinal.Name, &tp.MatchModeQuarterFinal.ShortName,
 			&tp.MatchModeSemiFinal.ID, &tp.MatchModeSemiFinal.Name, &tp.MatchModeSemiFinal.ShortName,
 			&tp.MatchModeGrandFinal.ID, &tp.MatchModeGrandFinal.Name, &tp.MatchModeGrandFinal.ShortName,
-			&tp.PlayoffsTournamentGroup.ID, &tp.PlayoffsTournamentGroup.Name,
+			&tp.PlayoffsTournamentGroup.ID, &tp.PlayoffsTournamentGroup.Name, &tp.Group1TournamentGroup.ID,
+			&tp.Group1TournamentGroup.Name, &tp.Group2TournamentGroup.ID, &tp.Group2TournamentGroup.Name,
 			&tp.PlayerIDWalkover, &tp.PlayerIDPlaceholderHome, &tp.PlayerIDPlaceholderAway)
 	if err != nil {
 		return nil, err
