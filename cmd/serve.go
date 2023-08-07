@@ -42,6 +42,7 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/match/outshot", controllers.GetOutshotTypes).Methods("GET")
 		router.HandleFunc("/match", controllers.GetMatches).Methods("GET")
 		router.HandleFunc("/match/{id}", controllers.GetMatch).Methods("GET")
+		router.HandleFunc("/match/{id}", controllers.SetScore).Methods("PUT")
 		router.HandleFunc("/match/{id}/metadata", controllers.GetMatchMetadata).Methods("GET")
 		router.HandleFunc("/match/{id}/rematch", controllers.ReMatch).Methods("POST")
 		router.HandleFunc("/match/{id}/statistics", controllers.GetStatisticsForMatch).Methods("GET")

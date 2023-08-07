@@ -876,8 +876,9 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 		&models.Player2Tournament{PlayerID: placeholderAwayID, TournamentGroupID: playoffsGroupID})
 
 	playoffs, err := NewTournament(models.Tournament{
-		Name:       tournament.Name + " Playoffs",
-		ShortName:  tournament.ShortName + "P",
+		Name: tournament.Name + " Playoffs",
+		//ShortName:  tournament.ShortName + "P",
+		ShortName:  tournament.ShortName,
 		IsPlayoffs: true,
 		OfficeID:   tournament.OfficeID,
 		Players:    players,
@@ -893,7 +894,35 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 		return nil, err
 	}
 
-	matches := make([]*models.Match, 15)
+	matches := make([]*models.Match, 0)
+	// Create Grand Final
+	match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, 1,
+		tournament.OfficeID, mt, preset.MatchModeGrandFinal)
+	if err != nil {
+		return nil, err
+	}
+	matches = append(matches, match)
+
+	// Create Semi Final Matches
+	for i := 0; i < 2; i++ {
+		match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, 1,
+			tournament.OfficeID, mt, preset.MatchModeSemiFinal)
+		if err != nil {
+			return nil, err
+		}
+		matches = append(matches, match)
+	}
+
+	// Create Quarter Final Matches
+	for i := 0; i < 4; i++ {
+		match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, 1,
+			tournament.OfficeID, mt, preset.MatchModeQuarterFinal)
+		if err != nil {
+			return nil, err
+		}
+		matches = append(matches, match)
+	}
+
 	// Create initial 8 matches
 	for i := 0; i < 8; i++ {
 		temp := models.TournamentTemplateLast16[i]
@@ -916,50 +945,22 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 		matches = append(matches, match)
 	}
 
-	// Create Quarter Final Matches
-	for i := 0; i < 4; i++ {
-		match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, 1,
-			tournament.OfficeID, mt, preset.MatchModeQuarterFinal)
-		if err != nil {
-			return nil, err
-		}
-		matches = append(matches, match)
-	}
-
-	// Create Semi Final Matches
-	for i := 0; i < 2; i++ {
-		match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, 1,
-			tournament.OfficeID, mt, preset.MatchModeSemiFinal)
-		if err != nil {
-			return nil, err
-		}
-		matches = append(matches, match)
-	}
-
-	// Create Grand Final
-	match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, 1,
-		tournament.OfficeID, mt, preset.MatchModeGrandFinal)
-	if err != nil {
-		return nil, err
-	}
-	matches = append(matches, match)
-
 	// Insert Match Metadata for each match created
-	gf := matches[14]
-	sf1 := matches[13]
-	sf2 := matches[12]
-	qf1 := matches[11]
-	qf2 := matches[10]
-	qf3 := matches[9]
-	qf4 := matches[8]
-	m8 := matches[7]
-	m7 := matches[6]
-	m6 := matches[5]
-	m5 := matches[4]
-	m4 := matches[3]
-	m3 := matches[2]
-	m2 := matches[1]
-	m1 := matches[0]
+	gf := matches[0]
+	sf1 := matches[1]
+	sf2 := matches[2]
+	qf1 := matches[3]
+	qf2 := matches[4]
+	qf3 := matches[5]
+	qf4 := matches[6]
+	m4 := matches[10]
+	m1 := matches[7]
+	m2 := matches[8]
+	m3 := matches[9]
+	m5 := matches[11]
+	m6 := matches[12]
+	m7 := matches[13]
+	m8 := matches[14]
 
 	playoffMatches := []struct {
 		MatchID       int
@@ -971,28 +972,28 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 		IsGrandFinal  null.Bool
 		IsSemiFinal   null.Bool
 	}{
-		{MatchID: gf.ID, OrderOfPlay: 15, GroupID: playoffsGroupID, DisplayName: "Grand Final", WinnerMatchID: nil, IsWinnerHome: false, IsGrandFinal: null.BoolFrom(true)},
-		{MatchID: sf1.ID, OrderOfPlay: 14, GroupID: playoffsGroupID, DisplayName: "Semi Final 1", WinnerMatchID: &gf.ID, IsWinnerHome: true, IsSemiFinal: null.BoolFrom(true)},
-		{MatchID: sf2.ID, OrderOfPlay: 13, GroupID: playoffsGroupID, DisplayName: "Semi Final 2", WinnerMatchID: &gf.ID, IsWinnerHome: false, IsSemiFinal: null.BoolFrom(true)},
-		{MatchID: qf1.ID, OrderOfPlay: 12, GroupID: playoffsGroupID, DisplayName: "Quarter Final 1", WinnerMatchID: &sf1.ID, IsWinnerHome: true},
-		{MatchID: qf2.ID, OrderOfPlay: 11, GroupID: playoffsGroupID, DisplayName: "Quarter Final 2", WinnerMatchID: &sf1.ID, IsWinnerHome: false},
-		{MatchID: qf3.ID, OrderOfPlay: 10, GroupID: playoffsGroupID, DisplayName: "Quarter Final 3", WinnerMatchID: &sf2.ID, IsWinnerHome: true},
-		{MatchID: qf4.ID, OrderOfPlay: 9, GroupID: playoffsGroupID, DisplayName: "Quarter Final 4", WinnerMatchID: &sf2.ID, IsWinnerHome: false},
-		{MatchID: m1.ID, OrderOfPlay: 1, GroupID: playoffsGroupID, DisplayName: "Match 1", WinnerMatchID: &qf1.ID, IsWinnerHome: true},
-		{MatchID: m2.ID, OrderOfPlay: 2, GroupID: playoffsGroupID, DisplayName: "Match 2", WinnerMatchID: &qf1.ID, IsWinnerHome: false},
-		{MatchID: m3.ID, OrderOfPlay: 3, GroupID: playoffsGroupID, DisplayName: "Match 3", WinnerMatchID: &qf2.ID, IsWinnerHome: true},
-		{MatchID: m4.ID, OrderOfPlay: 4, GroupID: playoffsGroupID, DisplayName: "Match 4", WinnerMatchID: &qf2.ID, IsWinnerHome: false},
-		{MatchID: m5.ID, OrderOfPlay: 5, GroupID: playoffsGroupID, DisplayName: "Match 5", WinnerMatchID: &qf3.ID, IsWinnerHome: true},
-		{MatchID: m6.ID, OrderOfPlay: 6, GroupID: playoffsGroupID, DisplayName: "Match 6", WinnerMatchID: &qf3.ID, IsWinnerHome: false},
-		{MatchID: m7.ID, OrderOfPlay: 7, GroupID: playoffsGroupID, DisplayName: "Match 7", WinnerMatchID: &qf4.ID, IsWinnerHome: true},
-		{MatchID: m8.ID, OrderOfPlay: 8, GroupID: playoffsGroupID, DisplayName: "Match 8", WinnerMatchID: &qf4.ID, IsWinnerHome: false},
+		{MatchID: gf.ID, OrderOfPlay: 15, GroupID: playoffsGroupID, DisplayName: "Grand Final", WinnerMatchID: nil, IsWinnerHome: false, IsGrandFinal: null.BoolFrom(true), IsSemiFinal: null.BoolFrom(false)},
+		{MatchID: sf1.ID, OrderOfPlay: 14, GroupID: playoffsGroupID, DisplayName: "Semi Final 1", WinnerMatchID: &gf.ID, IsWinnerHome: true, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(true)},
+		{MatchID: sf2.ID, OrderOfPlay: 13, GroupID: playoffsGroupID, DisplayName: "Semi Final 2", WinnerMatchID: &gf.ID, IsWinnerHome: false, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(true)},
+		{MatchID: qf1.ID, OrderOfPlay: 12, GroupID: playoffsGroupID, DisplayName: "Quarter Final 1", WinnerMatchID: &sf1.ID, IsWinnerHome: true, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(false)},
+		{MatchID: qf2.ID, OrderOfPlay: 11, GroupID: playoffsGroupID, DisplayName: "Quarter Final 2", WinnerMatchID: &sf1.ID, IsWinnerHome: false, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(false)},
+		{MatchID: qf3.ID, OrderOfPlay: 10, GroupID: playoffsGroupID, DisplayName: "Quarter Final 3", WinnerMatchID: &sf2.ID, IsWinnerHome: true, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(false)},
+		{MatchID: qf4.ID, OrderOfPlay: 9, GroupID: playoffsGroupID, DisplayName: "Quarter Final 4", WinnerMatchID: &sf2.ID, IsWinnerHome: false, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(false)},
+		{MatchID: m1.ID, OrderOfPlay: 1, GroupID: playoffsGroupID, DisplayName: "Match 1", WinnerMatchID: &qf1.ID, IsWinnerHome: true, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(false)},
+		{MatchID: m2.ID, OrderOfPlay: 2, GroupID: playoffsGroupID, DisplayName: "Match 2", WinnerMatchID: &qf1.ID, IsWinnerHome: false, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(false)},
+		{MatchID: m3.ID, OrderOfPlay: 3, GroupID: playoffsGroupID, DisplayName: "Match 3", WinnerMatchID: &qf2.ID, IsWinnerHome: true, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(false)},
+		{MatchID: m4.ID, OrderOfPlay: 4, GroupID: playoffsGroupID, DisplayName: "Match 4", WinnerMatchID: &qf2.ID, IsWinnerHome: false, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(false)},
+		{MatchID: m5.ID, OrderOfPlay: 5, GroupID: playoffsGroupID, DisplayName: "Match 5", WinnerMatchID: &qf3.ID, IsWinnerHome: true, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(false)},
+		{MatchID: m6.ID, OrderOfPlay: 6, GroupID: playoffsGroupID, DisplayName: "Match 6", WinnerMatchID: &qf3.ID, IsWinnerHome: false, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(false)},
+		{MatchID: m7.ID, OrderOfPlay: 7, GroupID: playoffsGroupID, DisplayName: "Match 7", WinnerMatchID: &qf4.ID, IsWinnerHome: true, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(false)},
+		{MatchID: m8.ID, OrderOfPlay: 8, GroupID: playoffsGroupID, DisplayName: "Match 8", WinnerMatchID: &qf4.ID, IsWinnerHome: false, IsGrandFinal: null.BoolFrom(false), IsSemiFinal: null.BoolFrom(false)},
 	}
 	tx, err := models.DB.Begin()
 	if err != nil {
 		return nil, err
 	}
-	stmt, err := tx.Prepare(`INSERT INTO match_metadata (match_id, order_of_play, tournament_group_id, match_displayname, elimination, trophy, semi_final, 
-		grand_final, winner_outcome_match_id, is_winner_outcome_home) VALUES (?, ?, ?, ?, 1, 0, ?, ?, ?, ?)`)
+	stmt, err := tx.Prepare(`INSERT INTO match_metadata (match_id, order_of_play, tournament_group_id, match_displayname, elimination, promotion, trophy, semi_final, 
+		grand_final, winner_outcome_match_id, is_winner_outcome_home) VALUES (?, ?, ?, ?, 1, 0, 0, ?, ?, ?, ?)`)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -1015,7 +1016,11 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 		if match.Players[0] == walkoverPlayerID || match.Players[1] == walkoverPlayerID {
 			winnerID := match.Players[0]
 			if match.Players[0] == walkoverPlayerID {
-				winnerID = match.Players[1]
+				if len(match.Players) == 1 {
+					winnerID = match.Players[0]
+				} else {
+					winnerID = match.Players[1]
+				}
 			}
 			// This is a Bye, so we need to finish it
 			err = FinishByeMatch(match, winnerID)
@@ -1036,7 +1041,9 @@ func createTournamentMatch(tournamentID int, players []int, startingScore int, v
 		IsPractice:   false,
 		TournamentID: null.IntFrom(int64(tournamentID)),
 		Players:      players,
-		Legs:         []*models.Leg{{StartingScore: startingScore}},
+		Legs: []*models.Leg{{
+			StartingScore: 501,
+			Parameters:    &models.LegParameters{OutshotType: &models.OutshotType{ID: models.OUTSHOTDOUBLE}}}},
 	})
 	if err != nil {
 		return nil, err
@@ -1046,7 +1053,7 @@ func createTournamentMatch(tournamentID int, players []int, startingScore int, v
 	return match, nil
 }
 
-// FinishByeMatch will finish a given match, and mov
+// FinishByeMatch will finish a given match, and move winner to the next match
 func FinishByeMatch(match *models.Match, winnerID int) error {
 	if match.TournamentID.Valid {
 		metadata, err := GetMatchMetadata(match.ID)
@@ -1071,7 +1078,7 @@ func FinishByeMatch(match *models.Match, winnerID int) error {
 	}
 
 	// Finish the Bye match
-	_, err := models.DB.Exec(`UPDATE leg SET is_finished = 1, end_time = NOW(), has_score = 0 WHERE match_id = ?`, match.ID)
+	_, err := models.DB.Exec(`UPDATE leg SET is_finished = 1, end_time = NOW(), has_scores = 0 WHERE match_id = ?`, match.ID)
 	if err != nil {
 		return err
 	}

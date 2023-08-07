@@ -614,8 +614,13 @@ func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, e
 			return nil, err
 		}
 		players := util.StringToIntArray(playersStr)
-		m.HomePlayer = players[0]
-		m.AwayPlayer = players[1]
+		if len(players) == 1 {
+			m.HomePlayer = players[0]
+			m.AwayPlayer = players[0]
+		} else {
+			m.HomePlayer = players[0]
+			m.AwayPlayer = players[1]
+		}
 
 		metadata = append(metadata, m)
 	}
