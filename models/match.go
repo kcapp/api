@@ -133,35 +133,36 @@ var TargetsJDCPractice = [19]Target{
 
 // Match struct used for storing matches
 type Match struct {
-	ID              int                `json:"id"`
-	CurrentLegID    null.Int           `json:"current_leg_id"`
-	CreatedAt       time.Time          `json:"created_at"`
-	UpdatedAt       time.Time          `json:"updated_at"`
-	EndTime         time.Time          `json:"end_time,omitempty"`
-	MatchType       *MatchType         `json:"match_type"`
-	MatchMode       *MatchMode         `json:"match_mode"`
-	WinnerID        null.Int           `json:"winner_id"`
-	IsFinished      bool               `json:"is_finished"`
-	IsAbandoned     bool               `json:"is_abandoned"`
-	IsWalkover      bool               `json:"is_walkover"`
-	IsBye           bool               `json:"is_bye"`
-	IsStarted       bool               `json:"is_started"`
-	OfficeID        null.Int           `json:"office_id,omitempty"`
-	OweTypeID       null.Int           `json:"owe_type_id"`
-	VenueID         null.Int           `json:"venue_id"`
-	IsPractice      bool               `json:"is_practice"`
-	Venue           *Venue             `json:"venue"`
-	OweType         *OweType           `json:"owe_type,omitempty"`
-	TournamentID    null.Int           `json:"tournament_id,omitempty"`
-	Tournament      *MatchTournament   `json:"tournament,omitempty"`
-	Players         []int              `json:"players"`
-	Legs            []*Leg             `json:"legs,omitempty"`
-	PlayerHandicaps map[int]int        `json:"player_handicaps,omitempty"`
-	BotPlayerConfig map[int]*BotConfig `json:"bot_player_config,omitempty"`
-	FirstThrow      null.Time          `json:"first_throw_time,omitempty"`
-	LastThrow       null.Time          `json:"last_throw_time,omitempty"`
-	EloChange       map[int]*PlayerElo `json:"elo_change,omitempty"`
-	LegsWon         []int              `json:"legs_won,omitempty"`
+	ID               int                `json:"id"`
+	CurrentLegID     null.Int           `json:"current_leg_id"`
+	CreatedAt        time.Time          `json:"created_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	EndTime          time.Time          `json:"end_time,omitempty"`
+	MatchType        *MatchType         `json:"match_type"`
+	MatchMode        *MatchMode         `json:"match_mode"`
+	WinnerID         null.Int           `json:"winner_id"`
+	IsFinished       bool               `json:"is_finished"`
+	IsAbandoned      bool               `json:"is_abandoned"`
+	IsWalkover       bool               `json:"is_walkover"`
+	IsBye            bool               `json:"is_bye"`
+	IsStarted        bool               `json:"is_started"`
+	IsPlayersDecided bool               `json:"is_players_decided"`
+	OfficeID         null.Int           `json:"office_id,omitempty"`
+	OweTypeID        null.Int           `json:"owe_type_id"`
+	VenueID          null.Int           `json:"venue_id"`
+	IsPractice       bool               `json:"is_practice"`
+	Venue            *Venue             `json:"venue"`
+	OweType          *OweType           `json:"owe_type,omitempty"`
+	TournamentID     null.Int           `json:"tournament_id,omitempty"`
+	Tournament       *MatchTournament   `json:"tournament,omitempty"`
+	Players          []int              `json:"players"`
+	Legs             []*Leg             `json:"legs,omitempty"`
+	PlayerHandicaps  map[int]int        `json:"player_handicaps,omitempty"`
+	BotPlayerConfig  map[int]*BotConfig `json:"bot_player_config,omitempty"`
+	FirstThrow       null.Time          `json:"first_throw_time,omitempty"`
+	LastThrow        null.Time          `json:"last_throw_time,omitempty"`
+	EloChange        map[int]*PlayerElo `json:"elo_change,omitempty"`
+	LegsWon          []int              `json:"legs_won,omitempty"`
 }
 
 // MarshalJSON will marshall the given object to JSON
@@ -180,6 +181,8 @@ func (match Match) MarshalJSON() ([]byte, error) {
 		IsAbandoned      bool               `json:"is_abandoned"`
 		IsWalkover       bool               `json:"is_walkover"`
 		IsBye            bool               `json:"is_bye"`
+		IsStarted        bool               `json:"is_started"`
+		IsPlayersDecided bool               `json:"is_players_decided"`
 		OfficeID         null.Int           `json:"office_id,omitempty"`
 		OweTypeID        null.Int           `json:"owe_type_id"`
 		VenueID          null.Int           `json:"venue_id"`
@@ -220,6 +223,8 @@ func (match Match) MarshalJSON() ([]byte, error) {
 		IsAbandoned:      match.IsAbandoned,
 		IsWalkover:       match.IsWalkover,
 		IsBye:            match.IsBye,
+		IsStarted:        match.IsStarted,
+		IsPlayersDecided: match.IsPlayersDecided,
 		OfficeID:         match.OfficeID,
 		OweTypeID:        match.OweTypeID,
 		VenueID:          match.VenueID,

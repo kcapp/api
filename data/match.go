@@ -449,6 +449,12 @@ func SetScore(matchID int, result models.MatchResult) (*models.Match, error) {
 		return nil, err
 	}
 
+	_, err = tx.Exec(`DELETE FROM player_elo_changelog WHERE match_id = ?`, matchID)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
 	// TODO Improve by only inserting legs where there is no score?
 
 	for i := 0; i < result.LooserScore; i++ {
@@ -496,7 +502,7 @@ func SetScore(matchID int, result models.MatchResult) (*models.Match, error) {
 			}
 		}
 	}
-	_, err = tx.Exec("UPDATE matches SET is_finished = 1, winner_id = ?, current_leg_id = ? WHERE id = ?", result.WinnerID, legID, matchID)
+	_, err = tx.Exec("UPDATE matches SET is_finished = 1, winner_id = ?, current_leg_id = ?, updated_at = NOW() WHERE id = ?", result.WinnerID, legID, matchID)
 	if err != nil {
 		tx.Rollback()
 		return nil, err

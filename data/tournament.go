@@ -208,7 +208,8 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 			m.created_at, m.updated_at, m.owe_type_id, m.venue_id,
 			mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required,
 			v.id, v.name, v.description, l.updated_at as 'last_throw', GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
-			m.tournament_id, tg.id, GROUP_CONCAT(legs.winner_id ORDER BY legs.id) AS 'legs_won', ot.item
+			m.tournament_id, tg.id, GROUP_CONCAT(legs.winner_id ORDER BY legs.id) AS 'legs_won', ot.item,
+			IF(SUM(p.is_placeholder) > 0, 1, 0) as 'is_players_decided'
 		FROM matches m
 			JOIN match_type mt ON mt.id = m.match_type_id
 			JOIN match_mode mm ON mm.id = m.match_mode_id
@@ -220,6 +221,7 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 			LEFT JOIN player2tournament p2t ON p2t.tournament_id = m.tournament_id AND p2t.player_id = p2l.player_id
 			LEFT JOIN tournament t ON t.id = p2t.tournament_id
 			LEFT JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
+			LEFT JOIN player p on p.id = p2l.player_id
 		WHERE t.id = ?
 		GROUP BY m.id
 		ORDER BY m.id DESC`, id)
@@ -241,7 +243,7 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 		err := rows.Scan(&m.ID, &m.IsFinished, &m.CurrentLegID, &m.WinnerID, &m.IsWalkover, &m.IsBye, &m.IsStarted, &m.CreatedAt, &m.UpdatedAt,
 			&m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
-			&venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players, &m.TournamentID, &groupID, &legsWon, &ot)
+			&venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players, &m.TournamentID, &groupID, &legsWon, &ot, &m.IsPlayersDecided)
 		if err != nil {
 			return nil, err
 		}
