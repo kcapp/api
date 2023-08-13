@@ -7,6 +7,16 @@ type TournamentMatchTemplate struct {
 	Away int
 }
 
+var TournamentTemplateSemiFinals = [2]TournamentMatchTemplate{
+	{Home: 0, Away: 1},
+	{Home: 1, Away: 0},
+}
+var TournamentTemplateQuarterFinals = [4]TournamentMatchTemplate{
+	{Home: 0, Away: 3},
+	{Home: 1, Away: 2},
+	{Home: 2, Away: 1},
+	{Home: 3, Away: 0},
+}
 var TournamentTemplateLast16 = [8]TournamentMatchTemplate{
 	{Home: 0, Away: 7},
 	{Home: 4, Away: 2},
@@ -29,6 +39,7 @@ type Tournament struct {
 	PlayoffsTournament   *Tournament           `json:"playoffs,omitempty"`
 	PresetID             null.Int              `json:"preset_id,omitempty"`
 	Preset               *TournamentPreset     `json:"preset,omitempty"`
+	ManualAdmin          bool                  `json:"manual_admin"`
 	OfficeID             int                   `json:"office_id"`
 	StartTime            null.Time             `json:"start_time"`
 	EndTime              null.Time             `json:"end_time"`

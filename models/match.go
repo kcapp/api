@@ -147,6 +147,7 @@ type Match struct {
 	IsBye            bool               `json:"is_bye"`
 	IsStarted        bool               `json:"is_started"`
 	IsPlayersDecided bool               `json:"is_players_decided"`
+	HasScores        bool               `json:"has_scores"`
 	OfficeID         null.Int           `json:"office_id,omitempty"`
 	OweTypeID        null.Int           `json:"owe_type_id"`
 	VenueID          null.Int           `json:"venue_id"`
@@ -183,6 +184,7 @@ func (match Match) MarshalJSON() ([]byte, error) {
 		IsBye            bool               `json:"is_bye"`
 		IsStarted        bool               `json:"is_started"`
 		IsPlayersDecided bool               `json:"is_players_decided"`
+		HasScores        bool               `json:"has_scores"`
 		OfficeID         null.Int           `json:"office_id,omitempty"`
 		OweTypeID        null.Int           `json:"owe_type_id"`
 		VenueID          null.Int           `json:"venue_id"`
@@ -225,6 +227,7 @@ func (match Match) MarshalJSON() ([]byte, error) {
 		IsBye:            match.IsBye,
 		IsStarted:        match.IsStarted,
 		IsPlayersDecided: match.IsPlayersDecided,
+		HasScores:        match.HasScores,
 		OfficeID:         match.OfficeID,
 		OweTypeID:        match.OweTypeID,
 		VenueID:          match.VenueID,
