@@ -40,7 +40,7 @@ func GetX01Statistics(from string, to string, matchType int, startingScores ...i
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = ?
 		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC,
@@ -230,7 +230,7 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 			LEFT JOIN matches m2 ON m2.id = l2.match_id AND l2.winner_id = p.id
 		WHERE s.player_id IN (?)
 			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0 AND m.is_walkover = 0
 			AND IFNULL(l.leg_type_id, m.match_type_id) = 1
 		GROUP BY s.player_id
 		ORDER BY p.id`, ids, startingScores)
@@ -318,7 +318,7 @@ func GetPlayersX01PreviousStatistics(ids []int, startingScores ...int) ([]*model
 			LEFT JOIN matches m2 ON m2.id = l2.match_id AND l2.winner_id = p.id
 		WHERE s.player_id IN (?)
 			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0 AND m.is_walkover = 0
 			AND m.match_type_id = 1
 			-- Exclude all matches played this week
 			AND m.updated_at < (CURRENT_DATE - INTERVAL WEEKDAY(CURRENT_DATE) DAY)
@@ -448,7 +448,7 @@ func GetX01StatisticsForPlayer(id int, matchType int) (*models.StatisticsX01, er
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE s.player_id = ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = ?
 		GROUP BY p.id`, id, matchType).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg,
 		&s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19,

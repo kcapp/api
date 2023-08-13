@@ -42,6 +42,7 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/match/outshot", controllers.GetOutshotTypes).Methods("GET")
 		router.HandleFunc("/match", controllers.GetMatches).Methods("GET")
 		router.HandleFunc("/match/{id}", controllers.GetMatch).Methods("GET")
+		router.HandleFunc("/match/{id}", controllers.SetScore).Methods("PUT")
 		router.HandleFunc("/match/{id}/metadata", controllers.GetMatchMetadata).Methods("GET")
 		router.HandleFunc("/match/{id}/rematch", controllers.ReMatch).Methods("POST")
 		router.HandleFunc("/match/{id}/statistics", controllers.GetStatisticsForMatch).Methods("GET")
@@ -85,12 +86,6 @@ var serveCmd = &cobra.Command{
 		// v2
 		router.HandleFunc("/players", controllers_v2.GetPlayers).Methods("GET")
 
-		router.HandleFunc("/preset", controllers.AddPreset).Methods("POST")
-		router.HandleFunc("/preset", controllers.GetPresets).Methods("GET")
-		router.HandleFunc("/preset/{id}", controllers.GetPreset).Methods("GET")
-		router.HandleFunc("/preset/{id}", controllers.UpdatePreset).Methods("PUT")
-		router.HandleFunc("/preset/{id}", controllers.DeletePreset).Methods("DELETE")
-
 		router.HandleFunc("/statistics/global", controllers.GetGlobalStatistics).Methods("GET")
 		router.HandleFunc("/statistics/global/fnc", controllers.GetGlobalStatisticsFnc).Methods("GET")
 		router.HandleFunc("/statistics/office/{from}/{to}", controllers.GetOfficeStatistics).Methods("GET")
@@ -117,6 +112,8 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/venue/{id}/matches", controllers.GetActiveVenueMatches).Methods("GET")
 
 		router.HandleFunc("/tournament", controllers.NewTournament).Methods("POST")
+		router.HandleFunc("/tournament/generate", controllers.GenerateTournament).Methods("POST")
+		router.HandleFunc("/tournament/generate/playoffs/{id}", controllers.GeneratePlayoffsTournament).Methods("POST")
 		router.HandleFunc("/tournament", controllers.GetTournaments).Methods("GET")
 		router.HandleFunc("/tournament/current", controllers.GetCurrentTournament).Methods("GET")
 		router.HandleFunc("/tournament/current/{office_id}", controllers.GetCurrentTournamentForOffice).Methods("GET")
@@ -124,6 +121,10 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/tournament/groups", controllers.AddTournamentGroup).Methods("POST")
 		router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
 		router.HandleFunc("/tournament/standings", controllers.GetTournamentStandings).Methods("GET")
+		//router.HandleFunc("/tournament/preset", controllers.AddTournamentPreset).Methods("POST")
+		router.HandleFunc("/tournament/preset", controllers.GetTournamentPresets).Methods("GET")
+		router.HandleFunc("/tournament/preset/{id}", controllers.GetTournamentPreset).Methods("GET")
+		//router.HandleFunc("/tournament/preset/{id}", controllers.UpdateTournamentPreset).Methods("PUT")
 		router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")
 		router.HandleFunc("/tournament/{id}/player/{player_id}", controllers.GetTournamentPlayerMatches).Methods("GET")
 		router.HandleFunc("/tournament/{id}/matches", controllers.GetTournamentMatches).Methods("GET")

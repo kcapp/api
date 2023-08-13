@@ -29,7 +29,7 @@ func GetKnockoutStatistics(from string, to string) ([]*models.StatisticsKnockout
 				LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 				LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 			WHERE m.updated_at >= ? AND m.updated_at < ?
-				AND l.is_finished = 1 AND m.is_abandoned = 0
+				AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 				AND m.match_type_id = 15
 			GROUP BY p.id, m.office_id
 			ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
@@ -141,7 +141,7 @@ func GetKnockoutStatisticsForPlayer(id int) (*models.StatisticsKnockout, error) 
 				LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 				LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 			WHERE s.player_id = ?
-				AND l.is_finished = 1 AND m.is_abandoned = 0
+				AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 				AND m.match_type_id = 15
 			GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrown,
 		&s.AvgScore, &s.LivesLost, &s.LivesTaken, &s.FinalPosition)

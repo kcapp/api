@@ -672,13 +672,13 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 			SELECT
 				p2l.player_id,
 				COUNT(DISTINCT p2l.match_id) AS matches_played,
-				0 AS matches_won,
+				SUM(CASE WHEN p2l.player_id = m.winner_id THEN 1 ELSE 0 END) AS matches_won,
 				COUNT(p2l.leg_id) AS legs_played,
 				SUM(CASE WHEN p2l.player_id = m.winner_id THEN 1 ELSE 0 END) AS legs_won
 			FROM player2leg p2l
 				JOIN matches m ON m.id = p2l.match_id
 				JOIN leg l ON l.id = p2l.leg_id AND l.match_id = m.id
-			WHERE l.is_finished = 1 AND m.is_abandoned = 0
+			WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			GROUP BY p2l.player_id
 			UNION ALL
 			SELECT
@@ -688,7 +688,8 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 				0 AS legs_played,
 				0 AS legs_won
 			FROM matches m
-			WHERE m.is_abandoned = 0
+				JOIN leg l ON l.match_id = m.id
+			WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			GROUP BY m.winner_id
 		) AS subquery
 		WHERE player_id IS NOT NULL
@@ -873,7 +874,7 @@ func GetPlayerTournamentStandings(playerID int) ([]*models.PlayerTournamentStand
 func GetPlayerOfficialMatches(playerID int) ([]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.current_leg_id, m.winner_id, m.office_id, m.is_practice,
+			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id, m.winner_id, m.office_id, m.is_practice,
 			m.created_at, m.updated_at, m.owe_type_id, m.venue_id, mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name,
 			mm.wins_required, mm.legs_required, ot.id, ot.item, v.id, v.name, v.description, l.updated_at as 'last_throw',
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
@@ -902,7 +903,7 @@ func GetPlayerOfficialMatches(playerID int) ([]*models.Match, error) {
 		ot := new(models.OweType)
 		venue := new(models.Venue)
 		var players string
-		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice, &m.CreatedAt, &m.UpdatedAt,
+		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.IsBye, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice, &m.CreatedAt, &m.UpdatedAt,
 			&m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
 			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)
