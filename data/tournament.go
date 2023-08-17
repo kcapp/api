@@ -418,6 +418,7 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			JOIN player2tournament p2t ON p2t.player_id = p.id AND p2t.tournament_id = t.id
 			JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
 		WHERE m.tournament_id = ? AND m.match_type_id = 1
+			AND m.is_bye <> 1
 		GROUP BY p2l.player_id, tg.id
 		ORDER BY tg.division, pts DESC, diff DESC, is_relegated, manual_order`, id)
 	if err != nil {
@@ -860,7 +861,10 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 	}
 
 	group1 := overview[keys[0]]
-	group2 := overview[keys[1]]
+	var group2 []*models.TournamentOverview
+	if len(keys) > 1 {
+		group2 = overview[keys[1]]
+	}
 
 	preset := tournament.Preset
 	playoffsGroupID := preset.PlayoffsTournamentGroup.ID
@@ -888,6 +892,7 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 		IsPlayoffs:  true,
 		OfficeID:    tournament.OfficeID,
 		Players:     players,
+		PresetID:    tournament.PresetID,
 		StartTime:   null.TimeFrom(time.Now()),
 		EndTime:     null.TimeFrom(time.Now()),
 		ManualAdmin: tournament.ManualAdmin,
@@ -903,7 +908,7 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 
 	matches := make([]*models.Match, 0)
 	// Create Grand Final
-	match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, 1,
+	match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, models.X01,
 		tournament.OfficeID, mt, preset.MatchModeGrandFinal)
 	if err != nil {
 		return nil, err
@@ -912,29 +917,33 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 
 	// Create Semi Final Matches
 	if numPlayers > 4 {
-		for i := 0; i < 2; i++ {
-			match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, 1,
-				tournament.OfficeID, mt, preset.MatchModeSemiFinal)
-			if err != nil {
-				return nil, err
-			}
-			matches = append(matches, match)
+		semis, err := createTournamentMatches(2, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, models.X01,
+			tournament.OfficeID, mt, preset.MatchModeSemiFinal)
+		if err != nil {
+			return nil, err
 		}
+		matches = append(matches, semis...)
 	} else {
-		// Create Semi Final Matches
 		for i := 0; i < 2; i++ {
 			temp := models.TournamentTemplateSemiFinals[i]
+			g2 := group2
+			if len(g2) == 0 {
+				// Single group
+				g2 = group1
+				temp = models.TournamentTemplateSemiFinalsSingle[i]
+			}
+
 			home := getCompetitor(group1, temp.Home)
 			if home == -1 {
 				// Walkover, so use placeholder
 				home = walkoverPlayerID
 			}
-			away := getCompetitor(group2, temp.Away)
+			away := getCompetitor(g2, temp.Away)
 			if away == -1 {
 				// Walkover, so use placeholder
 				away = walkoverPlayerID
 			}
-			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, 1,
+			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, models.X01,
 				tournament.OfficeID, mt, preset.MatchModeSemiFinal)
 			if err != nil {
 				return nil, err
@@ -943,16 +952,14 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 		}
 	}
 
+	// Create Quarter Final Matches
 	if numPlayers > 8 {
-		// Create Quarter Final Matches
-		for i := 0; i < 4; i++ {
-			match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, 1,
-				tournament.OfficeID, mt, preset.MatchModeQuarterFinal)
-			if err != nil {
-				return nil, err
-			}
-			matches = append(matches, match)
+		quarters, err := createTournamentMatches(4, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, models.X01,
+			tournament.OfficeID, mt, preset.MatchModeQuarterFinal)
+		if err != nil {
+			return nil, err
 		}
+		matches = append(matches, quarters...)
 
 		// Create initial 8 matches
 		for i := 0; i < 8; i++ {
@@ -967,7 +974,7 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 				// Walkover, so use placeholder
 				away = walkoverPlayerID
 			}
-			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, 1,
+			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, models.X01,
 				tournament.OfficeID, mt, preset.MatchModeLast16)
 			if err != nil {
 				return nil, err
@@ -975,20 +982,26 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 			matches = append(matches, match)
 		}
 	} else {
-		// Create Quarter Final Matches
 		for i := 0; i < 4; i++ {
+			log.Printf("Quarter Final %d", i)
 			temp := models.TournamentTemplateQuarterFinals[i]
+			g2 := group2
+			if len(g2) == 0 {
+				// Single group
+				g2 = group1
+				temp = models.TournamentTemplateQuarterFinalsSingle[i]
+			}
 			home := getCompetitor(group1, temp.Home)
 			if home == -1 {
 				// Walkover, so use placeholder
 				home = walkoverPlayerID
 			}
-			away := getCompetitor(group2, temp.Away)
+			away := getCompetitor(g2, temp.Away)
 			if away == -1 {
 				// Walkover, so use placeholder
 				away = walkoverPlayerID
 			}
-			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, 1,
+			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, models.X01,
 				tournament.OfficeID, mt, preset.MatchModeQuarterFinal)
 			if err != nil {
 				return nil, err
@@ -1045,10 +1058,10 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 			{MatchID: m2.ID, OrderOfPlay: 2, TournamentGroup: tg, MatchDisplayname: "Match 2", WinnerOutcomeMatchID: null.IntFrom(int64(qf1.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
 			{MatchID: m3.ID, OrderOfPlay: 3, TournamentGroup: tg, MatchDisplayname: "Match 3", WinnerOutcomeMatchID: null.IntFrom(int64(qf2.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
 			{MatchID: m4.ID, OrderOfPlay: 4, TournamentGroup: tg, MatchDisplayname: "Match 4", WinnerOutcomeMatchID: null.IntFrom(int64(qf2.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
-			{MatchID: m5.ID, OrderOfPlay: 5, TournamentGroup: tg, MatchDisplayname: "Match 1", WinnerOutcomeMatchID: null.IntFrom(int64(qf3.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: m6.ID, OrderOfPlay: 6, TournamentGroup: tg, MatchDisplayname: "Match 2", WinnerOutcomeMatchID: null.IntFrom(int64(qf3.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
-			{MatchID: m7.ID, OrderOfPlay: 7, TournamentGroup: tg, MatchDisplayname: "Match 3", WinnerOutcomeMatchID: null.IntFrom(int64(qf4.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: m8.ID, OrderOfPlay: 8, TournamentGroup: tg, MatchDisplayname: "Match 4", WinnerOutcomeMatchID: null.IntFrom(int64(qf4.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: m5.ID, OrderOfPlay: 5, TournamentGroup: tg, MatchDisplayname: "Match 5", WinnerOutcomeMatchID: null.IntFrom(int64(qf3.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: m6.ID, OrderOfPlay: 6, TournamentGroup: tg, MatchDisplayname: "Match 6", WinnerOutcomeMatchID: null.IntFrom(int64(qf3.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: m7.ID, OrderOfPlay: 7, TournamentGroup: tg, MatchDisplayname: "Match 7", WinnerOutcomeMatchID: null.IntFrom(int64(qf4.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: m8.ID, OrderOfPlay: 8, TournamentGroup: tg, MatchDisplayname: "Match 8", WinnerOutcomeMatchID: null.IntFrom(int64(qf4.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
 		}
 		err = insertMetadata(playoffsMatches)
 		if err != nil {
@@ -1074,6 +1087,18 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 		}
 	}
 	return GetTournament(playoffs.ID)
+}
+
+func createTournamentMatches(num int, tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchMode *models.MatchMode) ([]*models.Match, error) {
+	matches := make([]*models.Match, 0)
+	for i := 0; i < num; i++ {
+		match, err := createTournamentMatch(tournamentID, players, startingScore, venueID, officeID, matchType, matchMode)
+		if err != nil {
+			return nil, err
+		}
+		matches = append(matches, match)
+	}
+	return matches, nil
 }
 
 func createTournamentMatch(tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchMode *models.MatchMode) (*models.Match, error) {

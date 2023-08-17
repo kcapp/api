@@ -11,11 +11,21 @@ var TournamentTemplateSemiFinals = [2]TournamentMatchTemplate{
 	{Home: 0, Away: 1},
 	{Home: 1, Away: 0},
 }
-var TournamentTemplateQuarterFinals = [4]TournamentMatchTemplate{
+var TournamentTemplateSemiFinalsSingle = [2]TournamentMatchTemplate{
 	{Home: 0, Away: 3},
 	{Home: 1, Away: 2},
+}
+var TournamentTemplateQuarterFinals = [4]TournamentMatchTemplate{
+	{Home: 0, Away: 3},
 	{Home: 2, Away: 1},
+	{Home: 1, Away: 2},
 	{Home: 3, Away: 0},
+}
+var TournamentTemplateQuarterFinalsSingle = [4]TournamentMatchTemplate{
+	{Home: 0, Away: 7},
+	{Home: 3, Away: 4},
+	{Home: 1, Away: 6},
+	{Home: 2, Away: 5},
 }
 var TournamentTemplateLast16 = [8]TournamentMatchTemplate{
 	{Home: 0, Away: 7},
@@ -100,9 +110,9 @@ type TournamentPreset struct {
 	MatchModeQuarterFinal   *MatchMode       `json:"match_mode_id_quarter_final"`
 	MatchModeSemiFinal      *MatchMode       `json:"match_mode_id_semi_final"`
 	MatchModeGrandFinal     *MatchMode       `json:"match_mode_id_grand_final"`
-	PlayoffsTournamentGroup *TournamentGroup `json:"playoffs_tournament_group_id"`
-	Group1TournamentGroup   *TournamentGroup `json:"group1_tournament_group_id"`
-	Group2TournamentGroup   *TournamentGroup `json:"group2_tournament_group_id"`
+	PlayoffsTournamentGroup *TournamentGroup `json:"playoffs_tournament_group"`
+	Group1TournamentGroup   *TournamentGroup `json:"group1_tournament_group"`
+	Group2TournamentGroup   *TournamentGroup `json:"group2_tournament_group"`
 	PlayerIDWalkover        int              `json:"player_id_walkover"`
 	PlayerIDPlaceholderHome int              `json:"player_id_placeholder_home"`
 	PlayerIDPlaceholderAway int              `json:"player_id_placeholder_away"`
