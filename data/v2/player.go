@@ -64,7 +64,7 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 			FROM player2leg p2l
 				JOIN matches m ON m.id = p2l.match_id
 				JOIN leg l ON l.id = p2l.leg_id AND l.match_id = m.id
-			WHERE l.is_finished = 1 AND m.is_abandoned = 0
+			WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			GROUP BY p2l.player_id
 			UNION ALL
 			SELECT
@@ -75,7 +75,7 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 				0 AS legs_won
 			FROM matches m
 				JOIN leg l ON l.match_id = m.id
-			WHERE l.is_finished = 1 AND m.is_abandoned = 0
+			WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			GROUP BY m.winner_id
 		) AS subquery
 		WHERE player_id IS NOT NULL

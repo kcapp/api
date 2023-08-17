@@ -360,6 +360,48 @@ func NewTournament(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tournament)
 }
 
+// GenerateTournament will generate a new tournament
+func GenerateTournament(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	var input models.Tournament
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		log.Println("Unable to deserialize body", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	tournament, err := data.GenerateTournament(input)
+	if err != nil {
+		log.Println("Unable to create new tournament", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(tournament)
+}
+
+// GeneratePlayoffsTournament will generate a new playoffs tournament
+func GeneratePlayoffsTournament(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	tournament, err := data.GeneratePlayoffsTournament(id)
+	if err != nil {
+		log.Println("Unable to create new tournament", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(tournament)
+}
+
 // GetTournamentPlayerMatches will return all matches for the given tournament and player
 func GetTournamentPlayerMatches(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
