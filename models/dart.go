@@ -16,6 +16,8 @@ const (
 	TRIPLE = 3
 )
 
+const BULLSEYE = 25
+
 var (
 	// CRICKETDARTS var holding darts aimed at in a game of Cricket
 	CRICKETDARTS = []int{15, 16, 17, 18, 19, 20, 25}

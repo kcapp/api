@@ -388,3 +388,8 @@ func DecorateVisitsScam(players map[int]*Player2Leg, visits []*Visit) {
 		}
 	}
 }
+
+// GetLastVisit returns the last visit of the leg.
+func (leg Leg) GetLastVisit() *Visit {
+	return leg.Visits[len(leg.Visits)-1]
+}
