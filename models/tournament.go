@@ -106,10 +106,11 @@ type TournamentPreset struct {
 	Name                    string           `json:"name"`
 	MatchType               *MatchType       `json:"match_type_id"`
 	StartingScore           int              `json:"starting_score"`
-	MatchModeLast16         *MatchMode       `json:"match_mode_id_last_16"`
-	MatchModeQuarterFinal   *MatchMode       `json:"match_mode_id_quarter_final"`
-	MatchModeSemiFinal      *MatchMode       `json:"match_mode_id_semi_final"`
-	MatchModeGrandFinal     *MatchMode       `json:"match_mode_id_grand_final"`
+	MatchMode               *MatchMode       `json:"match_mode"`
+	MatchModeLast16         *MatchMode       `json:"match_mode_last_16"`
+	MatchModeQuarterFinal   *MatchMode       `json:"match_mode_quarter_final"`
+	MatchModeSemiFinal      *MatchMode       `json:"match_mode_semi_final"`
+	MatchModeGrandFinal     *MatchMode       `json:"match_mode_grand_final"`
 	PlayoffsTournamentGroup *TournamentGroup `json:"playoffs_tournament_group"`
 	Group1TournamentGroup   *TournamentGroup `json:"group1_tournament_group"`
 	Group2TournamentGroup   *TournamentGroup `json:"group2_tournament_group"`

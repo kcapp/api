@@ -45,7 +45,11 @@ func NewMatch(match models.Match) (*models.Match, error) {
 	}
 	if match.MatchType.ID == models.X01 || match.MatchType.ID == models.X01HANDICAP {
 		params := match.Legs[0].Parameters
-		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id) VALUES (?, ?)", legID, params.OutshotType.ID)
+		outshotType := models.OUTSHOTDOUBLE
+		if params != nil {
+			outshotType = params.OutshotType.ID
+		}
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id) VALUES (?, ?)", legID, outshotType)
 		if err != nil {
 			tx.Rollback()
 			return nil, err

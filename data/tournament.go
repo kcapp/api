@@ -794,6 +794,11 @@ func NewTournament(tournament models.Tournament) (*models.Tournament, error) {
 
 // GenerateTournament generates a new tournament
 func GenerateTournament(input models.Tournament) (*models.Tournament, error) {
+	preset, err := GetTournamentPreset(int(input.PresetID.Int64))
+	if err != nil {
+		return nil, err
+	}
+
 	officeID := input.OfficeID
 	tournament, err := NewTournament(models.Tournament{
 		Name:        input.Name,
@@ -811,8 +816,6 @@ func GenerateTournament(input models.Tournament) (*models.Tournament, error) {
 	}
 
 	players := input.Players
-	mt := models.MatchType{ID: models.X01}
-	mo := models.MatchMode{ID: 2}
 	for i := 0; i < len(players); i++ {
 		for j := i + 1; j < len(players); j++ {
 			if players[i].TournamentGroupID != players[j].TournamentGroupID {
@@ -821,15 +824,15 @@ func GenerateTournament(input models.Tournament) (*models.Tournament, error) {
 			}
 
 			match, err := NewMatch(models.Match{
-				MatchType: &mt,
-				MatchMode: &mo,
+				MatchType: preset.MatchType,
+				MatchMode: preset.MatchMode,
 				//VenueID:      1,
 				OfficeID:     null.IntFrom(int64(officeID)),
 				IsPractice:   false,
 				TournamentID: null.IntFrom(int64(tournament.ID)),
 				Players:      []int{players[i].PlayerID, players[j].PlayerID},
 				Legs: []*models.Leg{{
-					StartingScore: 501,
+					StartingScore: preset.StartingScore,
 					Parameters:    &models.LegParameters{OutshotType: &models.OutshotType{ID: models.OUTSHOTDOUBLE}}}},
 			})
 			if err != nil {
@@ -1224,6 +1227,80 @@ func GetTournamentMatchesForPlayer(tournamentID int, playerID int) ([]*models.Ma
 		return nil, err
 	}
 
+	return matches, nil
+}
+
+// GetTournamentGroupPlayers will return all players in the given group in the given tournament
+func GetTournamentGroupPlayers(tournamentID int, groupID int) ([]*models.Player2Tournament, error) {
+	rows, err := models.DB.Query(`
+	SELECT p2t.player_id, p2t.tournament_id, p2t.tournament_group_id FROM player2tournament p2t
+	WHERE p2t.tournament_id = ? AND p2t.tournament_group_id = ?`, tournamentID, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	players := make([]*models.Player2Tournament, 0)
+	for rows.Next() {
+		p2t := new(models.Player2Tournament)
+		err := rows.Scan(&p2t.PlayerID, &p2t.TournamentID, &p2t.TournamentGroupID)
+		if err != nil {
+			return nil, err
+		}
+		players = append(players, p2t)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return players, nil
+}
+
+func AddPlayerToTournament(playerID int, tournamentGroupID int, tournamentID int) ([]*models.Match, error) {
+	tournament, err := GetTournament(tournamentID)
+	if err != nil {
+		return nil, err
+	}
+
+	players, err := GetTournamentGroupPlayers(tournamentID, tournamentGroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	// Add player to tournament
+	_, err = tx.Exec(`INSERT INTO player2tournament (player_id, tournament_id, tournament_group_id) VALUES (?, ?, ?)`,
+		playerID, tournamentID, tournamentGroupID)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	tx.Commit()
+
+	// Create matches for new player
+	matches := make([]*models.Match, 0)
+	for i := 0; i < len(players); i++ {
+		match, err := NewMatch(models.Match{
+			MatchType: tournament.Preset.MatchType,
+			MatchMode: tournament.Preset.MatchMode,
+			//VenueID:      1,
+			OfficeID:     null.IntFrom(int64(tournament.OfficeID)),
+			IsPractice:   false,
+			TournamentID: null.IntFrom(int64(tournament.ID)),
+			Players:      []int{players[i].PlayerID, playerID},
+			Legs: []*models.Leg{{
+				StartingScore: tournament.Preset.StartingScore,
+				Parameters:    &models.LegParameters{OutshotType: &models.OutshotType{ID: models.OUTSHOTDOUBLE}}}},
+		})
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("Generated Match %d for %d vs %d", match.ID, players[i].PlayerID, playerID)
+		matches = append(matches, match)
+	}
 	return matches, nil
 }
 

@@ -427,3 +427,32 @@ func GetTournamentPlayerMatches(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(matches)
 }
+
+// AddPlayerToTournament will add the given player to the tournament
+func AddPlayerToTournament(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	var input models.Player2Tournament
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		log.Println("Unable to deserialize body", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	matches, err := data.AddPlayerToTournament(input.PlayerID, input.TournamentGroupID, id)
+	if err != nil {
+		log.Println("Unable to add player to tournament", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(matches)
+
+}
