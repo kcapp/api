@@ -841,7 +841,6 @@ func GenerateTournament(input models.Tournament) (*models.Tournament, error) {
 			log.Printf("Generated Match %d for %d vs %d", match.ID, players[i].PlayerID, players[j].PlayerID)
 		}
 	}
-
 	return tournament, nil
 }
 

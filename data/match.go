@@ -188,6 +188,7 @@ func GetActiveMatches() ([]*models.Match, error) {
 			LEFT JOIN player2leg p2l ON p2l.match_id = m.id
 		WHERE m.is_finished = 0
 			AND l.updated_at > NOW() - INTERVAL 2 MINUTE
+			AND m.is_bye <> 1
 		GROUP BY m.id
 		ORDER BY m.id DESC`)
 	if err != nil {
@@ -321,7 +322,7 @@ func GetMatchesLimit(start int, limit int) ([]*models.Match, error) {
 			LEFT JOIN player2tournament p2t ON p2t.tournament_id = m.tournament_id AND p2t.player_id = p2l.player_id
 			LEFT JOIN tournament t ON t.id = p2t.tournament_id
 			LEFT JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
-		WHERE m.created_at <= NOW()
+		WHERE m.created_at <= NOW() AND m.is_bye <> 1
 		GROUP BY m.id
 		ORDER BY m.created_at DESC, m.id DESC
 		LIMIT ?, ?`, start, limit)
