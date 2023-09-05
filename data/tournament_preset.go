@@ -10,6 +10,7 @@ func GetTournamentPresets() ([]*models.TournamentPreset, error) {
 		SELECT
 			tp.id, tp.name, tp.starting_score, tp.description,
 			tp.match_type_id, mt.name,
+			mm.id, mm.name, mm.short_name,
 			mml16.id, mml16.name, mml16.short_name,
 			mmqf.id, mmqf.name, mmqf.short_name,
 			mmsf.id, mmsf.name, mmsf.short_name,
@@ -18,6 +19,7 @@ func GetTournamentPresets() ([]*models.TournamentPreset, error) {
 			tp.player_id_walkover, tp.player_id_placeholder_home, tp.player_id_placeholder_away
 		FROM tournament_preset tp
 			JOIN match_type mt ON mt.id = tp.match_type_id
+			JOIN match_mode mm ON mm.id = tp.match_mode_id
 			JOIN match_mode mml16 ON mml16.id = tp.match_mode_id_last_16
 			JOIN match_mode mmqf ON mmqf.id = tp.match_mode_id_quarter_final
 			JOIN match_mode mmsf ON mmsf.id = tp.match_mode_id_semi_final
@@ -33,6 +35,7 @@ func GetTournamentPresets() ([]*models.TournamentPreset, error) {
 	presets := make([]*models.TournamentPreset, 0)
 	for rows.Next() {
 		tp := new(models.TournamentPreset)
+		tp.MatchMode = new(models.MatchMode)
 		tp.MatchModeLast16 = new(models.MatchMode)
 		tp.MatchModeQuarterFinal = new(models.MatchMode)
 		tp.MatchModeSemiFinal = new(models.MatchMode)
@@ -43,6 +46,7 @@ func GetTournamentPresets() ([]*models.TournamentPreset, error) {
 		tp.Group2TournamentGroup = new(models.TournamentGroup)
 
 		err := rows.Scan(&tp.ID, &tp.Name, &tp.StartingScore, &tp.Description, &tp.MatchType.ID, &tp.MatchType.Name,
+			&tp.MatchMode.ID, &tp.MatchMode.Name, &tp.MatchMode.ShortName,
 			&tp.MatchModeLast16.ID, &tp.MatchModeLast16.Name, &tp.MatchModeLast16.ShortName,
 			&tp.MatchModeQuarterFinal.ID, &tp.MatchModeQuarterFinal.Name, &tp.MatchModeQuarterFinal.ShortName,
 			&tp.MatchModeSemiFinal.ID, &tp.MatchModeSemiFinal.Name, &tp.MatchModeSemiFinal.ShortName,
@@ -65,6 +69,7 @@ func GetTournamentPresets() ([]*models.TournamentPreset, error) {
 // GetPreset returns the preset for the given ID
 func GetTournamentPreset(id int) (*models.TournamentPreset, error) {
 	tp := new(models.TournamentPreset)
+	tp.MatchMode = new(models.MatchMode)
 	tp.MatchModeLast16 = new(models.MatchMode)
 	tp.MatchModeQuarterFinal = new(models.MatchMode)
 	tp.MatchModeSemiFinal = new(models.MatchMode)
@@ -77,6 +82,7 @@ func GetTournamentPreset(id int) (*models.TournamentPreset, error) {
 		SELECT
 			tp.id, tp.name, tp.starting_score, tp.description,
 			tp.match_type_id, mt.name,
+			mm.id, mm.name, mm.short_name,
 			mml16.id, mml16.name, mml16.short_name,
 			mmqf.id, mmqf.name, mmqf.short_name,
 			mmsf.id, mmsf.name, mmsf.short_name,
@@ -85,6 +91,7 @@ func GetTournamentPreset(id int) (*models.TournamentPreset, error) {
 			tp.player_id_walkover, tp.player_id_placeholder_home, tp.player_id_placeholder_away
 		FROM tournament_preset tp
 			JOIN match_type mt ON mt.id = tp.match_type_id
+			JOIN match_mode mm ON mm.id = tp.match_mode_id
 			JOIN match_mode mml16 ON mml16.id = tp.match_mode_id_last_16
 			JOIN match_mode mmqf ON mmqf.id = tp.match_mode_id_quarter_final
 			JOIN match_mode mmsf ON mmsf.id = tp.match_mode_id_semi_final
@@ -94,6 +101,7 @@ func GetTournamentPreset(id int) (*models.TournamentPreset, error) {
 			JOIN tournament_group tg2 ON tg2.id = tp.group2_tournament_group_id
 		WHERE tp.id = ?`, id).
 		Scan(&tp.ID, &tp.Name, &tp.StartingScore, &tp.Description, &tp.MatchType.ID, &tp.MatchType.Name,
+			&tp.MatchMode.ID, &tp.MatchMode.Name, &tp.MatchMode.ShortName,
 			&tp.MatchModeLast16.ID, &tp.MatchModeLast16.Name, &tp.MatchModeLast16.ShortName,
 			&tp.MatchModeQuarterFinal.ID, &tp.MatchModeQuarterFinal.Name, &tp.MatchModeQuarterFinal.ShortName,
 			&tp.MatchModeSemiFinal.ID, &tp.MatchModeSemiFinal.Name, &tp.MatchModeSemiFinal.ShortName,
