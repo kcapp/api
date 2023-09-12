@@ -193,6 +193,7 @@ func FinishLeg(visit models.Visit) error {
 		tx.Rollback()
 		return err
 	}
+	leg.WinnerPlayerID = winnerID
 	log.Printf("[%d] Finished with player %d winning", visit.LegID, winnerID.ValueOrZero())
 
 	if matchType == models.SHOOTOUT {
