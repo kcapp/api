@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/kcapp/api/controllers"
@@ -25,7 +23,6 @@ var serveCmd = &cobra.Command{
 			panic(err)
 		}
 		models.InitDB(config.GetMysqlConnectionString())
-		GetLongestWinStreak()
 
 		router := mux.NewRouter()
 		router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -131,10 +128,8 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/tournament/groups", controllers.AddTournamentGroup).Methods("POST")
 		router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
 		router.HandleFunc("/tournament/standings", controllers.GetTournamentStandings).Methods("GET")
-		//router.HandleFunc("/tournament/preset", controllers.AddTournamentPreset).Methods("POST")
 		router.HandleFunc("/tournament/preset", controllers.GetTournamentPresets).Methods("GET")
 		router.HandleFunc("/tournament/preset/{id}", controllers.GetTournamentPreset).Methods("GET")
-		//router.HandleFunc("/tournament/preset/{id}", controllers.UpdateTournamentPreset).Methods("PUT")
 		router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")
 		router.HandleFunc("/tournament/{id}/player", controllers.AddPlayerToTournament).Methods("POST")
 		router.HandleFunc("/tournament/{id}/player/{player_id}", controllers.GetTournamentPlayerMatches).Methods("GET")
@@ -152,79 +147,6 @@ var serveCmd = &cobra.Command{
 		log.Printf("Listening on port %d", config.APIConfig.Port)
 		log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.APIConfig.Port), router))
 	},
-}
-
-func GetLongestWinStreak() {
-	// Establish a connection to the MySQL database
-	db, err := sql.Open("mysql", "developer:abcd1234@tcp(localhost:3306)/kcapp")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	// Set maximum number of open and idle connections
-	db.SetMaxOpenConns(10) // Adjust the value based on your MySQL server configuration
-	db.SetMaxIdleConns(5)  // Adjust the value based on your MySQL server configuration
-
-	// Set a maximum connection lifetime
-	db.SetConnMaxLifetime(5 * time.Minute) // Adjust the value based on your application requirements
-
-	// Get a list of all players
-	players := []int{1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 42, 44, 46, 52, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 66, 67, 68, 69, 70, 76, 79, 82, 83, 84, 90, 97, 99, 102, 103, 106, 107, 108, 109, 110, 111, 112, 113, 114, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 135, 139, 141, 142, 143, 144, 148, 151, 152, 157, 159, 160, 163, 165, 168, 169, 175, 176, 177, 178, 179, 180, 181, 183, 184, 185, 187, 188, 191, 192, 194, 196, 198, 199, 200, 202, 206, 207, 208, 209, 210, 213, 217, 219, 221, 222, 223, 224, 225, 226, 229, 236, 237, 238, 239, 240, 250, 252, 253, 254, 255, 256, 257, 258, 260, 261, 262, 264, 276, 277, 278, 281, 286, 287, 290, 292, 296, 297, 298, 303, 304, 306, 307, 308, 311, 313, 314, 318, 322, 331, 332, 333, 334, 343, 344, 345, 347, 350, 361, 363, 364, 365, 366, 368, 371, 376, 380, 385, 387, 389, 401, 402, 409, 411, 412, 413, 414, 417, 418, 420, 422, 428, 429, 432, 435} // Replace with your actual list of player IDs
-
-	// Initialize variables to track the longest win streak
-	longestStreak := 0
-	playerWithLongestStreak := 0
-
-	// Iterate over each player
-	for _, playerID := range players {
-		// Dynamically update the query
-		query := fmt.Sprintf(`
-            SELECT
-                winner_id,
-                MAX(streak) AS longest_streak
-            FROM (
-                SELECT
-                    winner_id,
-                    @streak := IF(@prev_winner = winner_id, @streak + 1, 1) AS streak,
-                    @prev_winner := winner_id
-                FROM
-                    (SELECT @streak := 0, @prev_winner := NULL) AS vars,
-                    (SELECT * FROM matches m WHERE id IN (SELECT DISTINCT match_id FROM player2leg WHERE player_id = %d) AND is_finished = 1 AND match_type_id = 1 ORDER BY updated_at) AS m
-            ) AS streaks
-			WHERE winner_id = %d
-            GROUP BY winner_id
-            ORDER BY longest_streak DESC
-        `, playerID, playerID)
-
-		// Execute the query
-		rows, err := db.Query(query)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer rows.Close()
-
-		// Fetch the result
-		var winnerID, streak int
-		if rows.Next() {
-			err := rows.Scan(&winnerID, &streak)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			// Check if the player has a longer streak than the current longest
-			if streak > longestStreak {
-				longestStreak = streak
-				playerWithLongestStreak = winnerID
-			}
-		}
-		rows.Close()
-		if err := rows.Err(); err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("Player ID = %d, Streak = %d\n", winnerID, streak)
-	}
-	fmt.Printf("Player with the longest win streak: Player ID = %d, Streak = %d\n", playerWithLongestStreak, longestStreak)
 }
 
 func init() {

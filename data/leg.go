@@ -26,8 +26,8 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 			players[i], players[j] = players[j], players[i]
 		}
 	}
-	res, err := tx.Exec("INSERT INTO leg (starting_score, current_player_id, leg_type_id, match_id, created_at) VALUES (?, ?, ?, ?, NOW()) ",
-		startingScore, players[0], matchType, matchID)
+	res, err := tx.Exec("INSERT INTO leg (starting_score, current_player_id, leg_type_id, match_id, num_players, created_at) VALUES (?, ?, ?, ?, ?, NOW()) ",
+		startingScore, players[0], matchType, matchID, len(players))
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -548,12 +548,6 @@ func FinishLeg(visit models.Visit) error {
 				}
 			}
 		}
-
-		// Calculate badges
-		err = CheckLegForBadges(leg)
-		if err != nil {
-			return err
-		}
 	} else {
 		log.Printf("Match %d is not finished, creating next leg", match.ID)
 		var matchType *int
@@ -566,6 +560,17 @@ func FinishLeg(visit models.Visit) error {
 			return err
 		}
 	}
+
+	// Calculate badges earned in this leg
+	statistics, err := GetPlayerBadgeStatistics(leg.Players, nil)
+	if err != nil {
+		return err
+	}
+	err = CheckLegForBadges(leg, statistics)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -800,6 +805,38 @@ func GetLegsToRecalculate(matchType int, since string) ([]int, error) {
 			AND m.is_abandoned = 0 AND l.is_finished = 1
 		GROUP BY l.id
 		ORDER BY l.id ASC`, matchType, matchType, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	legs := make([]int, 0)
+	for rows.Next() {
+		var legId int
+		err := rows.Scan(&legId)
+		if err != nil {
+			return nil, err
+		}
+		legs = append(legs, legId)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return legs, nil
+}
+
+// GetBadgeLegsToRecalculate returns all legs which can generate badges which can be recalculated
+func GetBadgeLegsToRecalculate() ([]int, error) {
+	rows, err := models.DB.Query(`
+		SELECT l.id
+		FROM leg l
+			JOIN matches m on m.id = l.match_id
+		WHERE l.has_scores = 1 AND COALESCE(l.leg_type_id, m.match_type_id) = 1 -- X01
+			AND m.is_abandoned = 0 AND m.is_bye = 0 AND m.is_walkover = 0
+			AND l.is_finished = 1
+		GROUP BY l.id
+		ORDER BY l.id ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -1110,7 +1147,7 @@ func GetLeg(id int) (*models.Leg, error) {
 	return leg, nil
 }
 
-// GetLegPlayers returns information about current score for players in a leg
+// GetLegPlayers returns information about all players in a leg
 func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 	leg, err := GetLeg(id)
 	if err != nil {

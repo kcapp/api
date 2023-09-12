@@ -1,8 +1,7 @@
 package cmd
 
 import (
-	"log"
-
+	"github.com/kcapp/api/data"
 	"github.com/kcapp/api/models"
 	"github.com/spf13/cobra"
 )
@@ -24,7 +23,16 @@ var recalculateBadgeCmd = &cobra.Command{
 		models.InitDB(config.GetMysqlConnectionString())
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Printf("Hello")
+		err := data.RecalculateGlobalBadges()
+		if err != nil {
+			panic(err)
+		}
+
+		err = data.RecalculateLegBadges()
+		if err != nil {
+			panic(err)
+		}
+
 	},
 }
 

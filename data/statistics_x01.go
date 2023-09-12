@@ -922,3 +922,46 @@ func RecalculateX01Statistics(legs []int) ([]string, error) {
 	}
 	return queries, nil
 }
+
+// GetPlayerBadgeStatistics will return statistics calculate badges for the given players
+func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.BadgeStatistics, error) {
+	q, args, err := sqlx.In(`
+		SELECT
+			player_id,
+			SUM(s.100s_plus),
+			SUM(s.140s_plus),
+			SUM(s.180s)
+		FROM statistics_x01 s
+			LEFT JOIN leg l ON s.leg_id = l.id
+			LEFT JOIN matches m ON l.match_id = m.id
+		WHERE player_id IN (?) AND l.num_players = 2 AND m.is_practice = 0
+			AND m.is_bye = 0 AND m.is_walkover = 0 AND leg_id <= COALESCE(?, ~0) -- BIGINT hack
+		GROUP BY player_id
+		ORDER BY player_id DESC`, ids, legID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := models.DB.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	statistics := make(map[int]*models.BadgeStatistics)
+	for _, playerID := range ids {
+		statistics[playerID] = new(models.BadgeStatistics)
+	}
+	for rows.Next() {
+		s := new(models.BadgeStatistics)
+		err := rows.Scan(&s.PlayerID, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
+		if err != nil {
+			return nil, err
+		}
+		statistics[s.PlayerID] = s
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return statistics, nil
+}

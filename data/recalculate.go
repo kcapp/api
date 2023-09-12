@@ -5,13 +5,14 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
 )
 
-// RecalculateTicTacToeStatistics will recaulcate statistics for Tic Tac Toe legs
+// RecalculateStatistics will recaulcate statistics based on the given parameters
 func RecalculateStatistics(matchType int, legID int, since string, dryRun bool) error {
 	legs := make([]int, 0)
 	if legID != 0 {
@@ -226,5 +227,113 @@ func CalculateEloForTournament(tournamentID int) error {
 	}
 	w.Flush()
 
+	return nil
+}
+
+func RecalculateLegBadges() error {
+	ids, err := GetBadgeLegsToRecalculate()
+	if err != nil {
+		return err
+	}
+
+	for _, legID := range ids {
+		log.Printf("Checking Leg %d for badges", legID)
+		leg, err := GetLeg(legID)
+		if err != nil {
+			return err
+		}
+
+		statistics, err := GetPlayerBadgeStatistics(leg.Players, &legID)
+		if err != nil {
+			return err
+		}
+
+		// Calculate badges
+		err = CheckLegForBadges(leg, statistics)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func RecalculateGlobalBadges() error {
+	players, err := GetPlayers()
+	if err != nil {
+		return err
+	}
+	for _, player := range players {
+		if player.IsSupporter {
+			// Add supporter badge
+			err = AddBadge(player.ID, new(models.BadgeKcappSupporter))
+			if err != nil {
+				return err
+			}
+		}
+		if player.VocalName.Valid && strings.HasSuffix(player.VocalName.String, ".wav") {
+			// Add vocal name badge
+			err = AddBadge(player.ID, new(models.BadgeSayMyName))
+			if err != nil {
+				return err
+			}
+		}
+
+		standings, err := GetPlayerTournamentStandings(player.ID)
+		if err != nil {
+			return err
+		}
+		if len(standings) > 0 {
+			standing := standings[len(standings)-1]
+			err = AddTournamentBadge(player.ID, standing.Tournament.ID, new(models.BadgeItsOfficial), standing.Tournament.EndTime.Time)
+			if err != nil {
+				return err
+			}
+		}
+
+		standing := getPlayerTournamentStanding(1, standings)
+		if standing != nil {
+			err = AddTournamentBadge(player.ID, standing.Tournament.ID, new(models.BadgeTournament1st), standing.Tournament.EndTime.Time)
+			if err != nil {
+				return err
+			}
+		}
+		standing = getPlayerTournamentStanding(2, standings)
+		if standing != nil {
+			err = AddTournamentBadge(player.ID, standing.Tournament.ID, new(models.BadgeTournament2nd), standing.Tournament.EndTime.Time)
+			if err != nil {
+				return err
+			}
+		}
+		standing = getPlayerTournamentStanding(3, standings)
+		if standing != nil {
+			err = AddTournamentBadge(player.ID, standing.Tournament.ID, new(models.BadgeTournament3rd), standing.Tournament.EndTime.Time)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	undefeated, err := GetUndefeatedPlayers()
+	if err != nil {
+		return err
+	}
+	for playerID, tournament := range undefeated {
+		err := AddTournamentBadge(playerID, tournament.ID, new(models.BadgeUntouchable), tournament.EndTime.Time)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getPlayerTournamentStanding(pos int, standings []*models.PlayerTournamentStanding) *models.PlayerTournamentStanding {
+	for i := len(standings) - 1; i >= 0; i-- {
+		standing := standings[i]
+		if standing.FinalStanding == pos {
+			return standing
+		}
+	}
 	return nil
 }
