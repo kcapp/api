@@ -74,6 +74,7 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/player/{id}/progression", controllers.GetPlayerProgression).Methods("GET")
 		router.HandleFunc("/player/{id}/checkouts", controllers.GetPlayerCheckouts).Methods("GET")
 		router.HandleFunc("/player/{id}/tournament", controllers.GetPlayerTournamentStandings).Methods("GET")
+		router.HandleFunc("/player/{id}/badges", controllers.GetPlayerBadges).Methods("GET")
 		router.HandleFunc("/player/{id}/elo/{start}/{limit}", controllers.GetPlayerEloChangelog).Methods("GET")
 		router.HandleFunc("/player/{player_1}/vs/{player_2}", controllers.GetPlayerHeadToHead).Methods("GET")
 		router.HandleFunc("/player/{player_1}/vs/{player_2}/simulate", controllers.SimulateMatch).Methods("PUT")
@@ -127,10 +128,8 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/tournament/groups", controllers.AddTournamentGroup).Methods("POST")
 		router.HandleFunc("/tournament/groups", controllers.GetTournamentGroups).Methods("GET")
 		router.HandleFunc("/tournament/standings", controllers.GetTournamentStandings).Methods("GET")
-		//router.HandleFunc("/tournament/preset", controllers.AddTournamentPreset).Methods("POST")
 		router.HandleFunc("/tournament/preset", controllers.GetTournamentPresets).Methods("GET")
 		router.HandleFunc("/tournament/preset/{id}", controllers.GetTournamentPreset).Methods("GET")
-		//router.HandleFunc("/tournament/preset/{id}", controllers.UpdateTournamentPreset).Methods("PUT")
 		router.HandleFunc("/tournament/{id}", controllers.GetTournament).Methods("GET")
 		router.HandleFunc("/tournament/{id}/player", controllers.AddPlayerToTournament).Methods("POST")
 		router.HandleFunc("/tournament/{id}/player/{player_id}", controllers.GetTournamentPlayerMatches).Methods("GET")
@@ -142,6 +141,8 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/tournament/match/{id}/next", controllers.GetNextTournamentMatch).Methods("GET")
 		router.HandleFunc("/tournament/{id}/probabilities", controllers.GetTournamentProbabilities).Methods("GET")
 		router.HandleFunc("/tournament/match/{id}/probabilities", controllers.GetMatchProbabilities).Methods("GET")
+
+		router.HandleFunc("/badge", controllers.GetBadges).Methods("GET")
 
 		log.Printf("Listening on port %d", config.APIConfig.Port)
 		log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.APIConfig.Port), router))

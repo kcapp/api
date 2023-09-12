@@ -117,5 +117,5 @@ type TournamentPreset struct {
 	PlayerIDWalkover        int              `json:"player_id_walkover"`
 	PlayerIDPlaceholderHome int              `json:"player_id_placeholder_home"`
 	PlayerIDPlaceholderAway int              `json:"player_id_placeholder_away"`
-	Description             string           `json:"description"`
+	Description             null.String      `json:"description"`
 }

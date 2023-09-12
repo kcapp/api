@@ -21,7 +21,8 @@ func NewMatch(match models.Match) (*models.Match, error) {
 	if match.CreatedAt.IsZero() {
 		match.CreatedAt = time.Now().UTC()
 	}
-	res, err := tx.Exec("INSERT INTO matches (match_type_id, match_mode_id, owe_type_id, venue_id, office_id, is_practice, tournament_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+	res, err := tx.Exec(`INSERT INTO matches (match_type_id, match_mode_id, owe_type_id, venue_id, office_id, is_practice, tournament_id, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		match.MatchType.ID, match.MatchMode.ID, match.OweTypeID, match.VenueID, match.OfficeID, match.IsPractice, match.TournamentID, match.CreatedAt)
 	if err != nil {
 		tx.Rollback()
@@ -33,7 +34,8 @@ func NewMatch(match models.Match) (*models.Match, error) {
 		return nil, err
 	}
 	startingScore := match.Legs[0].StartingScore
-	res, err = tx.Exec("INSERT INTO leg (starting_score, current_player_id, match_id, created_at) VALUES (?, ?, ?, ?) ", match.Legs[0].StartingScore, match.Players[0], matchID, match.CreatedAt)
+	res, err = tx.Exec("INSERT INTO leg (starting_score, current_player_id, match_id, num_players, created_at) VALUES (?, ?, ?, ?, ?)",
+		match.Legs[0].StartingScore, match.Players[0], matchID, len(match.Players), match.CreatedAt)
 	if err != nil {
 		tx.Rollback()
 		return nil, err

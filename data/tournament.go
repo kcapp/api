@@ -1337,3 +1337,41 @@ func insertMetadata(matches []*models.MatchMetadata) error {
 	tx.Commit()
 	return nil
 }
+
+// GetUndefeatedPlayers will return all players undefeated in a tournament
+func GetUndefeatedPlayers() (map[int]*models.Tournament, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			p.id AS 'player_id',
+			t.id as 'tournament_id',
+			t.end_time
+		FROM player2leg p2l
+			JOIN matches m ON m.id = p2l.match_id
+			JOIN player p ON p.id = p2l.player_id
+			LEFT JOIN matches won ON won.id = p2l.match_id AND won.winner_id = p.id
+			LEFT JOIN matches finished ON m.id = finished.id AND finished.is_finished = 1
+			JOIN tournament t ON t.id = m.tournament_id
+		WHERE m.is_bye <> 1 AND t.is_finished = 1 AND t.is_playoffs = 0
+		GROUP BY p2l.player_id, t.id
+		HAVING IF(COUNT(DISTINCT finished.id) = COUNT(DISTINCT won.id), 1, 0) = 1 AND COUNT(DISTINCT finished.id) >= 5
+		ORDER BY t.id DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	undefeated := make(map[int]*models.Tournament)
+	for rows.Next() {
+		var playerID int
+		tournament := new(models.Tournament)
+		err := rows.Scan(&playerID, &tournament.ID, &tournament.EndTime)
+		if err != nil {
+			return nil, err
+		}
+		undefeated[playerID] = tournament
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return undefeated, nil
+}

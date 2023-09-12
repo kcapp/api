@@ -22,7 +22,8 @@ func GetPlayers() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color, p.profile_pic_url, p.smartcard_uid,
-			 p.board_stream_url, p.board_stream_css, p.active, p.office_id, p.is_bot, p.is_placeholder, p.created_at, p.updated_at
+			 p.board_stream_url, p.board_stream_css, p.active, p.office_id, p.is_bot, p.is_placeholder, p.is_supporter, p.created_at,
+			 p.updated_at
 		FROM player p`)
 	if err != nil {
 		return nil, err
@@ -33,7 +34,8 @@ func GetPlayers() (map[int]*models.Player, error) {
 	for rows.Next() {
 		p := new(models.Player)
 		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
-			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.IsActive, &p.OfficeID, &p.IsBot, &p.IsPlaceholder, &p.CreatedAt, &p.UpdatedAt)
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.IsActive, &p.OfficeID, &p.IsBot, &p.IsPlaceholder, &p.IsSupporter,
+			&p.CreatedAt, &p.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -835,7 +837,8 @@ func GetPlayerTournamentStandings(playerID int) ([]*models.PlayerTournamentStand
 			tg.division AS 'tournament_group_division',
 			ts.rank AS 'final_standing',
 			MAX(ts2.rank) AS 'total_players',
-			ts.elo as 'elo'
+			ts.elo as 'elo',
+			t.end_time
 		FROM tournament_standings ts
 			JOIN tournament t ON t.id = ts.tournament_id
 			JOIN player p ON p.id = ts.player_id
@@ -858,7 +861,7 @@ func GetPlayerTournamentStandings(playerID int) ([]*models.PlayerTournamentStand
 
 		err := rows.Scan(&standing.PlayerID, &standing.Tournament.ID, &standing.Tournament.Name, &standing.TournamentGroup.ID,
 			&standing.TournamentGroup.Name, &standing.TournamentGroup.Division, &standing.FinalStanding, &standing.TotalPlayers,
-			&standing.Elo)
+			&standing.Elo, &standing.Tournament.EndTime)
 		if err != nil {
 			return nil, err
 		}
@@ -868,6 +871,61 @@ func GetPlayerTournamentStandings(playerID int) ([]*models.PlayerTournamentStand
 		return nil, err
 	}
 	return standings, nil
+}
+
+// GetPlayerBadges will return all badges for a given player
+func GetPlayerBadges(playerID int) ([]*models.PlayerBadge, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			b.id,
+			b.name,
+			b.description,
+			b.filename,
+			p2b.player_id,
+			p2b.level,
+			p2b.value,
+			p2b.leg_id,
+			p2b.match_id,
+			p2b.tournament_id,
+			p2b.opponent_player_id,
+			p2b.darts,
+			p2b.created_at
+		FROM player2badge p2b
+			LEFT JOIN badge b ON b.id = p2b.badge_id
+		WHERE p2b.player_id = ?`, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	badges := make([]*models.PlayerBadge, 0)
+	for rows.Next() {
+		badge := new(models.PlayerBadge)
+		badge.Badge = new(models.Badge)
+		err := rows.Scan(
+			&badge.Badge.ID,
+			&badge.Badge.Name,
+			&badge.Badge.Description,
+			&badge.Badge.Filename,
+			&badge.PlayerID,
+			&badge.Level,
+			&badge.Value,
+			&badge.LegID,
+			&badge.MatchID,
+			&badge.TournamentID,
+			&badge.OpponentPlayerID,
+			&badge.Darts,
+			&badge.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		badges = append(badges, badge)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return badges, nil
 }
 
 // GetPlayerOfficialMatches will return an overview of all official matches for the given player
