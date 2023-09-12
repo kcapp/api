@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/kcapp/api/models"
 )
@@ -43,7 +43,7 @@ func GetBermudaTriangleStatistics(from string, to string) ([]*models.StatisticsB
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = 10
 		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
@@ -219,7 +219,7 @@ func GetBermudaTriangleStatisticsForPlayer(id int) (*models.StatisticsBermudaTri
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE s.player_id = ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = 10
 		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrown,
 		&s.Score, &s.MPR, &s.HighestScoreReached, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8],
@@ -381,28 +381,19 @@ func CalculateBermudaTriangleStatistics(legID int) (map[int]*models.StatisticsBe
 	return statisticsMap, nil
 }
 
-// ReCalculateBermudaTriangleStatistics will recaulcate statistics for Bermuda Triangle legs
-func ReCalculateBermudaTriangleStatistics() (map[int]map[int]*models.StatisticsBermudaTriangle, error) {
-	legs, err := GetLegsOfType(models.BERMUDATRIANGLE, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.StatisticsBermudaTriangle)
-	for _, leg := range legs {
-		stats, err := CalculateBermudaTriangleStatistics(leg.ID)
+// RecalculateBermudaTriangleStatistics will recaulcate statistics for Bermuda Triangle legs
+func RecalculateBermudaTriangleStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateBermudaTriangleStatistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_bermuda_triangle SET darts_thrown = %d, score = %d, mpr = %f, total_marks = %d, highest_score_reached = 22%d4, total_hit_rate = %f, hit_rate_1 = %f, hit_rate_2 = %f,
-			hit_rate_3 = %f, hit_rate_4 = %f, hit_rate_5 = %f, hit_rate_6 = %f, hit_rate_7 = %f, hit_rate_8 = %f, hit_rate_9 = %f, hit_rate_10 = %f, hit_rate_11 = %f, hit_rate_12 = %f,
-			hit_rate_13 = %f, hit_count = %d WHERE leg_id = %d AND player_id = %d;`,
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_bermuda_triangle SET darts_thrown = %d, score = %d, mpr = %f, total_marks = %d, highest_score_reached = 22%d4, total_hit_rate = %f, hit_rate_1 = %f, hit_rate_2 = %f, hit_rate_3 = %f, hit_rate_4 = %f, hit_rate_5 = %f, hit_rate_6 = %f, hit_rate_7 = %f, hit_rate_8 = %f, hit_rate_9 = %f, hit_rate_10 = %f, hit_rate_11 = %f, hit_rate_12 = %f, hit_rate_13 = %f, hit_count = %d WHERE leg_id = %d AND player_id = %d;`,
 				stat.DartsThrown, stat.Score, stat.MPR, stat.TotalMarks, stat.HighestScoreReached, stat.TotalHitRate, stat.Hitrates[0], stat.Hitrates[1], stat.Hitrates[2], stat.Hitrates[3], stat.Hitrates[4],
-				stat.Hitrates[5], stat.Hitrates[6], stat.Hitrates[7], stat.Hitrates[8], stat.Hitrates[9], stat.Hitrates[10], stat.Hitrates[11], stat.Hitrates[12], stat.HitCount, leg.ID, playerID)
+				stat.Hitrates[5], stat.Hitrates[6], stat.Hitrates[7], stat.Hitrates[8], stat.Hitrates[9], stat.Hitrates[10], stat.Hitrates[11], stat.Hitrates[12], stat.HitCount, legID, playerID))
 		}
-		s[leg.ID] = stats
 	}
-
-	return s, err
+	return queries, nil
 }

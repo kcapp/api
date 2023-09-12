@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/guregu/null"
 
@@ -34,7 +35,7 @@ func GetCricketStatistics(from string, to string) ([]*models.StatisticsCricket, 
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = 4
 		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
@@ -162,7 +163,7 @@ func GetCricketStatisticsForPlayer(id int) (*models.StatisticsCricket, error) {
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE s.player_id = ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = 4
 		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.TotalMarks, &s.FirstNineMarks,
 		&s.MPR, &s.FirstNineMPR, &s.Marks5, &s.Marks6, &s.Marks7, &s.Marks8, &s.Marks9)
@@ -287,4 +288,21 @@ func CalculateCricketStatistics(legID int) (map[int]*models.StatisticsCricket, e
 		stat.Rounds = round
 	}
 	return statisticsMap, nil
+}
+
+// RecalculateCricketStatistics will recaulcate statistics for Cricket matches
+func RecalculateCricketStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateCricketStatistics(legID)
+		if err != nil {
+			return nil, err
+		}
+		for playerID, stat := range stats {
+
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_cricket SET total_marks = %d, rounds = %d, score = %d, first_nine_marks = %d mpr = %f, first_nine_mpr = %f, marks5 = %d, marks6 = %d, marks7 = %d, marks8 = %d, marks9 = %d, WHERE leg_id = %d AND player_id = %d;`,
+				stat.TotalMarks, stat.Rounds, stat.Score.Int64, stat.FirstNineMarks, stat.MPR, stat.FirstNineMPR, stat.Marks5, stat.Marks6, stat.Marks7, stat.Marks8, stat.Marks9, legID, playerID))
+		}
+	}
+	return queries, nil
 }

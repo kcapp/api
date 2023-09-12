@@ -26,8 +26,8 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 			players[i], players[j] = players[j], players[i]
 		}
 	}
-	res, err := tx.Exec("INSERT INTO leg (starting_score, current_player_id, leg_type_id, match_id, created_at) VALUES (?, ?, ?, ?, NOW()) ",
-		startingScore, players[0], matchType, matchID)
+	res, err := tx.Exec("INSERT INTO leg (starting_score, current_player_id, leg_type_id, match_id, num_players, created_at) VALUES (?, ?, ?, ?, ?, NOW()) ",
+		startingScore, players[0], matchType, matchID, len(players))
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -59,6 +59,16 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 		}
 		for _, player := range scores {
 			handicaps[player.PlayerID] = player.Handicap
+		}
+	}
+
+	// Insert leg parameters
+	if match.MatchType.ID == models.X01 || match.MatchType.ID == models.X01HANDICAP {
+		params := match.Legs[0].Parameters
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id) VALUES (?, ?)", legID, params.OutshotType.ID)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
 		}
 	} else if *matchType == models.TICTACTOE {
 		params := match.Legs[0].Parameters
@@ -183,6 +193,7 @@ func FinishLeg(visit models.Visit) error {
 		tx.Rollback()
 		return err
 	}
+	leg.WinnerPlayerID = winnerID
 	log.Printf("[%d] Finished with player %d winning", visit.LegID, winnerID.ValueOrZero())
 
 	if matchType == models.SHOOTOUT {
@@ -415,7 +426,7 @@ func FinishLeg(visit models.Visit) error {
 			log.Printf("[%d] Inserting Scam statistics for player %d", visit.LegID, playerID)
 		}
 	} else {
-		statisticsMap, err := CalculateX01Statistics(visit.LegID, visit.PlayerID, leg.StartingScore)
+		statisticsMap, err := CalculateX01Statistics(visit.LegID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -423,10 +434,10 @@ func FinishLeg(visit models.Visit) error {
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_x01
-					(leg_id, player_id, ppd, ppd_score, first_nine_ppd, first_nine_ppd_score, checkout_percentage, checkout_attempts, darts_thrown, 60s_plus,
+					(leg_id, player_id, ppd, ppd_score, first_nine_ppd, first_nine_ppd_score, checkout_percentage, checkout_attempts, checkout, darts_thrown, 60s_plus,
 					 100s_plus, 140s_plus, 180s, accuracy_20, accuracy_19, overall_accuracy)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.PPD, stats.PPDScore, stats.FirstNinePPD, stats.FirstNinePPDScore,
-				stats.CheckoutPercentage, stats.CheckoutAttempts, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.PPD, stats.PPDScore, stats.FirstNinePPD, stats.FirstNinePPDScore,
+				stats.CheckoutPercentage, stats.CheckoutAttempts, stats.Checkout, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
 				stats.Score180s, stats.AccuracyStatistics.Accuracy20, stats.AccuracyStatistics.Accuracy19, stats.AccuracyStatistics.AccuracyOverall)
 			if err != nil {
 				tx.Rollback()
@@ -550,6 +561,17 @@ func FinishLeg(visit models.Visit) error {
 			return err
 		}
 	}
+
+	// Calculate badges earned in this leg
+	statistics, err := GetPlayerBadgeStatistics(leg.Players, nil)
+	if err != nil {
+		return err
+	}
+	err = CheckLegForBadges(leg, statistics)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -708,7 +730,7 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 		leg.Visits = visits
 
 		matchType := leg.LegType.ID
-		if matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
+		if matchType == models.X01 || matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
 			leg.Parameters, err = GetLegParameters(leg.ID)
 			if err != nil {
 				return nil, err
@@ -758,13 +780,77 @@ func GetLegsOfType(matchType int, loadVisits bool) ([]*models.Leg, error) {
 			}
 			leg.Visits = visits
 		}
-		if matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
+		if matchType == models.X01 || matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
 			leg.Parameters, err = GetLegParameters(leg.ID)
 			if err != nil {
 				return nil, err
 			}
 		}
 		legs = append(legs, leg)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return legs, nil
+}
+
+// GetLegsToRecalculate returns all legs since the given date which can be recalculated
+func GetLegsToRecalculate(matchType int, since string) ([]int, error) {
+	rows, err := models.DB.Query(`
+		SELECT l.id
+		FROM leg l
+			JOIN matches m on m.id = l.match_id
+		WHERE l.has_scores = 1 AND (m.match_type_id = ? AND l.leg_type_id IS NULL OR l.leg_type_id = ?)
+			AND l.updated_at >= DATE_FORMAT(STR_TO_DATE(?, '%Y-%m-%d %T'), "%Y-%m-%d %T")
+			AND m.is_abandoned = 0 AND l.is_finished = 1
+		GROUP BY l.id
+		ORDER BY l.id ASC`, matchType, matchType, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	legs := make([]int, 0)
+	for rows.Next() {
+		var legId int
+		err := rows.Scan(&legId)
+		if err != nil {
+			return nil, err
+		}
+		legs = append(legs, legId)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return legs, nil
+}
+
+// GetBadgeLegsToRecalculate returns all legs which can generate badges which can be recalculated
+func GetBadgeLegsToRecalculate() ([]int, error) {
+	rows, err := models.DB.Query(`
+		SELECT l.id
+		FROM leg l
+			JOIN matches m on m.id = l.match_id
+		WHERE l.has_scores = 1 AND COALESCE(l.leg_type_id, m.match_type_id) = 1 -- X01
+			AND m.is_abandoned = 0 AND m.is_bye = 0 AND m.is_walkover = 0
+			AND l.is_finished = 1
+		GROUP BY l.id
+		ORDER BY l.id ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	legs := make([]int, 0)
+	for rows.Next() {
+		var legId int
+		err := rows.Scan(&legId)
+		if err != nil {
+			return nil, err
+		}
+		legs = append(legs, legId)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
@@ -842,7 +928,7 @@ func GetLeg(id int) (*models.Leg, error) {
 	}
 
 	matchType := leg.LegType.ID
-	if matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
+	if matchType == models.X01 || matchType == models.X01HANDICAP || matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
 		leg.Parameters, err = GetLegParameters(id)
 		if err != nil {
 			return nil, err
@@ -1053,7 +1139,7 @@ func GetLeg(id int) (*models.Leg, error) {
 	leg.Visits = visits
 	leg.Hits, leg.DartsThrown = models.GetHitsMap(visits)
 	if matchType == models.X01 || matchType == models.X01HANDICAP {
-		leg.CheckoutStatistics, err = getCheckoutStatistics(leg.ID, leg.StartingScore)
+		leg.CheckoutStatistics, err = getCheckoutStatistics(leg)
 	}
 	if err != nil {
 		return nil, err
@@ -1062,7 +1148,7 @@ func GetLeg(id int) (*models.Leg, error) {
 	return leg, nil
 }
 
-// GetLegPlayers returns information about current score for players in a leg
+// GetLegPlayers returns information about all players in a leg
 func GetLegPlayers(id int) ([]*models.Player2Leg, error) {
 	leg, err := GetLeg(id)
 	if err != nil {
@@ -1230,6 +1316,9 @@ func GetLegParameters(legID int) (*models.LegParameters, error) {
 		SELECT outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9, starting_lives
 		FROM leg_parameters WHERE leg_id = ?`, legID).Scan(&ost, &n[0], &n[1], &n[2], &n[3], &n[4], &n[5], &n[6], &n[7], &n[8], &params.StartingLives)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return new(models.LegParameters), nil
+		}
 		return nil, err
 	}
 	if ost.Valid {
@@ -1266,13 +1355,9 @@ func GetLegMatchType(legID int) (*int, error) {
 }
 
 // getCheckoutStatistics will get all checkout attempts for the given leg
-func getCheckoutStatistics(legID int, startingScore int) (*models.CheckoutStatistics, error) {
-	visits, err := GetLegVisits(legID)
-	if err != nil {
-		return nil, err
-	}
-
-	players, err := GetPlayersScore(legID)
+func getCheckoutStatistics(leg *models.Leg) (*models.CheckoutStatistics, error) {
+	visits := leg.Visits
+	players, err := GetPlayersScore(leg.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -1280,31 +1365,35 @@ func getCheckoutStatistics(legID int, startingScore int) (*models.CheckoutStatis
 	playersMap := make(map[int]*models.Player2Leg)
 	for _, player := range players {
 		playersMap[player.PlayerID] = player
-		player.CurrentScore = startingScore
+		player.CurrentScore = leg.StartingScore
 		if player.Handicap.Valid {
 			player.CurrentScore += int(player.Handicap.Int64)
 		}
 	}
 
+	outshotTypeId := models.OUTSHOTDOUBLE
+	if leg.Parameters.OutshotType != nil {
+		outshotTypeId = leg.Parameters.OutshotType.ID
+	}
 	totalAttempts := 0
 	checkoutAttempts := make(map[int]int)
 	for _, visit := range visits {
 		player := playersMap[visit.PlayerID]
 
 		currentScore := player.CurrentScore
-		if visit.FirstDart.IsCheckoutAttempt(currentScore, 1) {
+		if visit.FirstDart.IsCheckoutAttempt(currentScore, 1, outshotTypeId) {
 			totalAttempts++
 			checkoutAttempts[currentScore]++
 		}
 		currentScore -= visit.FirstDart.GetScore()
 
-		if visit.SecondDart.IsCheckoutAttempt(currentScore, 2) {
+		if visit.SecondDart.IsCheckoutAttempt(currentScore, 2, outshotTypeId) {
 			totalAttempts++
 			checkoutAttempts[currentScore]++
 		}
 		currentScore -= visit.SecondDart.GetScore()
 
-		if visit.ThirdDart.IsCheckoutAttempt(currentScore, 3) {
+		if visit.ThirdDart.IsCheckoutAttempt(currentScore, 3, outshotTypeId) {
 			totalAttempts++
 			checkoutAttempts[currentScore]++
 		}

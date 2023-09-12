@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/kcapp/api/models"
 )
@@ -29,7 +29,7 @@ func GetKnockoutStatistics(from string, to string) ([]*models.StatisticsKnockout
 				LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 				LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 			WHERE m.updated_at >= ? AND m.updated_at < ?
-				AND l.is_finished = 1 AND m.is_abandoned = 0
+				AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 				AND m.match_type_id = 15
 			GROUP BY p.id, m.office_id
 			ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
@@ -141,7 +141,7 @@ func GetKnockoutStatisticsForPlayer(id int) (*models.StatisticsKnockout, error) 
 				LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 				LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 			WHERE s.player_id = ?
-				AND l.is_finished = 1 AND m.is_abandoned = 0
+				AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 				AND m.match_type_id = 15
 			GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrown,
 		&s.AvgScore, &s.LivesLost, &s.LivesTaken, &s.FinalPosition)
@@ -252,26 +252,18 @@ func CalculateKnockoutStatistics(legID int) (map[int]*models.StatisticsKnockout,
 	return statisticsMap, nil
 }
 
-// ReCalculateKnockoutStatistics will recaulcate statistics for Knockout legs
-func ReCalculateKnockoutStatistics() (map[int]map[int]*models.StatisticsKnockout, error) {
-	legs, err := GetLegsOfType(models.KNOCKOUT, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.StatisticsKnockout)
-	for _, leg := range legs {
-		stats, err := CalculateKnockoutStatistics(leg.ID)
+// RecalculateKnockoutStatistics will recaulcate statistics for Knockout legs
+func RecalculateKnockoutStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateKnockoutStatistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_knockout SET darts_thrown = %d, avg_score = %f, lives_lost = %d, lives_taken = %d,
-			final_position = %d WHERE leg_id = %d AND player_id = %d;`,
-				stat.DartsThrown, stat.AvgScore, stat.LivesLost, stat.LivesTaken, stat.FinalPosition, leg.ID, playerID)
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_knockout SET darts_thrown = %d, avg_score = %f, lives_lost = %d, lives_taken = %d, final_position = %d WHERE leg_id = %d AND player_id = %d;`,
+				stat.DartsThrown, stat.AvgScore, stat.LivesLost, stat.LivesTaken, stat.FinalPosition, legID, playerID))
 		}
-		s[leg.ID] = stats
 	}
-
-	return s, err
+	return queries, nil
 }

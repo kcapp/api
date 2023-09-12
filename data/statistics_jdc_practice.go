@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
@@ -30,7 +30,7 @@ func GetJDCPracticeStatistics(from string, to string) ([]*models.StatisticsJDCPr
 				LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 				LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 			WHERE m.updated_at >= ? AND m.updated_at < ?
-				AND l.is_finished = 1 AND m.is_abandoned = 0
+				AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 				AND m.match_type_id = 14
 			GROUP BY p.id, m.office_id
 			ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
@@ -143,7 +143,7 @@ func GetJDCPracticeStatisticsForPlayer(id int) (*models.StatisticsJDCPractice, e
 				LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 				LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 			WHERE s.player_id = ?
-				AND l.is_finished = 1 AND m.is_abandoned = 0
+				AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 				AND m.match_type_id = 14
 			GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrown,
 		&s.Score, &s.MPR, &s.ShanghaiCount, &s.DoublesHitrate, &s.HighestScore)
@@ -274,26 +274,18 @@ func CalculateJDCPracticeStatistics(legID int) (map[int]*models.StatisticsJDCPra
 	return statisticsMap, nil
 }
 
-// ReCalculateJDCPracticeStatistics will recaulcate statistics for JDC Practice legs
-func ReCalculateJDCPracticeStatistics() (map[int]map[int]*models.StatisticsJDCPractice, error) {
-	legs, err := GetLegsOfType(models.JDCPRACTICE, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.StatisticsJDCPractice)
-	for _, leg := range legs {
-		stats, err := CalculateJDCPracticeStatistics(leg.ID)
+// RecalculateJDCPracticeStatistics will recaulcate statistics for JDC Practice legs
+func RecalculateJDCPracticeStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateJDCPracticeStatistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_jdc_practice SET darts_thrown = %d, score = %d, mpr = %f,
-				shanghai_count = %d, doubles_hitrate = %f WHERE leg_id = %d AND player_id = %d;`,
-				stat.DartsThrown, stat.Score, stat.MPR.Float64, stat.ShanghaiCount, stat.DoublesHitrate, leg.ID, playerID)
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_jdc_practice SET darts_thrown = %d, score = %d, mpr = %f, shanghai_count = %d, doubles_hitrate = %f WHERE leg_id = %d AND player_id = %d;`,
+				stat.DartsThrown, stat.Score, stat.MPR.Float64, stat.ShanghaiCount, stat.DoublesHitrate, legID, playerID))
 		}
-		s[leg.ID] = stats
 	}
-
-	return s, err
+	return queries, nil
 }

@@ -21,7 +21,8 @@ func NewMatch(match models.Match) (*models.Match, error) {
 	if match.CreatedAt.IsZero() {
 		match.CreatedAt = time.Now().UTC()
 	}
-	res, err := tx.Exec("INSERT INTO matches (match_type_id, match_mode_id, owe_type_id, venue_id, office_id, is_practice, tournament_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+	res, err := tx.Exec(`INSERT INTO matches (match_type_id, match_mode_id, owe_type_id, venue_id, office_id, is_practice, tournament_id, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		match.MatchType.ID, match.MatchMode.ID, match.OweTypeID, match.VenueID, match.OfficeID, match.IsPractice, match.TournamentID, match.CreatedAt)
 	if err != nil {
 		tx.Rollback()
@@ -33,7 +34,8 @@ func NewMatch(match models.Match) (*models.Match, error) {
 		return nil, err
 	}
 	startingScore := match.Legs[0].StartingScore
-	res, err = tx.Exec("INSERT INTO leg (starting_score, current_player_id, match_id, created_at) VALUES (?, ?, ?, ?) ", match.Legs[0].StartingScore, match.Players[0], matchID, match.CreatedAt)
+	res, err = tx.Exec("INSERT INTO leg (starting_score, current_player_id, match_id, num_players, created_at) VALUES (?, ?, ?, ?, ?)",
+		match.Legs[0].StartingScore, match.Players[0], matchID, len(match.Players), match.CreatedAt)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -43,7 +45,18 @@ func NewMatch(match models.Match) (*models.Match, error) {
 		tx.Rollback()
 		return nil, err
 	}
-	if match.MatchType.ID == models.TICTACTOE {
+	if match.MatchType.ID == models.X01 || match.MatchType.ID == models.X01HANDICAP {
+		params := match.Legs[0].Parameters
+		outshotType := models.OUTSHOTDOUBLE
+		if params != nil {
+			outshotType = params.OutshotType.ID
+		}
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id) VALUES (?, ?)", legID, outshotType)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	} else if match.MatchType.ID == models.TICTACTOE {
 		params := match.Legs[0].Parameters
 		params.GenerateTicTacToeNumbers(startingScore)
 		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -100,7 +113,7 @@ func NewMatch(match models.Match) (*models.Match, error) {
 func GetMatches() ([]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.current_leg_id, m.winner_id, m.office_id, m.is_practice,
+			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id, m.winner_id, m.office_id, m.is_practice,
 			m.created_at, m.updated_at, m.owe_type_id, m.venue_id, mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name,
 			mm.wins_required, mm.legs_required, ot.id, ot.item, v.id, v.name, v.description, l.updated_at as 'last_throw',
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
@@ -126,7 +139,7 @@ func GetMatches() ([]*models.Match, error) {
 		ot := new(models.OweType)
 		venue := new(models.Venue)
 		var players string
-		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice, &m.CreatedAt, &m.UpdatedAt,
+		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.IsBye, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice, &m.CreatedAt, &m.UpdatedAt,
 			&m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
 			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)
@@ -164,7 +177,7 @@ func GetMatchesCount() (int, error) {
 func GetActiveMatches() ([]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.current_leg_id, m.winner_id, m.office_id, m.is_practice,
+			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id, m.winner_id, m.office_id, m.is_practice,
 			m.created_at, m.updated_at, m.owe_type_id, m.venue_id, mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name,
 			mm.wins_required, mm.legs_required, ot.id, ot.item, v.id, v.name, v.description, l.updated_at as 'last_throw',
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
@@ -177,6 +190,7 @@ func GetActiveMatches() ([]*models.Match, error) {
 			LEFT JOIN player2leg p2l ON p2l.match_id = m.id
 		WHERE m.is_finished = 0
 			AND l.updated_at > NOW() - INTERVAL 2 MINUTE
+			AND m.is_bye <> 1
 		GROUP BY m.id
 		ORDER BY m.id DESC`)
 	if err != nil {
@@ -192,7 +206,7 @@ func GetActiveMatches() ([]*models.Match, error) {
 		ot := new(models.OweType)
 		venue := new(models.Venue)
 		var players string
-		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice,
+		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.IsBye, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice,
 			&m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
 			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players)
@@ -294,7 +308,7 @@ func GetMatchProbabilities(id int) (*models.Probability, error) {
 func GetMatchesLimit(start int, limit int) ([]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.current_leg_id, m.winner_id, m.office_id, m.is_practice,
+			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id, m.winner_id, m.office_id, m.is_practice,
 			m.created_at, m.updated_at, m.owe_type_id, m.venue_id, mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name,
 			mm.wins_required, mm.legs_required, ot.id, ot.item, v.id, v.name, v.description,
 			l.updated_at as 'last_throw', GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
@@ -310,7 +324,7 @@ func GetMatchesLimit(start int, limit int) ([]*models.Match, error) {
 			LEFT JOIN player2tournament p2t ON p2t.tournament_id = m.tournament_id AND p2t.player_id = p2l.player_id
 			LEFT JOIN tournament t ON t.id = p2t.tournament_id
 			LEFT JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
-		WHERE m.created_at <= NOW()
+		WHERE m.created_at <= NOW() AND m.is_bye <> 1
 		GROUP BY m.id
 		ORDER BY m.created_at DESC, m.id DESC
 		LIMIT ?, ?`, start, limit)
@@ -329,7 +343,7 @@ func GetMatchesLimit(start int, limit int) ([]*models.Match, error) {
 		tournament := new(models.MatchTournament)
 		var players string
 		var legsWon null.String
-		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice,
+		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.IsBye, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice,
 			&m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
 			&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players, &m.TournamentID, &tournament.TournamentID,
@@ -370,7 +384,7 @@ func GetMatch(id int) (*models.Match, error) {
 	var players string
 	err := models.DB.QueryRow(`
         SELECT
-			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.current_leg_id, m.winner_id, m.office_id, m.is_practice, m.created_at, m.updated_at,
+			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id, m.winner_id, m.office_id, m.is_practice, m.created_at, m.updated_at,
 			m.owe_type_id, m.venue_id, mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name, mm.wins_required,
 			mm.legs_required, mm.tiebreak_match_type_id, ot.id, ot.item, v.id, v.name, v.description,
 			MAX(l.updated_at) AS 'last_throw',
@@ -388,7 +402,7 @@ func GetMatch(id int) (*models.Match, error) {
 			LEFT JOIN player2tournament p2t ON p2t.tournament_id = m.tournament_id AND p2t.player_id = p2l.player_id
 			LEFT JOIN tournament t ON t.id = p2t.tournament_id
 			LEFT JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
-		WHERE m.id = ?`, id).Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice,
+		WHERE m.id = ?`, id).Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.IsBye, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice,
 		&m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 		&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired, &m.MatchMode.TieBreakMatchTypeID,
 		&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &m.FirstThrow, &players, &m.TournamentID, &tournament.TournamentID,
@@ -413,7 +427,7 @@ func GetMatch(id int) (*models.Match, error) {
 	if err != nil {
 		return nil, err
 	}
-	if m.IsFinished {
+	if m.IsFinished && len(m.Legs) > 0 {
 		m.EndTime = *m.Legs[len(m.Legs)-1].Endtime.Ptr()
 	}
 
@@ -422,6 +436,129 @@ func GetMatch(id int) (*models.Match, error) {
 		return nil, err
 	}
 	return m, nil
+}
+
+// SetScore will set the score of a given match
+func SetScore(matchID int, result models.MatchResult) (*models.Match, error) {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	match, err := GetMatch(matchID)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(`DELETE FROM leg WHERE match_id = ?`, matchID)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	_, err = tx.Exec(`DELETE FROM player_elo_changelog WHERE match_id = ?`, matchID)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// TODO Improve by only inserting legs where there is no score?
+
+	for i := 0; i < result.LooserScore; i++ {
+		res, err := tx.Exec(`INSERT INTO leg (end_time, starting_score, current_player_id, match_id, created_at, is_finished, winner_id, has_scores) VALUES
+			(NOW(), ?, ?, ?, NOW(), 1, ?, 0)`, match.Legs[0].StartingScore, result.LooserID, matchID, result.LooserID)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		legID, err := res.LastInsertId()
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		for idx, playerID := range match.Players {
+			order := idx + 1
+			_, err = tx.Exec("INSERT INTO player2leg (player_id, leg_id, `order`, match_id, handicap) VALUES (?, ?, ?, ?, ?)",
+				playerID, legID, order, matchID, match.PlayerHandicaps[playerID])
+			if err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+		}
+	}
+	var legID int64
+	for i := 0; i < result.WinnerScore; i++ {
+		res, err := tx.Exec(`INSERT INTO leg (end_time, starting_score, current_player_id, match_id, created_at, is_finished, winner_id, has_scores) VALUES
+			(NOW(), ?, ?, ?, NOW(), 1, ?, 0)`, match.Legs[0].StartingScore, result.WinnerID, matchID, result.WinnerID)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		legID, err = res.LastInsertId()
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		for idx, playerID := range match.Players {
+			order := idx + 1
+			_, err = tx.Exec("INSERT INTO player2leg (player_id, leg_id, `order`, match_id, handicap) VALUES (?, ?, ?, ?, ?)",
+				playerID, legID, order, matchID, match.PlayerHandicaps[playerID])
+			if err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+		}
+	}
+	_, err = tx.Exec("UPDATE matches SET is_finished = 1, winner_id = ?, current_leg_id = ?, updated_at = NOW() WHERE id = ?", result.WinnerID, legID, matchID)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	tx.Commit()
+
+	// Update Elo for players if match is finished
+	err = UpdateEloForMatch(matchID)
+	if err != nil {
+		return nil, err
+	}
+
+	if match.TournamentID.Valid {
+		metadata, err := GetMatchMetadata(matchID)
+		if err != nil {
+			return nil, err
+		}
+
+		if metadata.WinnerOutcomeMatchID.Valid {
+			winnerMatch, err := GetMatch(int(metadata.WinnerOutcomeMatchID.Int64))
+			if err != nil {
+				return nil, err
+			}
+			idx := 0
+			if !metadata.IsWinnerOutcomeHome {
+				idx = 1
+			}
+			err = SwapPlayers(winnerMatch.ID, result.WinnerID, winnerMatch.Players[idx])
+			if err != nil {
+				return nil, err
+			}
+		}
+		if metadata.LooserOutcomeMatchID.Valid {
+			looserMatch, err := GetMatch(int(metadata.LooserOutcomeMatchID.Int64))
+			if err != nil {
+				return nil, err
+			}
+			idx := 0
+			if !metadata.IsLooserOutcomeHome {
+				idx = 1
+			}
+			err = SwapPlayers(looserMatch.ID, result.LooserID, looserMatch.Players[idx])
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return GetMatch(int(matchID))
 }
 
 // GetMatchMetadata returns a metadata about the given match
@@ -490,8 +627,13 @@ func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, e
 			return nil, err
 		}
 		players := util.StringToIntArray(playersStr)
-		m.HomePlayer = players[0]
-		m.AwayPlayer = players[1]
+		if len(players) == 1 {
+			m.HomePlayer = players[0]
+			m.AwayPlayer = players[0]
+		} else {
+			m.HomePlayer = players[0]
+			m.AwayPlayer = players[1]
+		}
 
 		metadata = append(metadata, m)
 	}
@@ -551,7 +693,7 @@ func GetMatchTypes() ([]*models.MatchType, error) {
 
 // GetOutshotTypes will return all outshot types
 func GetOutshotTypes() ([]*models.OutshotType, error) {
-	rows, err := models.DB.Query("SELECT id, `name`, short_name FROM outshot_type")
+	rows, err := models.DB.Query("SELECT id, `name`, short_name FROM outshot_type ORDER BY FIELD(id, 3, 1, 2)")
 	if err != nil {
 		return nil, err
 	}
@@ -613,7 +755,7 @@ func GetWinsPerPlayer(id int) (map[int]int, error) {
 func GetHeadToHeadMatches(player1 int, player2 int) ([]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.current_leg_id, m.winner_id, m.created_at, m.updated_at,
+			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id, m.winner_id, m.created_at, m.updated_at,
 			m.owe_type_id, mt.id, mt.name, mt.description,
 			mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required
 		FROM matches m
@@ -637,7 +779,7 @@ func GetHeadToHeadMatches(player1 int, player2 int) ([]*models.Match, error) {
 		m := new(models.Match)
 		m.MatchType = new(models.MatchType)
 		m.MatchMode = new(models.MatchMode)
-		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.CreatedAt, &m.UpdatedAt,
+		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.IsBye, &m.CurrentLegID, &m.WinnerID, &m.CreatedAt, &m.UpdatedAt,
 			&m.OweTypeID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired)
 		if err != nil {
@@ -655,7 +797,7 @@ func GetHeadToHeadMatches(player1 int, player2 int) ([]*models.Match, error) {
 func GetPlayerLastMatches(playerID int, limit int) ([]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.current_leg_id, m.winner_id, m.created_at, m.updated_at,
+			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id, m.winner_id, m.created_at, m.updated_at,
 			m.owe_type_id, mt.id, mt.name, mt.description,
 			mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required
 		FROM matches m
@@ -677,7 +819,7 @@ func GetPlayerLastMatches(playerID int, limit int) ([]*models.Match, error) {
 		m := new(models.Match)
 		m.MatchType = new(models.MatchType)
 		m.MatchMode = new(models.MatchMode)
-		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.CurrentLegID, &m.WinnerID, &m.CreatedAt, &m.UpdatedAt, &m.OweTypeID,
+		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.IsBye, &m.CurrentLegID, &m.WinnerID, &m.CreatedAt, &m.UpdatedAt, &m.OweTypeID,
 			&m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired)
 		if err != nil {

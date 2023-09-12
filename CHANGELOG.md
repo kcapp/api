@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.7.0] - 2023-09-12
+#### Feature
+- Player Badges!
+- Support for Tournament Presets
+- Added commands for recalculating statistics, resetting elo etc
+- New endpoint for getting player hits
+- Support for `ANY` and `MASTER` out for `x01` legs
+
+#### Changed
+- Store `checkout` value for each `x01` leg explicitly
+- Improved a lot of queries when loading player statistics to reduce load times by ~70% for players with a lot of data
+
+#### Fixed
+- Only return `x01` legs when requesting a random leg for a player
+
 ## [2.6.0] - 2023-06-30
 #### Fixed
 - Correctly set First 9 Avg. if leg was won in <9 darts
@@ -125,6 +140,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
+[2.7.0]: https://github.com/kcapp/api/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/kcapp/api/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/kcapp/api/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/kcapp/api/compare/v2.3.0...v2.4.0

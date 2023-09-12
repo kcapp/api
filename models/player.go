@@ -29,6 +29,7 @@ type Player struct {
 	IsActive       bool           `json:"is_active"`
 	IsBot          bool           `json:"is_bot"`
 	IsPlaceholder  bool           `json:"is_placeholder"`
+	IsSupporter    bool           `json:"is_supporter"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at,omitempty"`
 	TournamentElo  int            `json:"tournament_elo,omitempty"`

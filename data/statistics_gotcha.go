@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/kcapp/api/models"
 )
@@ -29,7 +29,7 @@ func GetGotchaStatistics(from string, to string) ([]*models.StatisticsGotcha, er
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = 13
 		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
@@ -141,7 +141,7 @@ func GetGotchaStatisticsForPlayer(id int) (*models.StatisticsGotcha, error) {
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE s.player_id = ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = 13
 		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon,
 		&s.DartsThrown, &s.HighestScore, &s.TimesReset, &s.OthersReset, &s.Score)
@@ -279,25 +279,18 @@ func getPlayersReset(visit *models.Visit, players map[int]*models.Player2Leg) in
 	return resets
 }
 
-// ReCalculateGotchaStatistics will recaulcate statistics for Gotcha legs
-func ReCalculateGotchaStatistics() (map[int]map[int]*models.StatisticsGotcha, error) {
-	legs, err := GetLegsOfType(models.GOTCHA, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.StatisticsGotcha)
-	for _, leg := range legs {
-		stats, err := CalculateGotchaStatistics(leg.ID)
+// RecalculateGotchaStatistics will recaulcate statistics for Gotcha legs
+func RecalculateGotchaStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateGotchaStatistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_gotcha SET darts_thrown = %d, highest_score = %d, times_reset = %d, others_reset = %d, score = %d WHERE leg_id = %d AND player_id = %d;`,
-				stat.DartsThrown, stat.HighestScore, stat.TimesReset, stat.OthersReset, stat.Score, leg.ID, playerID)
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_gotcha SET darts_thrown = %d, highest_score = %d, times_reset = %d, others_reset = %d, score = %d WHERE leg_id = %d AND player_id = %d;`,
+				stat.DartsThrown, stat.HighestScore, stat.TimesReset, stat.OthersReset, stat.Score, legID, playerID))
 		}
-		s[leg.ID] = stats
 	}
-
-	return s, err
+	return queries, nil
 }

@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/kcapp/api/models"
 )
@@ -47,7 +47,7 @@ func Get420Statistics(from string, to string) ([]*models.Statistics420, error) {
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = 11
 		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
@@ -238,7 +238,7 @@ func Get420StatisticsForPlayer(id int) (*models.Statistics420, error) {
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE s.player_id = ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = 11
 		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.Score,
 		&s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10], &h[11], &h[12], &h[13],
@@ -392,28 +392,19 @@ func Calculate420Statistics(legID int) (map[int]*models.Statistics420, error) {
 	return statisticsMap, nil
 }
 
-// ReCalculate420Statistics will recaulcate statistics for 420 legs
-func ReCalculate420Statistics() (map[int]map[int]*models.Statistics420, error) {
-	legs, err := GetLegsOfType(models.FOURTWENTY, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.Statistics420)
-	for _, leg := range legs {
-		stats, err := Calculate420Statistics(leg.ID)
+// Recalculate420Statistics will recaulcate statistics for 420 legs
+func Recalculate420Statistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := Calculate420Statistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_420 SET score = %d, total_hit_rate = %f, hit_rate_1 = %f, hit_rate_2 = %f, hit_rate_3 = %f, hit_rate_4 = %f, hit_rate_5 = %f, hit_rate_6 = %f, hit_rate_7 = %f, hit_rate_8 = %f,
-			hit_rate_9 = %f, hit_rate_10 = %f, hit_rate_11 = %f, hit_rate_12 = %f, hit_rate_13 = %f, hit_rate_14 = %f, hit_rate_15 = %f, hit_rate_16 = %f, hit_rate_17 = %f, hit_rate_18 = %f, hit_rate_19 = %f, hit_rate_20 = %f,
-			hit_rate_bull = %f WHERE leg_id = %d AND player_id = %d;`,
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_420 SET score = %d, total_hit_rate = %f, hit_rate_1 = %f, hit_rate_2 = %f, hit_rate_3 = %f, hit_rate_4 = %f, hit_rate_5 = %f, hit_rate_6 = %f, hit_rate_7 = %f, hit_rate_8 = %f, hit_rate_9 = %f, hit_rate_10 = %f, hit_rate_11 = %f, hit_rate_12 = %f, hit_rate_13 = %f, hit_rate_14 = %f, hit_rate_15 = %f, hit_rate_16 = %f, hit_rate_17 = %f, hit_rate_18 = %f, hit_rate_19 = %f, hit_rate_20 = %f, hit_rate_bull = %f WHERE leg_id = %d AND player_id = %d;`,
 				stat.Score, stat.TotalHitRate, stat.Hitrates[1], stat.Hitrates[2], stat.Hitrates[3], stat.Hitrates[4], stat.Hitrates[5], stat.Hitrates[6], stat.Hitrates[7], stat.Hitrates[8], stat.Hitrates[9], stat.Hitrates[10],
-				stat.Hitrates[11], stat.Hitrates[12], stat.Hitrates[13], stat.Hitrates[14], stat.Hitrates[15], stat.Hitrates[16], stat.Hitrates[17], stat.Hitrates[18], stat.Hitrates[19], stat.Hitrates[20], stat.Hitrates[25], leg.ID, playerID)
+				stat.Hitrates[11], stat.Hitrates[12], stat.Hitrates[13], stat.Hitrates[14], stat.Hitrates[15], stat.Hitrates[16], stat.Hitrates[17], stat.Hitrates[18], stat.Hitrates[19], stat.Hitrates[20], stat.Hitrates[25], legID, playerID))
 		}
-		s[leg.ID] = stats
 	}
-
-	return s, err
+	return queries, nil
 }

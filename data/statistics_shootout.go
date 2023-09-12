@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/kcapp/api/models"
 )
@@ -30,7 +30,7 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
-			AND m.is_finished = 1 AND m.is_abandoned = 0
+			AND m.is_finished = 1 AND m.is_abandoned = 0 m.is_walkover = 0
 			AND (m.match_type_id = 2 OR l.leg_type_id = 2)
 		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC, ppd DESC`, from, to)
@@ -146,7 +146,7 @@ func GetShootoutStatisticsForPlayer(id int) (*models.StatisticsShootout, error) 
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE s.player_id = ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND (m.match_type_id = 2 OR l.leg_type_id = 2)
 		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.Score, &s.PPD, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.HighestScore)
 	if err != nil {
@@ -249,25 +249,18 @@ func CalculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout,
 	return statisticsMap, nil
 }
 
-// ReCalculateShootoutStatistics will recaulcate statistics for Shootout matches
-func ReCalculateShootoutStatistics() (map[int]map[int]*models.StatisticsShootout, error) {
-	legs, err := GetLegsOfType(models.SHOOTOUT, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.StatisticsShootout)
-	for _, leg := range legs {
-		stats, err := CalculateShootoutStatistics(leg.ID)
+// RecalculateShootoutStatistics will recaulcate statistics for Shootout matches
+func RecalculateShootoutStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateShootoutStatistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE kcapp.statistics_shootout SET score = %d, ppd = %f, 60s_plus = %d, 100s_plus = %d, 140s_plus = %d, 180s = %d WHERE leg_id = %d AND player_id = %d;`,
-				stat.Score, stat.PPD, stat.Score60sPlus, stat.Score100sPlus, stat.Score140sPlus, stat.Score180s, leg.ID, playerID)
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_shootout SET score = %d, ppd = %f, 60s_plus = %d, 100s_plus = %d, 140s_plus = %d, 180s = %d WHERE leg_id = %d AND player_id = %d;`,
+				stat.Score, stat.PPD, stat.Score60sPlus, stat.Score100sPlus, stat.Score140sPlus, stat.Score180s, legID, playerID))
 		}
-		s[leg.ID] = stats
 	}
-
-	return s, err
+	return queries, nil
 }

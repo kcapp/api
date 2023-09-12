@@ -16,6 +16,8 @@ const (
 	TRIPLE = 3
 )
 
+const BULLSEYE = 25
+
 var (
 	// CRICKETDARTS var holding darts aimed at in a game of Cricket
 	CRICKETDARTS = []int{15, 16, 17, 18, 19, 20, 25}
@@ -28,12 +30,23 @@ type Dart struct {
 }
 
 // IsBust will check if the given dart is a bust
-func (dart *Dart) IsBust(currentScore int) bool {
+func (dart *Dart) IsBust(currentScore int, outshotTypeId int) bool {
 	scoreAfterThrow := currentScore - dart.GetScore()
-	if scoreAfterThrow == 0 && dart.IsDouble() {
-		return false
-	} else if scoreAfterThrow < 2 {
-		return true
+	if scoreAfterThrow == 0 {
+		if outshotTypeId == OUTSHOTANY ||
+			(outshotTypeId == OUTSHOTDOUBLE && dart.IsDouble()) ||
+			(outshotTypeId == OUTSHOTMASTER && (dart.IsDouble() || dart.IsTriple())) {
+			return false
+		}
+	}
+	if outshotTypeId == OUTSHOTANY {
+		if scoreAfterThrow < 1 {
+			return true
+		}
+	} else {
+		if scoreAfterThrow < 2 {
+			return true
+		}
 	}
 
 	// If the throw is not a bust, make sure the dart is valid
@@ -107,15 +120,27 @@ func (dart Dart) GetJDCPracticeScore(target Target) int {
 }
 
 // IsCheckoutAttempt checks if this dart was a checkout attempt
-func (dart Dart) IsCheckoutAttempt(currentScore int, num int) bool {
+func (dart Dart) IsCheckoutAttempt(currentScore int, dartNum int, outshotTypeId int) bool {
 	if !dart.Value.Valid {
 		// Dart was not actually thrown, player busted/checked out already
 		return false
 	}
+
+	if outshotTypeId == OUTSHOTANY {
+		if ((currentScore <= 20 || currentScore == 25) ||
+			((currentScore == 50 || currentScore <= 40) && currentScore%2 == 0) ||
+			(currentScore <= 60 && currentScore%3 == 0)) && currentScore > 0 {
+			return true
+		}
+	} else if outshotTypeId == OUTSHOTMASTER {
+		if currentScore <= 60 && currentScore%3 == 0 && currentScore > 1 {
+			return true
+		}
+	}
 	if currentScore-dart.GetScore() == 0 && dart.IsDouble() {
 		// Actual checkout
 		return true
-	} else if (num == 3 && currentScore == 50) || (currentScore <= 40 && currentScore%2 == 0 && currentScore > 1) {
+	} else if (dartNum == 3 && currentScore == 50) || (currentScore <= 40 && currentScore%2 == 0 && currentScore > 1) {
 		// Checkout attempt (bull only counts if it was on the third dart)
 		return true
 	}

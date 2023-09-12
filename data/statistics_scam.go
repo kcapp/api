@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/kcapp/api/models"
 )
@@ -30,7 +30,7 @@ func GetScamStatistics(from string, to string) ([]*models.StatisticsScam, error)
 				LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 				LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 			WHERE m.updated_at >= ? AND m.updated_at < ?
-				AND l.is_finished = 1 AND m.is_abandoned = 0
+				AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 				AND m.match_type_id = 16
 			GROUP BY p.id, m.office_id
 			ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
@@ -145,7 +145,7 @@ func GetScamStatisticsForPlayer(id int) (*models.StatisticsScam, error) {
 				LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 				LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 			WHERE s.player_id = ?
-				AND l.is_finished = 1 AND m.is_abandoned = 0
+				AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 				AND m.match_type_id = 16
 			GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrownScorer, &s.DartsThrownStopper,
 		&s.Score, &s.MPR, &s.PPD, &s.ThreeDartAvg)
@@ -247,24 +247,18 @@ func CalculateScamStatistics(legID int) (map[int]*models.StatisticsScam, error) 
 }
 
 // ReCalculateScamStatistics will recaulcate statistics for Scam legs
-func ReCalculateScamStatistics() (map[int]map[int]*models.StatisticsScam, error) {
-	legs, err := GetLegsOfType(models.SCAM, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.StatisticsScam)
-	for _, leg := range legs {
-		stats, err := CalculateScamStatistics(leg.ID)
+func ReCalculateScamStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateScamStatistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_scam SET darts_thrown_stopper = %d, darts_thrown_scorer = %d, mpr = %f, score = %d, WHERE leg_id = %d AND player_id = %d;`,
-				stat.DartsThrownStopper, stat.DartsThrownScorer, stat.MPR, stat.Score, leg.ID, playerID)
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_scam SET darts_thrown_stopper = %d, darts_thrown_scorer = %d, mpr = %f, score = %d, WHERE leg_id = %d AND player_id = %d;`,
+				stat.DartsThrownStopper, stat.DartsThrownScorer, stat.MPR, stat.Score, legID, playerID))
 		}
-		s[leg.ID] = stats
 	}
 
-	return s, err
+	return queries, nil
 }

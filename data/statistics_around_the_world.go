@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
@@ -50,7 +50,7 @@ func GetAroundTheWorldStatistics(from string, to string) ([]*models.StatisticsAr
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = 6
 		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
@@ -249,7 +249,7 @@ func GetAroundTheWorldStatisticsForPlayer(id int) (*models.StatisticsAroundThe, 
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE s.player_id = ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = 6
 		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrown,
 		&s.Score, &s.MPR, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10],
@@ -388,7 +388,7 @@ func GetShanghaiStatistics(from string, to string) ([]*models.StatisticsAroundTh
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = 7
 		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC`, from, to)
@@ -593,7 +593,7 @@ func GetShanghaiStatisticsForPlayer(id int) (*models.StatisticsAroundThe, error)
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE s.player_id = ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.match_type_id = 7
 		GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrown,
 		&s.Score, &s.MPR, &s.TotalHitRate, &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10],
@@ -773,74 +773,45 @@ func CalculateAroundTheWorldStatistics(legID int, matchType int) (map[int]*model
 	return statisticsMap, nil
 }
 
-// ReCalculateAroundTheWorldStatistics will recaulcate statistics for Around the World legs
-func ReCalculateAroundTheWorldStatistics() (map[int]map[int]*models.StatisticsAroundThe, error) {
-	legs, err := GetLegsOfType(models.AROUNDTHEWORLD, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.StatisticsAroundThe)
-	for _, leg := range legs {
-		stats, err := CalculateAroundTheWorldStatistics(leg.ID, models.AROUNDTHEWORLD)
+// RecalculateAroundTheWorldStatistics will recaulcate statistics for Around the World legs
+func RecalculateAroundTheWorldStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateAroundTheWorldStatistics(legID, models.AROUNDTHEWORLD)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			log.Printf(`UPDATE statistics_around_the SET darts_thrown = %d, score = %d, mpr = %f, total_hit_rate = %f, hit_rate_1 = %f,
-				hit_rate_2 = %f, hit_rate_3 = %f, hit_rate_4 = %f, hit_rate_5 = %f, hit_rate_6 = %f, hit_rate_7 = %f, hit_rate_8 = %f, hit_rate_9 = %f,
-				hit_rate_10 = %f, hit_rate_11 = %f, hit_rate_12 = %f, hit_rate_13 = %f, hit_rate_14 = %f, hit_rate_15 = %f, hit_rate_16 = %f, hit_rate_17 = %f,
-				hit_rate_18 = %f, hit_rate_19 = %f, hit_rate_20 = %f, hit_rate_bull = %f WHERE leg_id = %d AND player_id = %d;`,
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_around_the SET darts_thrown = %d, score = %d, mpr = %f, total_hit_rate = %f, hit_rate_1 = %f, hit_rate_2 = %f, hit_rate_3 = %f, hit_rate_4 = %f, hit_rate_5 = %f, hit_rate_6 = %f, hit_rate_7 = %f, hit_rate_8 = %f, hit_rate_9 = %f, hit_rate_10 = %f, hit_rate_11 = %f, hit_rate_12 = %f, hit_rate_13 = %f, hit_rate_14 = %f, hit_rate_15 = %f, hit_rate_16 = %f, hit_rate_17 = %f, hit_rate_18 = %f, hit_rate_19 = %f, hit_rate_20 = %f, hit_rate_bull = %f WHERE leg_id = %d AND player_id = %d;`,
 				stat.DartsThrown, stat.Score, stat.MPR.Float64, stat.TotalHitRate, stat.Hitrates[1], stat.Hitrates[2], stat.Hitrates[3], stat.Hitrates[4], stat.Hitrates[5],
 				stat.Hitrates[6], stat.Hitrates[7], stat.Hitrates[8], stat.Hitrates[9], stat.Hitrates[10], stat.Hitrates[11], stat.Hitrates[12], stat.Hitrates[13],
 				stat.Hitrates[14], stat.Hitrates[15], stat.Hitrates[16], stat.Hitrates[17], stat.Hitrates[18], stat.Hitrates[19], stat.Hitrates[20], stat.Hitrates[25],
-				leg.ID, playerID)
+				legID, playerID))
 		}
-		s[leg.ID] = stats
 	}
-
-	return s, err
+	return queries, nil
 }
 
-// ReCalculateShanghaiStatistics will recaulcate statistics for Shanghai legs
-func ReCalculateShanghaiStatistics() (map[int]map[int]*models.StatisticsAroundThe, error) {
-	legs, err := GetLegsOfType(models.SHANGHAI, true)
-	if err != nil {
-		return nil, err
-	}
-
-	s := make(map[int]map[int]*models.StatisticsAroundThe)
-	for _, leg := range legs {
-		if leg.ID != 19 {
-			continue
-		}
-		stats, err := CalculateAroundTheWorldStatistics(leg.ID, models.SHANGHAI)
+// RecalculateShanghaiStatistics will recaulcate statistics for Shanghai legs
+func RecalculateShanghaiStatistics(legs []int) ([]string, error) {
+	queries := make([]string, 0)
+	for _, legID := range legs {
+		stats, err := CalculateAroundTheWorldStatistics(legID, models.SHANGHAI)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			if stat.Shanghai.Valid {
-				log.Printf(`UPDATE statistics_around_the SET darts_thrown = %d, score = %d, shanghai = %d, mpr = %f, total_hit_rate = %f, hit_rate_1 = %f,
-					hit_rate_2 = %f, hit_rate_3 = %f, hit_rate_4 = %f, hit_rate_5 = %f, hit_rate_6 = %f, hit_rate_7 = %f, hit_rate_8 = %f, hit_rate_9 = %f,
-					hit_rate_10 = %f, hit_rate_11 = %f, hit_rate_12 = %f, hit_rate_13 = %f, hit_rate_14 = %f, hit_rate_15 = %f, hit_rate_16 = %f, hit_rate_17 = %f,
-					hit_rate_18 = %f, hit_rate_19 = %f, hit_rate_20 = %f WHERE leg_id = %d AND player_id = %d;`,
-					stat.DartsThrown, stat.Score, stat.Shanghai.Int64, stat.MPR.Float64, stat.TotalHitRate, stat.Hitrates[1], stat.Hitrates[2], stat.Hitrates[3], stat.Hitrates[4], stat.Hitrates[5],
-					stat.Hitrates[6], stat.Hitrates[7], stat.Hitrates[8], stat.Hitrates[9], stat.Hitrates[10], stat.Hitrates[11], stat.Hitrates[12], stat.Hitrates[13],
-					stat.Hitrates[14], stat.Hitrates[15], stat.Hitrates[16], stat.Hitrates[17], stat.Hitrates[18], stat.Hitrates[19], stat.Hitrates[20],
-					leg.ID, playerID)
-			} else {
-				log.Printf(`UPDATE statistics_around_the SET darts_thrown = %d, score = %d, shanghai = null, mpr = %f, total_hit_rate = %f, hit_rate_1 = %f,
-					hit_rate_2 = %f, hit_rate_3 = %f, hit_rate_4 = %f, hit_rate_5 = %f, hit_rate_6 = %f, hit_rate_7 = %f, hit_rate_8 = %f, hit_rate_9 = %f,
-					hit_rate_10 = %f, hit_rate_11 = %f, hit_rate_12 = %f, hit_rate_13 = %f, hit_rate_14 = %f, hit_rate_15 = %f, hit_rate_16 = %f, hit_rate_17 = %f,
-					hit_rate_18 = %f, hit_rate_19 = %f, hit_rate_20 = %f WHERE leg_id = %d AND player_id = %d;`,
-					stat.DartsThrown, stat.Score, stat.MPR.Float64, stat.TotalHitRate, stat.Hitrates[1], stat.Hitrates[2], stat.Hitrates[3], stat.Hitrates[4], stat.Hitrates[5],
-					stat.Hitrates[6], stat.Hitrates[7], stat.Hitrates[8], stat.Hitrates[9], stat.Hitrates[10], stat.Hitrates[11], stat.Hitrates[12], stat.Hitrates[13],
-					stat.Hitrates[14], stat.Hitrates[15], stat.Hitrates[16], stat.Hitrates[17], stat.Hitrates[18], stat.Hitrates[19], stat.Hitrates[20],
-					leg.ID, playerID)
-			}
-		}
-		s[leg.ID] = stats
-	}
+			query := fmt.Sprintf(`UPDATE statistics_around_the SET darts_thrown = %d, score = %d, mpr = %f, total_hit_rate = %f, hit_rate_1 = %f, hit_rate_2 = %f, hit_rate_3 = %f, hit_rate_4 = %f, hit_rate_5 = %f, hit_rate_6 = %f, hit_rate_7 = %f, hit_rate_8 = %f, hit_rate_9 = %f, hit_rate_10 = %f, hit_rate_11 = %f, hit_rate_12 = %f, hit_rate_13 = %f, hit_rate_14 = %f, hit_rate_15 = %f, hit_rate_16 = %f, hit_rate_17 = %f, hit_rate_18 = %f, hit_rate_19 = %f, hit_rate_20 = %f`,
+				stat.DartsThrown, stat.Score, stat.MPR.Float64, stat.TotalHitRate, stat.Hitrates[1], stat.Hitrates[2], stat.Hitrates[3], stat.Hitrates[4], stat.Hitrates[5],
+				stat.Hitrates[6], stat.Hitrates[7], stat.Hitrates[8], stat.Hitrates[9], stat.Hitrates[10], stat.Hitrates[11], stat.Hitrates[12], stat.Hitrates[13],
+				stat.Hitrates[14], stat.Hitrates[15], stat.Hitrates[16], stat.Hitrates[17], stat.Hitrates[18], stat.Hitrates[19], stat.Hitrates[20])
 
-	return s, err
+			if stat.Shanghai.Valid {
+				query += fmt.Sprintf(`, shanghai = %d`, stat.Shanghai.Int64)
+			}
+			query += fmt.Sprintf(" WHERE leg_id = %d AND player_id = %d;", legID, playerID)
+			queries = append(queries, query)
+		}
+	}
+	return queries, nil
 }

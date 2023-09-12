@@ -144,6 +144,36 @@ func GetPlayerStatistics(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(statistics)
 }
 
+// GetPlayerHits will return dart hits for the given player
+func GetPlayerHits(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var visit models.Visit
+	err = json.NewDecoder(r.Body).Decode(&visit)
+	if err != nil {
+		log.Println("Unable to deserialize body", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if visit.SecondDart == nil {
+		visit.SecondDart = new(models.Dart)
+	}
+
+	hits, err := data.GetPlayerHits(id, visit)
+	if err != nil {
+		log.Println("Unable to get player hits")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(hits)
+}
+
 // GetPlayerMatchTypeStatistics will return statistics for the given player
 func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
@@ -668,6 +698,27 @@ func GetPlayerTournamentStandings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(standings)
+}
+
+// GetPlayerBadges returns all badges for a given player
+func GetPlayerBadges(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	badges, err := data.GetPlayerBadges(id)
+	if err != nil {
+		log.Println("Unable to get player badges")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(badges)
 }
 
 // GetPlayerHeadToHead will return head to head statistics between the given players

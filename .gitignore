@@ -31,5 +31,8 @@ config/config*.yaml
 log/
 logs/
 
+# Import/export files
+*.csv
+
 api
 kcapp-api
