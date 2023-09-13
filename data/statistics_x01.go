@@ -230,8 +230,8 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 			LEFT JOIN matches m2 ON m2.id = l2.match_id AND l2.winner_id = p.id
 		WHERE s.player_id IN (?)
 			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0 AND m.is_walkover = 0
-			AND IFNULL(l.leg_type_id, m.match_type_id) = 1
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
+			AND COALESCE(l.leg_type_id, m.match_type_id) = 1
 		GROUP BY s.player_id
 		ORDER BY p.id`, ids, startingScores)
 	if err != nil {
@@ -934,7 +934,9 @@ func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.BadgeStati
 		FROM statistics_x01 s
 			LEFT JOIN leg l ON s.leg_id = l.id
 			LEFT JOIN matches m ON l.match_id = m.id
-		WHERE player_id IN (?) AND l.num_players = 2 AND m.is_practice = 0
+		WHERE player_id IN (?)
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
+			AND COALESCE(l.leg_type_id, m.match_type_id) = 1
 			AND m.is_bye = 0 AND m.is_walkover = 0 AND leg_id <= COALESCE(?, ~0) -- BIGINT hack
 		GROUP BY player_id
 		ORDER BY player_id DESC`, ids, legID)
