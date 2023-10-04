@@ -143,6 +143,8 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/tournament/match/{id}/probabilities", controllers.GetMatchProbabilities).Methods("GET")
 
 		router.HandleFunc("/badge", controllers.GetBadges).Methods("GET")
+		router.HandleFunc("/badge/statistics", controllers.GetBadgesStatistics).Methods("GET")
+		router.HandleFunc("/badge/{id}/statistics", controllers.GetBadgeStatistics).Methods("GET")
 
 		log.Printf("Listening on port %d", config.APIConfig.Port)
 		log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.APIConfig.Port), router))

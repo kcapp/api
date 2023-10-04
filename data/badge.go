@@ -3,6 +3,8 @@ package data
 import (
 	"database/sql"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/kcapp/api/models"
@@ -14,7 +16,8 @@ func GetBadges() ([]*models.Badge, error) {
 			b.id,
 			b.name,
 			b.description,
-			b.filename
+			b.filename,
+			b.levels
 		FROM badge b`)
 	if err != nil {
 		return nil, err
@@ -24,12 +27,7 @@ func GetBadges() ([]*models.Badge, error) {
 	badges := make([]*models.Badge, 0)
 	for rows.Next() {
 		badge := new(models.Badge)
-		err := rows.Scan(
-			&badge.ID,
-			&badge.Name,
-			&badge.Description,
-			&badge.Filename,
-		)
+		err := rows.Scan(&badge.ID, &badge.Name, &badge.Description, &badge.Filename, &badge.Levels)
 		if err != nil {
 			return nil, err
 		}
@@ -38,7 +36,121 @@ func GetBadges() ([]*models.Badge, error) {
 	return badges, nil
 }
 
-func CheckLegForBadges(leg *models.Leg, statistics map[int]*models.BadgeStatistics) error {
+func GetBadgesStatistics() ([]*models.BadgeStatistics, error) {
+	players, err := GetPlayers()
+	if err != nil {
+		return nil, err
+	}
+	numPlayers := 0
+	for _, player := range players {
+		if !player.IsBot && !player.IsPlaceholder {
+			numPlayers++
+		}
+	}
+	rows, err := models.DB.Query(`
+		SELECT
+			b.id, p2b.level, p2b.value,
+			COUNT(DISTINCT p2b.player_id) AS 'players_unlocked',
+			MIN(p2b.created_at) AS 'first_unlock',
+			GROUP_CONCAT(DISTINCT p2b.player_id ORDER BY p2b.created_at) AS 'players'
+		FROM badge b
+			LEFT JOIN player2badge p2b ON b.id = p2b.badge_id
+		GROUP BY b.id, p2b.level`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	badges := make([]*models.BadgeStatistics, 0)
+	for rows.Next() {
+		var players []uint8
+		statistic := new(models.BadgeStatistics)
+		err := rows.Scan(&statistic.BadgeID, &statistic.Level, &statistic.Value, &statistic.UnlockedPlayers, &statistic.FirstUnlock, &players)
+		if err != nil {
+			return nil, err
+		}
+		playerStr := string(players)
+		if playerStr != "" {
+			playerIDs := strings.Split(playerStr, ",")
+			for _, playerID := range playerIDs {
+				id, err := strconv.Atoi(playerID)
+				if err != nil {
+					return nil, err
+				}
+				statistic.Players = append(statistic.Players, id)
+			}
+		}
+
+		if statistic.UnlockedPlayers > 0 {
+			statistic.UnlockedPercent = float32(statistic.UnlockedPlayers) / float32(numPlayers)
+		}
+		badges = append(badges, statistic)
+	}
+	return badges, nil
+}
+
+func GetBadgeStatistics(badgeID int) ([]*models.PlayerBadge, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			b.id, b.name, b.description, b.filename,
+			p2b.player_id, p2b.level, p2b.value, p2b.leg_id,
+			p2b.match_id, p2b.tournament_id, p2b.opponent_player_id,
+			p2b.visit_id,
+			s.first_dart, IFNULL(s.first_dart_multiplier, 1),
+			s.second_dart, IFNULL(s.second_dart_multiplier, 1),
+			s.third_dart, IFNULL(s.third_dart_multiplier, 1),
+			p2b.created_at
+		FROM player2badge p2b
+			LEFT JOIN badge b ON b.id = p2b.badge_id
+			LEFT JOIN score s on s.id = p2b.visit_id
+		WHERE b.id = ?
+		ORDER BY level, created_at`, badgeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	badges := make([]*models.PlayerBadge, 0)
+	for rows.Next() {
+		badge := new(models.PlayerBadge)
+		badge.Badge = new(models.Badge)
+		darts := make([]*models.Dart, 3)
+		darts[0] = new(models.Dart)
+		darts[1] = new(models.Dart)
+		darts[2] = new(models.Dart)
+
+		err := rows.Scan(
+			&badge.Badge.ID,
+			&badge.Badge.Name,
+			&badge.Badge.Description,
+			&badge.Badge.Filename,
+			&badge.PlayerID,
+			&badge.Level,
+			&badge.Value,
+			&badge.LegID,
+			&badge.MatchID,
+			&badge.TournamentID,
+			&badge.OpponentPlayerID,
+			&badge.VisitID,
+			&darts[0].Value, &darts[0].Multiplier,
+			&darts[1].Value, &darts[1].Multiplier,
+			&darts[2].Value, &darts[2].Multiplier,
+			&badge.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if badge.VisitID.Valid {
+			badge.Darts = darts
+		}
+		badges = append(badges, badge)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return badges, nil
+}
+func CheckLegForBadges(leg *models.Leg, statistics map[int]*models.PlayerBadgeStatistics) error {
 	tx, err := models.DB.Begin()
 	if err != nil {
 		return err
@@ -53,16 +165,16 @@ func CheckLegForBadges(leg *models.Leg, statistics map[int]*models.BadgeStatisti
 	}
 
 	for _, badge := range models.LegBadges {
-		valid, playerID := badge.Validate(leg)
+		valid, playerID, visitID := badge.Validate(leg)
 		if valid {
 			if playerID != nil {
-				err = addLegBadge(tx, *playerID, leg.ID, badge, leg.UpdatedAt)
+				err = addLegBadge(tx, *playerID, leg.ID, visitID, badge, leg.UpdatedAt)
 				if err != nil {
 					return err
 				}
 			} else {
 				for _, playerID := range leg.Players {
-					err = addLegBadge(tx, playerID, leg.ID, badge, leg.UpdatedAt)
+					err = addLegBadge(tx, playerID, leg.ID, visitID, badge, leg.UpdatedAt)
 					if err != nil {
 						return err
 					}
@@ -118,9 +230,9 @@ func AddTournamentBadge(playerID int, tournamentID int, badge models.GlobalBadge
 	return nil
 }
 
-func addLegBadge(tx *sql.Tx, playerID int, legID int, badge models.LegBadge, when time.Time) error {
-	_, err := tx.Exec("INSERT IGNORE INTO player2badge (player_id, badge_id, leg_id, created_at) VALUES (?, ?, ?, ?)",
-		playerID, badge.GetID(), legID, when)
+func addLegBadge(tx *sql.Tx, playerID int, legID int, visitID *int, badge models.LegBadge, when time.Time) error {
+	_, err := tx.Exec("INSERT IGNORE INTO player2badge (player_id, badge_id, leg_id, visit_id, created_at) VALUES (?, ?, ?, ?, ?)",
+		playerID, badge.GetID(), legID, visitID, when)
 	if err != nil {
 		tx.Rollback()
 		return err

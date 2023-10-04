@@ -155,6 +155,18 @@ func (dart Dart) GetString() string {
 	return fmt.Sprintf("%d-NULL", dart.Multiplier)
 }
 
+func (dart Dart) String() string {
+	if !dart.Value.Valid {
+		return ""
+	}
+	if dart.Multiplier == TRIPLE {
+		return fmt.Sprintf("T%d", dart.ValueRaw())
+	} else if dart.Multiplier == DOUBLE {
+		return fmt.Sprintf("D%d", dart.ValueRaw())
+	}
+	return fmt.Sprintf("%d", dart.ValueRaw())
+}
+
 // NewDart will return a new dart with the given settings
 func NewDart(value null.Int, multipler int64) *Dart {
 	return &Dart{Value: value, Multiplier: multipler}

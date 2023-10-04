@@ -1,7 +1,11 @@
 # Changelog
 
 ## [2.8.0] - TBD
+#### Feature
+- Endpoint for getting badge statistics
 
+#### Fixed
+- Return `outshot_type` for `X01 Handicap`
 
 ## [2.7.0] - 2023-09-12
 #### Feature

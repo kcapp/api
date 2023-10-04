@@ -318,8 +318,8 @@ func GetPlayersX01PreviousStatistics(ids []int, startingScores ...int) ([]*model
 			LEFT JOIN matches m2 ON m2.id = l2.match_id AND l2.winner_id = p.id
 		WHERE s.player_id IN (?)
 			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0 AND m.is_walkover = 0
-			AND m.match_type_id = 1
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
+			AND COALESCE(l.leg_type_id, m.match_type_id) = 1
 			-- Exclude all matches played this week
 			AND m.updated_at < (CURRENT_DATE - INTERVAL WEEKDAY(CURRENT_DATE) DAY)
 		GROUP BY s.player_id
@@ -924,7 +924,7 @@ func RecalculateX01Statistics(legs []int) ([]string, error) {
 }
 
 // GetPlayerBadgeStatistics will return statistics calculate badges for the given players
-func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.BadgeStatistics, error) {
+func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.PlayerBadgeStatistics, error) {
 	q, args, err := sqlx.In(`
 		SELECT
 			player_id,
@@ -949,12 +949,12 @@ func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.BadgeStati
 	}
 	defer rows.Close()
 
-	statistics := make(map[int]*models.BadgeStatistics)
+	statistics := make(map[int]*models.PlayerBadgeStatistics)
 	for _, playerID := range ids {
-		statistics[playerID] = new(models.BadgeStatistics)
+		statistics[playerID] = new(models.PlayerBadgeStatistics)
 	}
 	for rows.Next() {
-		s := new(models.BadgeStatistics)
+		s := new(models.PlayerBadgeStatistics)
 		err := rows.Scan(&s.PlayerID, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
 		if err != nil {
 			return nil, err
