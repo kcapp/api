@@ -106,6 +106,8 @@ type BadgeTournament1st struct{ ID int }
 type BadgeTournament2nd struct{ ID int }
 type BadgeTournament3rd struct{ ID int }
 type BadgeUntouchable struct{ ID int }
+type BadgeByeForNow struct{ ID int }
+type BadgeOldTimer struct{ ID int }
 
 func (b BadgeKcappSupporter) GetID() int {
 	return 4
@@ -135,11 +137,101 @@ func (b BadgeUntouchable) GetID() int {
 	return 26
 }
 
-var MatchBadges = []MatchBadge{}
+func (b BadgeByeForNow) GetID() int {
+	return 27
+}
+
+func (b BadgeOldTimer) GetID() int {
+	return 28
+}
+
+type GlobalLevelBadge interface {
+	GetID() int
+	Levels() []int
+}
+
+type BadgeVersatilePlayer struct{ ID int }
+
+func (b BadgeVersatilePlayer) GetID() int {
+	return 29
+}
+
+func (b BadgeVersatilePlayer) Levels() []int {
+	return []int{5, 10, 15, 20}
+}
+
+var MatchBadges = []MatchBadge{
+	BadgeJustAQuickie{ID: 37},
+	BadgeAroundTheWorld{ID: 38},
+}
 
 type MatchBadge interface {
 	GetID() int
-	Validate(*Match) (bool, *int)
+	// Validate returns bool, player.ID
+	Validate(match *Match) (bool, []int)
+}
+
+type BadgeJustAQuickie struct{ ID int }
+type BadgeAroundTheWorld struct{ ID int }
+
+func (b BadgeJustAQuickie) GetID() int {
+	return b.ID
+}
+func (b BadgeJustAQuickie) Validate(match *Match) (bool, []int) {
+	if len(match.Legs) == 3 && len(match.Players) > 1 {
+		first := match.Legs[0]
+		second := match.Legs[1]
+		third := match.Legs[2]
+		if first.GetLastVisit().CreatedAt.Sub(first.Visits[0].CreatedAt).Minutes() <= 2 &&
+			second.GetLastVisit().CreatedAt.Sub(second.Visits[0].CreatedAt).Minutes() <= 2 &&
+			third.GetLastVisit().CreatedAt.Sub(third.Visits[0].CreatedAt).Minutes() <= 2 {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (b BadgeAroundTheWorld) GetID() int {
+	return b.ID
+}
+
+func (b BadgeAroundTheWorld) Validate(match *Match) (bool, []int) {
+	playerHits := make(map[int][]int)
+	for playerID := range match.Players {
+		playerHits[playerID] = make([]int, 0)
+	}
+
+	for _, leg := range match.Legs {
+		for _, visit := range leg.Visits {
+			if !visit.IsBust {
+				playerHits[visit.PlayerID] = append(playerHits[visit.PlayerID], visit.FirstDart.ValueRaw())
+				playerHits[visit.PlayerID] = append(playerHits[visit.PlayerID], visit.SecondDart.ValueRaw())
+				playerHits[visit.PlayerID] = append(playerHits[visit.PlayerID], visit.ThirdDart.ValueRaw())
+			}
+		}
+	}
+
+	players := make([]int, 0)
+	for playerID, hits := range playerHits {
+		allHit := true
+		for i := 1; i <= 20; i++ {
+			if !containsInt(hits, i) {
+				allHit = false
+				break
+			}
+		}
+		if !containsInt(hits, 25) {
+			allHit = false
+			break
+		}
+		if allHit {
+			players = append(players, playerID)
+		}
+	}
+	if len(players) > 0 {
+		return true, players
+	}
+	return false, nil
 }
 
 var LegBadges = []LegBadge{
@@ -153,13 +245,14 @@ var LegBadges = []LegBadge{
 	BadgeBullseye{ID: 14},
 	BadgeEasyAs123{ID: 15},
 	BadgeCloseToPerfect{ID: 16},
+	BadgeLittleFish{ID: 33},
+	BadgeShanghai{ID: 36},
 }
 
 type LegBadge interface {
 	GetID() int
 	Validate(*Leg) (bool, *int, *int)
 }
-
 type BadgeDoubleDouble struct{ ID int }
 type BadgeTripleDouble struct{ ID int }
 type BadgeMadHouse struct{ ID int }
@@ -170,6 +263,13 @@ type BadgeGettingCrowded struct{ ID int }
 type BadgeBullseye struct{ ID int }
 type BadgeEasyAs123 struct{ ID int }
 type BadgeCloseToPerfect struct{ ID int }
+type BadgeLittleFish struct{ ID int }
+type BadgeShanghai struct{ ID int }
+
+type BadgeTripleThreat struct{ ID int }
+type BadgeBabyTon struct{ ID int }
+type BadgeBullBullBull struct{ ID int }
+type BadgeSoClose struct{ ID int }
 
 func (b BadgeDoubleDouble) GetID() int {
 	return b.ID
@@ -265,6 +365,24 @@ func (b BadgeCloseToPerfect) Validate(leg *Leg) (bool, *int, *int) {
 	return leg.StartingScore == 501 && visit.DartsThrown < 15 && visit.DartsThrown > 9, &visit.PlayerID, nil
 }
 
+func (b BadgeLittleFish) GetID() int {
+	return b.ID
+}
+func (b BadgeLittleFish) Validate(leg *Leg) (bool, *int, *int) {
+	visit := leg.GetLastVisit()
+	return visit.FirstDart.ValueRaw() == 20 && visit.FirstDart.IsTriple() &&
+		visit.SecondDart.ValueRaw() == 20 && visit.SecondDart.IsSingle() &&
+		visit.ThirdDart.IsBull() && visit.ThirdDart.IsDouble(), &visit.PlayerID, &visit.ID
+}
+
+func (b BadgeShanghai) GetID() int {
+	return b.ID
+}
+func (b BadgeShanghai) Validate(leg *Leg) (bool, *int, *int) {
+	visit := leg.GetLastVisit()
+	return visit.IsShanghai(), &visit.PlayerID, &visit.ID
+}
+
 var LegPlayerBadges = []LegPlayerBadge{
 	BadgeImpersonator{ID: 21},
 	BadgeBotBeaterEasy{ID: 22},
@@ -274,6 +392,7 @@ var LegPlayerBadges = []LegPlayerBadge{
 
 type LegPlayerBadge interface {
 	GetID() int
+	// Validate returns bool, player.ID
 	Validate(*Leg, []*Player2Leg) (bool, *int)
 }
 
@@ -335,58 +454,56 @@ func (b BadgeBotBeaterHard) Validate(leg *Leg, players []*Player2Leg) (bool, *in
 	return false, nil
 }
 
-var VisitBadges = []VisitBadge{
+var VisitBadgesLevel = []VisitBadgeLevel{
 	BadgeHighScore{ID: 1},
 	BadgeHigherScore{ID: 2},
 	BadgeTheMaximum{ID: 3},
+	BadgeMonotonous{ID: 30},
 }
 
-type VisitBadge interface {
+type VisitBadgeLevel interface {
 	GetID() int
-	Validate(stats *PlayerBadgeStatistics, visits []*Visit) (bool, *int)
+	// Validate returns bool, level, visit.ID
+	Validate(stats *PlayerBadgeStatistics, visits []*Visit) (bool, *int, *int)
 	Levels() []int
 }
 
 type BadgeHighScore struct{ ID int }
 type BadgeHigherScore struct{ ID int }
 type BadgeTheMaximum struct{ ID int }
+type BadgeMonotonous struct{ ID int }
 
 func (b BadgeHighScore) GetID() int {
 	return b.ID
 }
-
 func (b BadgeHighScore) Levels() []int {
 	return []int{1, 10, 100, 1000}
 }
-
-func (b BadgeHighScore) Validate(stats *PlayerBadgeStatistics, visits []*Visit) (bool, *int) {
+func (b BadgeHighScore) Validate(stats *PlayerBadgeStatistics, visits []*Visit) (bool, *int, *int) {
 	count := 0
-	for _, visit := range visits {
-		if visit.PlayerID != stats.PlayerID {
-			continue
-		}
+	playerVisits := getVisitsForPlayer(visits, stats.PlayerID)
+	for _, visit := range playerVisits {
 		if visit.Score >= 100 && visit.Score < 140 {
 			count++
 		}
 	}
 	if count > 0 {
-		level := getLevel(stats.Score100sPlus+count, b.Levels())
-		return true, &level
+		level := GetLevel(stats.Score100sPlus+count, b.Levels())
+		return true, &level, nil
 	}
-	return false, nil
+	return false, nil, nil
 }
 
 func (b BadgeHigherScore) GetID() int {
 	return b.ID
 }
-
 func (b BadgeHigherScore) Levels() []int {
 	return []int{1, 10, 100, 1000}
 }
-
-func (b BadgeHigherScore) Validate(stats *PlayerBadgeStatistics, visits []*Visit) (bool, *int) {
+func (b BadgeHigherScore) Validate(stats *PlayerBadgeStatistics, visits []*Visit) (bool, *int, *int) {
 	count := 0
-	for _, visit := range visits {
+	playerVisits := getVisitsForPlayer(visits, stats.PlayerID)
+	for _, visit := range playerVisits {
 		if visit.PlayerID != stats.PlayerID {
 			continue
 		}
@@ -395,23 +512,22 @@ func (b BadgeHigherScore) Validate(stats *PlayerBadgeStatistics, visits []*Visit
 		}
 	}
 	if count > 0 {
-		level := getLevel(stats.Score140sPlus+count, b.Levels())
-		return true, &level
+		level := GetLevel(stats.Score140sPlus+count, b.Levels())
+		return true, &level, nil
 	}
-	return false, nil
+	return false, nil, nil
 }
 
 func (b BadgeTheMaximum) GetID() int {
 	return b.ID
 }
-
 func (b BadgeTheMaximum) Levels() []int {
 	return []int{1, 10, 50, 100}
 }
-
-func (b BadgeTheMaximum) Validate(stats *PlayerBadgeStatistics, visits []*Visit) (bool, *int) {
+func (b BadgeTheMaximum) Validate(stats *PlayerBadgeStatistics, visits []*Visit) (bool, *int, *int) {
 	count := 0
-	for _, visit := range visits {
+	playerVisits := getVisitsForPlayer(visits, stats.PlayerID)
+	for _, visit := range playerVisits {
 		if visit.PlayerID != stats.PlayerID {
 			continue
 		}
@@ -420,13 +536,107 @@ func (b BadgeTheMaximum) Validate(stats *PlayerBadgeStatistics, visits []*Visit)
 		}
 	}
 	if count > 0 {
-		level := getLevel(stats.Score180s+count, b.Levels())
-		return true, &level
+		level := GetLevel(stats.Score180s+count, b.Levels())
+		return true, &level, nil
+	}
+	return false, nil, nil
+}
+
+func (b BadgeMonotonous) GetID() int {
+	return b.ID
+}
+func (b BadgeMonotonous) Levels() []int {
+	return []int{3, 4, 5, 6}
+}
+func (b BadgeMonotonous) Validate(stats *PlayerBadgeStatistics, visits []*Visit) (bool, *int, *int) {
+	playerVisits := getVisitsForPlayer(visits, stats.PlayerID)
+	for i := len(b.Levels()) - 1; i >= 0; i-- {
+		monotonous, visit := hasSameVisitsInARow(playerVisits, b.Levels()[i])
+		if monotonous {
+			level := i + 1
+			return true, &level, &visit.ID
+		}
+	}
+	return false, nil, nil
+}
+
+var VisitBadges = []VisitBadge{
+	BadgeTripleThreat{ID: 31},
+	BadgeBabyTon{ID: 32},
+	BadgeBullBullBull{ID: 34},
+	BadgeSoClose{ID: 35},
+}
+
+type VisitBadge interface {
+	GetID() int
+	// Validate returns bool, visit.ID
+	Validate(playerID int, visits []*Visit) (bool, *int)
+}
+
+func (b BadgeTripleThreat) GetID() int {
+	return b.ID
+}
+func (b BadgeTripleThreat) Validate(playerID int, visits []*Visit) (bool, *int) {
+	values := []int{20, 19, 18}
+	playerVisits := getVisitsForPlayer(visits, playerID)
+	for _, visit := range playerVisits {
+		if visit.GetScore() == 168 &&
+			visit.FirstDart.IsTriple() && visit.SecondDart.IsTriple() && visit.ThirdDart.IsTriple() &&
+			visit.FirstDart.IsValue(values) && visit.SecondDart.IsValue(values) && visit.ThirdDart.IsValue(values) {
+			return true, &visit.ID
+		}
 	}
 	return false, nil
 }
 
-func getLevel(value int, levels []int) int {
+func (b BadgeBabyTon) GetID() int {
+	return b.ID
+}
+func (b BadgeBabyTon) Validate(playerID int, visits []*Visit) (bool, *int) {
+	value := []int{19}
+	playerVisits := getVisitsForPlayer(visits, playerID)
+	for _, visit := range playerVisits {
+		if visit.GetScore() == 95 && visit.FirstDart.IsValue(value) && visit.SecondDart.IsValue(value) && visit.ThirdDart.IsValue(value) &&
+			// Only allow a Baby Ton to be T19, 19, 19
+			!visit.FirstDart.IsDouble() && !visit.SecondDart.IsDouble() && !visit.ThirdDart.IsDouble() {
+			return true, &visit.ID
+		}
+	}
+	return false, nil
+}
+
+func (b BadgeBullBullBull) GetID() int {
+	return b.ID
+}
+func (b BadgeBullBullBull) Validate(playerID int, visits []*Visit) (bool, *int) {
+	playerVisits := getVisitsForPlayer(visits, playerID)
+	for _, visit := range playerVisits {
+		if visit.FirstDart.IsBull() && visit.FirstDart.IsDouble() &&
+			visit.SecondDart.IsBull() && visit.SecondDart.IsDouble() &&
+			visit.ThirdDart.IsBull() && visit.ThirdDart.IsDouble() {
+			return true, &visit.ID
+		}
+	}
+	return false, nil
+}
+
+func (b BadgeSoClose) GetID() int {
+	return b.ID
+}
+func (b BadgeSoClose) Validate(playerID int, visits []*Visit) (bool, *int) {
+	value := []int{1}
+	playerVisits := getVisitsForPlayer(visits, playerID)
+	for _, visit := range playerVisits {
+		if visit.FirstDart.IsTriple() && visit.FirstDart.IsValue(value) &&
+			visit.SecondDart.IsTriple() && visit.SecondDart.IsValue(value) &&
+			visit.ThirdDart.IsTriple() && visit.ThirdDart.IsValue(value) {
+			return true, &visit.ID
+		}
+	}
+	return false, nil
+}
+
+func GetLevel(value int, levels []int) int {
 	level := 1
 	for i, treshold := range levels {
 		if value > treshold {
@@ -443,4 +653,40 @@ func getBot(skill int64, players []*Player2Leg) *Player2Leg {
 		}
 	}
 	return nil
+}
+
+func hasSameVisitsInARow(visits []*Visit, numVisits int) (bool, *Visit) {
+	if len(visits) < numVisits {
+		return false, nil
+	}
+
+	for i := numVisits - 1; i < len(visits); i++ {
+		sameVisits := true
+		var visit *Visit
+		for j := 0; j < numVisits-1; j++ {
+			visit = visits[i-j]
+			if visit.FirstDart.IsMiss() || visit.SecondDart.IsMiss() || visit.ThirdDart.IsMiss() {
+				sameVisits = false
+				break
+			}
+			if !visits[i-j].isEqualTo(*visits[i-j-1]) {
+				sameVisits = false
+				break
+			}
+		}
+		if sameVisits {
+			return true, visit
+		}
+	}
+	return false, nil
+}
+
+func getVisitsForPlayer(visits []*Visit, playerID int) []*Visit {
+	playerVisits := make([]*Visit, 0)
+	for _, visit := range visits {
+		if visit.PlayerID == playerID {
+			playerVisits = append(playerVisits, visit)
+		}
+	}
+	return playerVisits
 }

@@ -549,6 +549,11 @@ func FinishLeg(visit models.Visit) error {
 				}
 			}
 		}
+
+		err = CheckMatchForBadges(match)
+		if err != nil {
+			return err
+		}
 	} else {
 		log.Printf("Match %d is not finished, creating next leg", match.ID)
 		var matchType *int

@@ -153,6 +153,7 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 	// Use a type to get consistent order of JSON key-value pairs.
 	type legJSON struct {
 		ID                 int                 `json:"id"`
+		StartTime          null.Time           `json:"start_time,omitempty"`
 		Endtime            null.Time           `json:"end_time"`
 		StartingScore      int                 `json:"starting_score"`
 		IsFinished         bool                `json:"is_finished"`
@@ -175,9 +176,17 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 	}
 	round := int(math.Floor(float64(len(leg.Visits))/float64(len(leg.Players))) + 1)
 
+	startTime := null.TimeFrom(leg.CreatedAt)
+	endTime := leg.Endtime
+	if leg.Visits != nil && len(leg.Visits) > 0 {
+		startTime = null.TimeFrom(leg.Visits[0].CreatedAt)
+		endTime = null.TimeFrom(leg.GetLastVisit().CreatedAt)
+	}
+
 	return json.Marshal(legJSON{
 		ID:                 leg.ID,
-		Endtime:            leg.Endtime,
+		StartTime:          startTime,
+		Endtime:            endTime,
 		StartingScore:      leg.StartingScore,
 		IsFinished:         leg.IsFinished,
 		CurrentPlayerID:    leg.CurrentPlayerID,

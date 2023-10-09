@@ -215,6 +215,15 @@ func (dart Dart) ValueRaw() int {
 	return 0
 }
 
+func (dart Dart) IsValue(values []int) bool {
+	for _, value := range values {
+		if dart.ValueRaw() == value {
+			return true
+		}
+	}
+	return false
+}
+
 // GetMarksHit will return the number of marks hit by the given darts, accounting for numbers requiring less than 3 hits to close
 // If the number is still open by other players hits = multiplier, otherwise hits = multiplier - prev_hits
 func (dart *Dart) GetMarksHit(hits map[int]int64, open bool) int64 {

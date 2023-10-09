@@ -889,3 +889,33 @@ func SwapPlayers(matchID int, newPlayerID int, oldPlayerID int) error {
 	log.Printf("Swapped player %d with %d for match %d", oldPlayerID, newPlayerID, matchID)
 	return nil
 }
+
+// GetBadgeMatchesToRecalculate returns all matches which can generate badges which can be recalculated
+func GetBadgeMatchesToRecalculate() ([]int, error) {
+	rows, err := models.DB.Query(`
+		SELECT m.id FROM matches m
+			LEFT JOIN leg l ON l.match_id = m.id
+		WHERE m.is_abandoned = 0 AND m.is_bye = 0 AND m.is_walkover = 0
+			AND m.is_finished = 1 AND l.has_scores = 1 AND m.match_type_id = 1
+		GROUP BY m.id
+		ORDER BY m.id ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	matches := make([]int, 0)
+	for rows.Next() {
+		var matchID int
+		err := rows.Scan(&matchID)
+		if err != nil {
+			return nil, err
+		}
+		matches = append(matches, matchID)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return matches, nil
+}

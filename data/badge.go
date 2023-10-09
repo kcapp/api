@@ -103,8 +103,9 @@ func GetBadgeStatistics(badgeID int) ([]*models.PlayerBadge, error) {
 		FROM player2badge p2b
 			LEFT JOIN badge b ON b.id = p2b.badge_id
 			LEFT JOIN score s on s.id = p2b.visit_id
+			LEFT JOIN player p on p.id = p2b.player_id
 		WHERE b.id = ?
-		ORDER BY level, created_at`, badgeID)
+		ORDER BY level, created_at, p.first_name`, badgeID)
 	if err != nil {
 		return nil, err
 	}
@@ -168,13 +169,13 @@ func CheckLegForBadges(leg *models.Leg, statistics map[int]*models.PlayerBadgeSt
 		valid, playerID, visitID := badge.Validate(leg)
 		if valid {
 			if playerID != nil {
-				err = addLegBadge(tx, *playerID, leg.ID, visitID, badge, leg.UpdatedAt)
+				err = addBadge(tx, badge.GetID(), nil, nil, *playerID, nil, &leg.ID, visitID, leg.UpdatedAt)
 				if err != nil {
 					return err
 				}
 			} else {
 				for _, playerID := range leg.Players {
-					err = addLegBadge(tx, playerID, leg.ID, visitID, badge, leg.UpdatedAt)
+					err = addBadge(tx, badge.GetID(), nil, nil, playerID, nil, &leg.ID, visitID, leg.UpdatedAt)
 					if err != nil {
 						return err
 					}
@@ -186,19 +187,30 @@ func CheckLegForBadges(leg *models.Leg, statistics map[int]*models.PlayerBadgeSt
 	for _, badge := range models.LegPlayerBadges {
 		valid, playerID := badge.Validate(leg, players)
 		if valid {
-			err = addLegPlayerBadge(tx, *playerID, leg.ID, badge, leg.UpdatedAt)
+			err = addBadge(tx, badge.GetID(), nil, nil, *playerID, nil, &leg.ID, nil, leg.UpdatedAt)
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	for _, badge := range models.VisitBadges {
+	for _, badge := range models.VisitBadgesLevel {
 		for _, playerID := range leg.Players {
 			stats := statistics[playerID]
-			valid, level := badge.Validate(stats, leg.Visits)
+			valid, level, visitID := badge.Validate(stats, leg.Visits)
 			if valid {
-				err = addVisitBadge(tx, playerID, *level, leg.ID, badge, leg.UpdatedAt)
+				err = addBadge(tx, badge.GetID(), level, badge.Levels(), playerID, nil, &leg.ID, visitID, leg.UpdatedAt)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	for _, badge := range models.VisitBadges {
+		for _, playerID := range leg.Players {
+			valid, visitID := badge.Validate(playerID, leg.Visits)
+			if valid {
+				err = addBadge(tx, badge.GetID(), nil, nil, playerID, nil, &leg.ID, visitID, leg.UpdatedAt)
 				if err != nil {
 					return err
 				}
@@ -210,9 +222,56 @@ func CheckLegForBadges(leg *models.Leg, statistics map[int]*models.PlayerBadgeSt
 	return nil
 }
 
-func AddBadge(playerID int, badge models.GlobalBadge) error {
+func CheckMatchForBadges(match *models.Match) error {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, badge := range models.MatchBadges {
+		valid, playerIDs := badge.Validate(match)
+		if valid {
+			if playerIDs != nil {
+				for _, playerID := range playerIDs {
+					err = addBadge(tx, badge.GetID(), nil, nil, playerID, &match.ID, nil, nil, match.EndTime)
+					if err != nil {
+						return err
+					}
+				}
+			} else {
+				for _, playerID := range match.Players {
+					err = addBadge(tx, badge.GetID(), nil, nil, playerID, &match.ID, nil, nil, match.EndTime)
+					if err != nil {
+						return err
+					}
+				}
+			}
+
+		}
+	}
+	tx.Commit()
+
+	return nil
+}
+
+func AddGlobalBadge(playerID int, badge models.GlobalBadge) error {
+	return AddGlobalBadgeWithTime(playerID, badge, time.Now())
+}
+
+func AddGlobalBadgeWithTime(playerID int, badge models.GlobalBadge, when time.Time) error {
 	_, err := models.DB.Exec("INSERT IGNORE INTO player2badge (player_id, badge_id, created_at) VALUES (?, ?, ?)",
-		playerID, badge.GetID(), time.Now())
+		playerID, badge.GetID(), when)
+	if err != nil {
+		return err
+	}
+	log.Printf("Added global badge %d to player %d", badge.GetID(), playerID)
+	return nil
+}
+
+func AddGlobalLevelBadge(playerID int, level int, badge models.GlobalLevelBadge) error {
+	_, err := models.DB.Exec(`INSERT INTO player2badge (player_id, badge_id, level, value, created_at) VALUES (?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE value=IF(?>level,?,value),level=?`,
+		playerID, badge.GetID(), level, badge.Levels()[level-1], time.Now(), level, badge.Levels()[level-1], level)
 	if err != nil {
 		return err
 	}
@@ -230,36 +289,31 @@ func AddTournamentBadge(playerID int, tournamentID int, badge models.GlobalBadge
 	return nil
 }
 
-func addLegBadge(tx *sql.Tx, playerID int, legID int, visitID *int, badge models.LegBadge, when time.Time) error {
-	_, err := tx.Exec("INSERT IGNORE INTO player2badge (player_id, badge_id, leg_id, visit_id, created_at) VALUES (?, ?, ?, ?, ?)",
-		playerID, badge.GetID(), legID, visitID, when)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	log.Printf("Added leg badge %d to player %d on leg %d", badge.GetID(), playerID, legID)
-	return nil
-}
+func addBadge(tx *sql.Tx, badgeID int, level *int, levels []int, playerID int, matchID *int, legID *int, visitID *int, when time.Time) error {
+	if level != nil {
+		_, err := tx.Exec(`INSERT INTO player2badge(player_id, badge_id, level, value, leg_id, visit_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE leg_id=IF(?>level,?,leg_id), visit_id=IF(?>level,?,visit_id), created_at=IF(?>level,?,created_at), value=IF(?>level,?,value),level=?`,
+			playerID, badgeID, level, levels[*level-1], legID, visitID, when, level, legID, level, visitID, level, when, level, levels[*level-1], level)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		log.Printf("Added badge %d (level %d) to player %d on leg %d", badgeID, *level, playerID, *legID)
+	} else {
+		_, err := tx.Exec("INSERT IGNORE INTO player2badge (player_id, badge_id, match_id, leg_id, visit_id, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+			playerID, badgeID, matchID, legID, visitID, when)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		if legID != nil {
+			log.Printf("Added badge %d to player %d on leg %d", badgeID, playerID, *legID)
+		} else if matchID != nil {
+			log.Printf("Added badge %d to player %d on match %d", badgeID, playerID, *matchID)
+		} else {
+			log.Printf("Added badge %d to player %d", badgeID, playerID)
 
-func addLegPlayerBadge(tx *sql.Tx, playerID int, legID int, badge models.LegPlayerBadge, when time.Time) error {
-	_, err := tx.Exec("INSERT IGNORE INTO player2badge (player_id, badge_id, leg_id, created_at) VALUES (?, ?, ?, ?)",
-		playerID, badge.GetID(), legID, when)
-	if err != nil {
-		tx.Rollback()
-		return err
+		}
 	}
-	log.Printf("Added leg player badge %d to player %d on leg %d", badge.GetID(), playerID, legID)
-	return nil
-}
-
-func addVisitBadge(tx *sql.Tx, playerID int, level int, legID int, badge models.VisitBadge, when time.Time) error {
-	_, err := tx.Exec(`INSERT INTO player2badge (player_id, badge_id, level, value, leg_id, created_at) VALUES (?, ?, ?, ?, ?, ?)
-		ON DUPLICATE KEY UPDATE leg_id=IF(?>level,?,leg_id), created_at=IF(?>level,?,created_at), value=IF(?>level,?,value),level=?`,
-		playerID, badge.GetID(), level, badge.Levels()[level-1], legID, when, level, legID, level, when, level, badge.Levels()[level-1], level)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	log.Printf("Added visit badge %d (level %d) to player %d on leg %d", badge.GetID(), level, playerID, legID)
 	return nil
 }

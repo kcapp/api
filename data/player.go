@@ -1337,3 +1337,34 @@ func GetPlayerHits(playerID int, visit models.Visit) ([]*models.Visit, error) {
 	}
 	return hits, nil
 }
+
+func GetPlayersMatchTypes() (map[int]int, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			p2l.player_id,
+			COUNT(DISTINCT COALESCE(l.leg_type_id, m.match_type_id)) AS 'match_types'
+		FROM kcapp.player2leg p2l
+			LEFT JOIN leg l ON l.id = p2l.leg_id
+			LEFT JOIN matches m ON l.match_id = m.id
+		WHERE l.is_finished = 1 AND m.is_finished = 1
+		GROUP BY p2l.player_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	m := make(map[int]int)
+	for rows.Next() {
+		var playerID int
+		var matchTypes int
+		err := rows.Scan(&playerID, &matchTypes)
+		if err != nil {
+			return nil, err
+		}
+		m[playerID] = matchTypes
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return m, nil
+}

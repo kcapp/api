@@ -3,6 +3,7 @@
 ## [2.8.0] - TBD
 #### Feature
 - Endpoint for getting badge statistics
+- Lots of new badges
 
 #### Fixed
 - Return `outshot_type` for `X01 Handicap`
