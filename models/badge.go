@@ -370,8 +370,9 @@ func (b BadgeLittleFish) GetID() int {
 }
 func (b BadgeLittleFish) Validate(leg *Leg) (bool, *int, *int) {
 	visit := leg.GetLastVisit()
-	return visit.FirstDart.ValueRaw() == 20 && visit.FirstDart.IsTriple() &&
-		visit.SecondDart.ValueRaw() == 20 && visit.SecondDart.IsSingle() &&
+	return visit.GetScore() == 130 &&
+		visit.FirstDart.ValueRaw() == 20 && (visit.FirstDart.IsSingle() || visit.FirstDart.IsTriple()) &&
+		visit.SecondDart.ValueRaw() == 20 && (visit.SecondDart.IsSingle() || visit.SecondDart.IsTriple()) &&
 		visit.ThirdDart.IsBull() && visit.ThirdDart.IsDouble(), &visit.PlayerID, &visit.ID
 }
 
