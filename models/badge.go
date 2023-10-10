@@ -182,10 +182,10 @@ func (b BadgeJustAQuickie) Validate(match *Match) (bool, []int) {
 		first := match.Legs[0]
 		second := match.Legs[1]
 		third := match.Legs[2]
-		if first.GetLastVisit().CreatedAt.Sub(first.Visits[0].CreatedAt).Minutes() <= 2 &&
-			second.GetLastVisit().CreatedAt.Sub(second.Visits[0].CreatedAt).Minutes() <= 2 &&
-			third.GetLastVisit().CreatedAt.Sub(third.Visits[0].CreatedAt).Minutes() <= 2 {
-			return true, nil
+		if first.GetLastVisit().CreatedAt.Sub(first.Visits[0].CreatedAt).Minutes() <= 3 &&
+			second.GetLastVisit().CreatedAt.Sub(second.Visits[0].CreatedAt).Minutes() <= 3 &&
+			third.GetLastVisit().CreatedAt.Sub(third.Visits[0].CreatedAt).Minutes() <= 3 {
+			return true, []int{int(match.WinnerID.Int64)}
 		}
 	}
 	return false, nil

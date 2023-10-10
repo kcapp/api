@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"math"
+	"sort"
 	"time"
 
 	"github.com/guregu/null"
@@ -395,15 +396,16 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			IFNULL(SUM(s.first_nine_ppd_score) / (9 * (COUNT(DISTINCT s.leg_id))), -1) AS 'first_nine_ppd',
 			IFNULL(SUM(s.ppd_score) / SUM(s.darts_thrown) * 3, -1) AS 'three_dart_avg',
 			IFNULL(SUM(s.first_nine_ppd_score) * 3 / (9 * (COUNT(DISTINCT s.leg_id))), -1) AS 'first_nine_three_dart_avg',
-			IFNULL(SUM(60s_plus), 0) AS '60s_plus',
-			IFNULL(SUM(100s_plus), 0) AS '100s_plus',
-			IFNULL(SUM(140s_plus), 0) AS '140s_plus',
-			IFNULL(SUM(180s), 0) AS '180s',
-			IFNULL(SUM(accuracy_20) / COUNT(accuracy_20), -1) AS 'accuracy_20s',
-			IFNULL(SUM(accuracy_19) / COUNT(accuracy_19), -1) AS 'accuracy_19s',
-			IFNULL(SUM(overall_accuracy) / COUNT(overall_accuracy), -1) AS 'accuracy_overall',
+			IFNULL(SUM(s.60s_plus), 0) AS '60s_plus',
+			IFNULL(SUM(s.100s_plus), 0) AS '100s_plus',
+			IFNULL(SUM(s.140s_plus), 0) AS '140s_plus',
+			IFNULL(SUM(s.180s), 0) AS '180s',
+			IFNULL(SUM(s.accuracy_20) / COUNT(s.accuracy_20), -1) AS 'accuracy_20s',
+			IFNULL(SUM(s.accuracy_19) / COUNT(s.accuracy_19), -1) AS 'accuracy_19s',
+			IFNULL(SUM(s.overall_accuracy) / COUNT(s.overall_accuracy), -1) AS 'accuracy_overall',
 			IFNULL(SUM(s.checkout_attempts), -1) AS 'checkout_attempts',
-			IFNULL(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100, -1) AS 'checkout_percentage'
+			IFNULL(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100, -1) AS 'checkout_percentage',
+			IFNULL((SUM(s_won.darts_thrown)/(COUNT(DISTINCT legs_for.id))), -1) AS 'darts_per_leg'
 		FROM player2leg p2l
 			JOIN matches m ON m.id = p2l.match_id
 			JOIN player p ON p.id = p2l.player_id
@@ -413,6 +415,7 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			LEFT JOIN matches draw ON draw.id = p2l.match_id AND draw.is_finished AND draw.winner_id IS NULL
 			LEFT JOIN leg legs_for ON legs_for.id = p2l.leg_id AND legs_for.winner_id = p.id
 			LEFT JOIN leg legs_against ON legs_against.id = p2l.leg_id AND legs_against.winner_id <> p.id
+			LEFT JOIN statistics_x01 s_won on s_won.leg_id = legs_for.id AND s.player_id = p.id and s_won.checkout is not null
 			LEFT JOIN matches finished ON m.id = finished.id AND finished.is_finished = 1
 			JOIN tournament t ON t.id = m.tournament_id
 			JOIN player2tournament p2t ON p2t.player_id = p.id AND p2t.tournament_id = t.id
@@ -434,7 +437,8 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			&group.Name, &group.Division, &stats.PlayerID, &stats.IsPromoted, &stats.IsRelegated, &stats.IsWinner, &stats.ManualOrder, &stats.Played, &stats.MatchesWon,
 			&stats.MatchesDraw, &stats.MatchesLost, &stats.LegsFor, &stats.LegsAgainst, &stats.LegsDifference, &stats.Points, &stats.PPD,
 			&stats.FirstNinePPD, &stats.ThreeDartAvg, &stats.FirstNineThreeDartAvg, &stats.Score60sPlus, &stats.Score100sPlus, &stats.Score140sPlus,
-			&stats.Score180s, &stats.Accuracy20, &stats.Accuracy19, &stats.AccuracyOverall, &stats.CheckoutAttempts, &stats.CheckoutPercentage)
+			&stats.Score180s, &stats.Accuracy20, &stats.Accuracy19, &stats.AccuracyOverall, &stats.CheckoutAttempts, &stats.CheckoutPercentage,
+			&stats.DartsPerLeg)
 		if err != nil {
 			return nil, err
 		}
@@ -478,6 +482,37 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 			statistics.Best701DartsThrown = append(statistics.Best701DartsThrown, val.Best701)
 		}
 	}
+	if statistics.Best301DartsThrown != nil {
+		sort.Slice(statistics.Best301DartsThrown, func(i, j int) bool {
+			val1 := statistics.Best301DartsThrown[i]
+			val2 := statistics.Best301DartsThrown[j]
+			if val1.Value == val2.Value {
+				return val1.LegID < val2.LegID
+			}
+			return val1.Value < val2.Value
+		})
+	}
+	if statistics.Best501DartsThrown != nil {
+		sort.Slice(statistics.Best501DartsThrown, func(i, j int) bool {
+			val1 := statistics.Best501DartsThrown[i]
+			val2 := statistics.Best501DartsThrown[j]
+			if val1.Value == val2.Value {
+				return val1.LegID < val2.LegID
+			}
+			return val1.Value < val2.Value
+		})
+	}
+	if statistics.Best301DartsThrown != nil {
+		sort.Slice(statistics.Best701DartsThrown, func(i, j int) bool {
+			val1 := statistics.Best701DartsThrown[i]
+			val2 := statistics.Best701DartsThrown[j]
+			if val1.Value == val2.Value {
+				return val1.LegID < val2.LegID
+			}
+			return val1.Value < val2.Value
+		})
+	}
+
 	generalStatistics, err := getTournamentGeneralStatistics(tournamentID)
 	if err != nil {
 		return nil, err
@@ -684,7 +719,6 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 	for _, val := range bestStatistics {
 		s = append(s, val)
 	}
-
 	return s, nil
 }
 

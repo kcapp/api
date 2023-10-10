@@ -3,7 +3,11 @@
 ## [2.8.0] - TBD
 #### Feature
 - Endpoint for getting badge statistics
+- Added Darts Per Leg `DPL` metric to tournament
 - Lots of new badges
+
+#### Changed
+- Sort tournament best statistics by leg id for equal values
 
 #### Fixed
 - Return `outshot_type` for `X01 Handicap`
