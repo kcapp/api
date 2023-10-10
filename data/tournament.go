@@ -405,7 +405,7 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			IFNULL(SUM(s.overall_accuracy) / COUNT(s.overall_accuracy), -1) AS 'accuracy_overall',
 			IFNULL(SUM(s.checkout_attempts), -1) AS 'checkout_attempts',
 			IFNULL(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100, -1) AS 'checkout_percentage',
-			IFNULL((SUM(s_won.darts_thrown)/(COUNT(DISTINCT legs_for.id))), -1) AS 'darts_per_leg'
+			IFNULL((SUM(s_won.darts_thrown)/(COUNT(DISTINCT s_won.id))), -1) AS 'darts_per_leg'
 		FROM player2leg p2l
 			JOIN matches m ON m.id = p2l.match_id
 			JOIN player p ON p.id = p2l.player_id
