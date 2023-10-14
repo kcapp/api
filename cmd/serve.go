@@ -144,6 +144,7 @@ var serveCmd = &cobra.Command{
 
 		router.HandleFunc("/badge", controllers.GetBadges).Methods("GET")
 		router.HandleFunc("/badge/statistics", controllers.GetBadgesStatistics).Methods("GET")
+		router.HandleFunc("/badge/{id}", controllers.GetBadge).Methods("GET")
 		router.HandleFunc("/badge/{id}/statistics", controllers.GetBadgeStatistics).Methods("GET")
 
 		log.Printf("Listening on port %d", config.APIConfig.Port)

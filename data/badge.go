@@ -36,6 +36,22 @@ func GetBadges() ([]*models.Badge, error) {
 	return badges, nil
 }
 
+func GetBadge(badgeID int) (*models.Badge, error) {
+	badge := new(models.Badge)
+	err := models.DB.QueryRow(`
+		SELECT
+			b.id,
+			b.name,
+			b.description,
+			b.filename,
+			b.levels
+		FROM badge b WHERE b.id = ?`, badgeID).Scan(&badge.ID, &badge.Name, &badge.Description, &badge.Filename, &badge.Levels)
+	if err != nil {
+		return nil, err
+	}
+	return badge, nil
+}
+
 func GetBadgesStatistics() ([]*models.BadgeStatistics, error) {
 	players, err := GetPlayers()
 	if err != nil {
