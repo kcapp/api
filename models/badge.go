@@ -222,7 +222,6 @@ func (b BadgeAroundTheWorld) Validate(match *Match) (bool, []int) {
 		}
 		if !containsInt(hits, 25) {
 			allHit = false
-			break
 		}
 		if allHit {
 			players = append(players, playerID)

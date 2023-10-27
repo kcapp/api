@@ -609,6 +609,40 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 				}
 			}
 		}
+	} else if matchType == models.ONESEVENTY {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			player.CurrentScore = 170
+			player.DartsThrown = 0
+			player.CurrentPoints = null.IntFrom(0)
+		}
+
+		round := 1
+		for i, visit := range visits {
+			if i > 0 && i%len(players) == 0 {
+				round++
+			}
+			player := scores[visit.PlayerID]
+
+			player.DartsThrown += 3
+			if !visit.IsBust {
+				player.CurrentScore -= visit.GetScore()
+			}
+
+			if player.CurrentScore == 0 && visit.GetLastDart().IsDouble() {
+				// We hit a checkout, reset
+				player.CurrentScore = 170
+				player.CurrentPoints.Int64++
+				player.DartsThrown = 0
+			} else if round != 1 && player.DartsThrown%9 == 0 {
+				// 9 Darts have been thrown, reset
+				player.CurrentScore = 170
+				player.DartsThrown = 0
+			}
+		}
 	}
 	return scores, nil
 }
