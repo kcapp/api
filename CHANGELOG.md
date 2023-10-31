@@ -8,6 +8,7 @@
 
 #### Changed
 - Sort tournament best statistics by leg id for equal values
+- Use tournament elo if available for odds
 
 #### Fixed
 - Return `outshot_type` for `X01 Handicap`
