@@ -464,15 +464,6 @@ func GetX01StatisticsForPlayer(id int, matchType int) (*models.StatisticsX01, er
 
 // GetX01HistoryForPlayer will return history of X01 statistics for the given player
 func GetX01HistoryForPlayer(id int, limit int, matchType int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(matchType, false)
-	if err != nil {
-		return nil, err
-	}
-	m := make(map[int]*models.Leg)
-	for _, leg := range legs {
-		m[leg.ID] = leg
-	}
-
 	rows, err := models.DB.Query(`
 		SELECT
 			l.id AS 'leg_id',
@@ -506,7 +497,8 @@ func GetX01HistoryForPlayer(id int, limit int, matchType int) ([]*models.Leg, er
 	}
 	defer rows.Close()
 
-	legs = make([]*models.Leg, 0)
+	statistics := make(map[int]*models.StatisticsX01, 0)
+	legIDs := make([]int, 0)
 	for rows.Next() {
 		s := new(models.StatisticsX01)
 		err := rows.Scan(&s.LegID, &s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus,
@@ -515,9 +507,16 @@ func GetX01HistoryForPlayer(id int, limit int, matchType int) ([]*models.Leg, er
 		if err != nil {
 			return nil, err
 		}
-		leg := m[s.LegID]
-		leg.Statistics = s
-		legs = append(legs, leg)
+		statistics[s.LegID] = s
+		legIDs = append(legIDs, s.LegID)
+	}
+
+	legs, err := GetLegs(legIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, leg := range legs {
+		leg.Statistics = statistics[leg.ID]
 	}
 	return legs, nil
 }

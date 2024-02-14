@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/guregu/null"
+	"github.com/jmoiron/sqlx"
 	"github.com/kcapp/api/models"
 	"github.com/kcapp/api/util"
 )
@@ -750,6 +751,65 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 	return legs, nil
 }
 
+// GetLegs returns all legs with the given IDs
+func GetLegs(ids []int) ([]*models.Leg, error) {
+	q, args, err := sqlx.In(`
+		SELECT
+			l.id, l.end_time, l.starting_score, l.is_finished,
+			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
+			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC) as "players",
+			mt.id as 'match_type_id', mt.name, mt.description
+		FROM leg l
+			LEFT JOIN player2leg p2l ON p2l.leg_id = l.id
+			LEFT JOIN matches m ON m.id = l.match_id
+			LEFT JOIN match_type mt on mt.id = IFNULL(l.leg_type_id, m.match_type_id)
+		WHERE l.id IN(?)
+		GROUP BY l.id
+		ORDER BY l.id ASC`, ids)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := models.DB.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	legs := make([]*models.Leg, 0)
+	for rows.Next() {
+		leg := new(models.Leg)
+		leg.LegType = new(models.MatchType)
+		var players string
+		err := rows.Scan(&leg.ID, &leg.Endtime, &leg.StartingScore, &leg.IsFinished, &leg.CurrentPlayerID,
+			&leg.WinnerPlayerID, &leg.CreatedAt, &leg.UpdatedAt, &leg.MatchID, &leg.HasScores, &players, &leg.LegType.ID,
+			&leg.LegType.Name, &leg.LegType.Description)
+		if err != nil {
+			return nil, err
+		}
+		leg.Players = util.StringToIntArray(players)
+		visits, err := GetLegVisits(leg.ID)
+		if err != nil {
+			return nil, err
+		}
+		leg.Visits = visits
+
+		matchType := leg.LegType.ID
+		if matchType == models.X01 || matchType == models.X01HANDICAP || matchType == models.TICTACTOE || matchType == models.KNOCKOUT ||
+			matchType == models.ONESEVENTY {
+			leg.Parameters, err = GetLegParameters(leg.ID)
+			if err != nil {
+				return nil, err
+			}
+		}
+		legs = append(legs, leg)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return legs, nil
+}
+
 // GetLegsOfType returns all legs with scores for the given match type
 func GetLegsOfType(matchType int, loadVisits bool) ([]*models.Leg, error) {
 	rows, err := models.DB.Query(`
@@ -791,6 +851,7 @@ func GetLegsOfType(matchType int, loadVisits bool) ([]*models.Leg, error) {
 				return nil, err
 			}
 		}
+		leg.LegType = &models.MatchType{ID: matchType}
 		legs = append(legs, leg)
 	}
 	if err = rows.Err(); err != nil {
