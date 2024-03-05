@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"sort"
 	"time"
 
 	"github.com/guregu/null"
@@ -31,35 +32,37 @@ type BadgeStatistics struct {
 
 // PlayerBadge represents a Player2Badge model.
 type PlayerBadge struct {
-	Badge            *Badge    `json:"badge"`
-	PlayerID         int       `json:"player_id"`
-	Level            null.Int  `json:"level,omitempty"`
-	LegID            null.Int  `json:"leg_id,omitempty"`
-	Value            null.Int  `json:"value,omitempty"`
-	MatchID          null.Int  `json:"match_id,omitempty"`
-	OpponentPlayerID null.Int  `json:"opponent_player_id,omitempty"`
-	TournamentID     null.Int  `json:"tournament_id,omitempty"`
-	VisitID          null.Int  `json:"visit_id,omitempty"`
-	Darts            []*Dart   `json:"darts,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
+	Badge            *Badge                 `json:"badge"`
+	PlayerID         int                    `json:"player_id"`
+	Level            null.Int               `json:"level,omitempty"`
+	LegID            null.Int               `json:"leg_id,omitempty"`
+	Value            null.Int               `json:"value,omitempty"`
+	MatchID          null.Int               `json:"match_id,omitempty"`
+	OpponentPlayerID null.Int               `json:"opponent_player_id,omitempty"`
+	TournamentID     null.Int               `json:"tournament_id,omitempty"`
+	VisitID          null.Int               `json:"visit_id,omitempty"`
+	Darts            []*Dart                `json:"darts,omitempty"`
+	CreatedAt        time.Time              `json:"created_at"`
+	Statistics       *PlayerBadgeStatistics `json:"statistics,omitempty"`
 }
 
 // MarshalJSON will marshall the given object to JSON
 func (pb PlayerBadge) MarshalJSON() ([]byte, error) {
 	// Use a type to get consistent order of JSON key-value pairs.
 	type playerBadgeJSON struct {
-		Badge            *Badge    `json:"badge"`
-		PlayerID         int       `json:"player_id"`
-		Level            null.Int  `json:"level,omitempty"`
-		LegID            null.Int  `json:"leg_id,omitempty"`
-		Value            null.Int  `json:"value,omitempty"`
-		MatchID          null.Int  `json:"match_id,omitempty"`
-		OpponentPlayerID null.Int  `json:"opponent_player_id,omitempty"`
-		TournamentID     null.Int  `json:"tournament_id,omitempty"`
-		VisitID          null.Int  `json:"visit_id,omitempty"`
-		Darts            []*Dart   `json:"darts,omitempty"`
-		DartsString      string    `json:"darts_string,omitempty"`
-		CreatedAt        time.Time `json:"created_at"`
+		Badge            *Badge                 `json:"badge"`
+		PlayerID         int                    `json:"player_id"`
+		Level            null.Int               `json:"level,omitempty"`
+		LegID            null.Int               `json:"leg_id,omitempty"`
+		Value            null.Int               `json:"value,omitempty"`
+		MatchID          null.Int               `json:"match_id,omitempty"`
+		OpponentPlayerID null.Int               `json:"opponent_player_id,omitempty"`
+		TournamentID     null.Int               `json:"tournament_id,omitempty"`
+		VisitID          null.Int               `json:"visit_id,omitempty"`
+		Darts            []*Dart                `json:"darts,omitempty"`
+		DartsString      string                 `json:"darts_string,omitempty"`
+		CreatedAt        time.Time              `json:"created_at"`
+		Statistics       *PlayerBadgeStatistics `json:"statistics,omitempty"`
 	}
 	var dartsString string
 	if pb.Darts != nil {
@@ -71,6 +74,7 @@ func (pb PlayerBadge) MarshalJSON() ([]byte, error) {
 			dartsString += " " + pb.Darts[2].String()
 		}
 	}
+
 	return json.Marshal(playerBadgeJSON{
 		Badge:            pb.Badge,
 		PlayerID:         pb.PlayerID,
@@ -84,15 +88,47 @@ func (pb PlayerBadge) MarshalJSON() ([]byte, error) {
 		Darts:            pb.Darts,
 		DartsString:      dartsString,
 		CreatedAt:        pb.CreatedAt,
+		Statistics:       pb.Statistics,
 	})
 }
 
 // PlayerBadgeStatistics struct used for storing badge statistics
 type PlayerBadgeStatistics struct {
-	PlayerID      int
-	Score100sPlus int
-	Score140sPlus int
-	Score180s     int
+	PlayerID      int                 `json:"player_id"`
+	Score100sPlus int                 `json:"score_100_plus"`
+	Score140sPlus int                 `json:"score_140_plus"`
+	Score180s     int                 `json:"score_180s"`
+	Shanghais     []int               `json:"shanghais"`
+	BadgeMap      map[int]interface{} `json:"values"`
+}
+
+// MarshalJSON will marshall the given object to JSON
+func (pbs PlayerBadgeStatistics) MarshalJSON() ([]byte, error) {
+	// Use a type to get consistent order of JSON key-value pairs.
+	type playerBadgeStatisticsJSON struct {
+		PlayerID      int                 `json:"player_id"`
+		Score100sPlus int                 `json:"score_100_plus"`
+		Score140sPlus int                 `json:"score_140_plus"`
+		Score180s     int                 `json:"score_180s"`
+		Shanghais     []int               `json:"shanghais"`
+		BadgeMap      map[int]interface{} `json:"values"`
+	}
+
+	pbs.BadgeMap = make(map[int]interface{}, 0)
+	pbs.BadgeMap[1] = pbs.Score100sPlus
+	pbs.BadgeMap[2] = pbs.Score140sPlus
+	pbs.BadgeMap[3] = pbs.Score180s
+	sort.Ints(pbs.Shanghais)
+	pbs.BadgeMap[46] = pbs.Shanghais
+
+	return json.Marshal(playerBadgeStatisticsJSON{
+		PlayerID:      pbs.PlayerID,
+		Score100sPlus: pbs.Score100sPlus,
+		Score140sPlus: pbs.Score140sPlus,
+		Score180s:     pbs.Score180s,
+		Shanghais:     pbs.Shanghais,
+		BadgeMap:      pbs.BadgeMap,
+	})
 }
 
 type GlobalBadge interface {
@@ -163,6 +199,7 @@ func (b BadgeVersatilePlayer) Levels() []int {
 var MatchBadges = []MatchBadge{
 	BadgeJustAQuickie{ID: 37},
 	BadgeAroundTheWorld{ID: 38},
+	BadgeOfficiallyGood{ID: 41},
 }
 
 type MatchBadge interface {
@@ -173,6 +210,7 @@ type MatchBadge interface {
 
 type BadgeJustAQuickie struct{ ID int }
 type BadgeAroundTheWorld struct{ ID int }
+type BadgeOfficiallyGood struct{ ID int }
 
 func (b BadgeJustAQuickie) GetID() int {
 	return b.ID
@@ -194,7 +232,6 @@ func (b BadgeJustAQuickie) Validate(match *Match) (bool, []int) {
 func (b BadgeAroundTheWorld) GetID() int {
 	return b.ID
 }
-
 func (b BadgeAroundTheWorld) Validate(match *Match) (bool, []int) {
 	playerHits := make(map[int][]int)
 	for playerID := range match.Players {
@@ -234,6 +271,26 @@ func (b BadgeAroundTheWorld) Validate(match *Match) (bool, []int) {
 	return false, nil
 }
 
+func (b BadgeOfficiallyGood) GetID() int {
+	return b.ID
+}
+func (b BadgeOfficiallyGood) Validate(match *Match) (bool, []int) {
+	playerIDs := make([]int, 0)
+	if match.TournamentID.Valid {
+		for _, leg := range match.Legs {
+			for _, visit := range leg.Visits {
+				if visit.GetScore() == 180 {
+					playerIDs = append(playerIDs, visit.PlayerID)
+				}
+			}
+		}
+	}
+	if len(playerIDs) > 0 {
+		return true, playerIDs
+	}
+	return false, nil
+}
+
 var LegBadges = []LegBadge{
 	BadgeDoubleDouble{ID: 6},
 	BadgeTripleDouble{ID: 7},
@@ -246,7 +303,12 @@ var LegBadges = []LegBadge{
 	BadgeEasyAs123{ID: 15},
 	BadgeCloseToPerfect{ID: 16},
 	BadgeLittleFish{ID: 33},
-	BadgeShanghai{ID: 36},
+	BadgeShanghaiCheckout{ID: 36},
+	BadgeTripleTrouble{ID: 39},
+	BadgePerfection{ID: 40},
+	BadgeChampagneShot{ID: 42},
+	BadgeYin{ID: 44},
+	BadgeYang{ID: 45},
 }
 
 type LegBadge interface {
@@ -264,12 +326,16 @@ type BadgeBullseye struct{ ID int }
 type BadgeEasyAs123 struct{ ID int }
 type BadgeCloseToPerfect struct{ ID int }
 type BadgeLittleFish struct{ ID int }
-type BadgeShanghai struct{ ID int }
-
+type BadgeShanghaiCheckout struct{ ID int }
 type BadgeTripleThreat struct{ ID int }
 type BadgeBabyTon struct{ ID int }
 type BadgeBullBullBull struct{ ID int }
 type BadgeSoClose struct{ ID int }
+type BadgeTripleTrouble struct{ ID int }
+type BadgePerfection struct{ ID int }
+type BadgeChampagneShot struct{ ID int }
+type BadgeYin struct{ ID int }
+type BadgeYang struct{ ID int }
 
 func (b BadgeDoubleDouble) GetID() int {
 	return b.ID
@@ -376,12 +442,103 @@ func (b BadgeLittleFish) Validate(leg *Leg) (bool, *int, *int) {
 		visit.ThirdDart.IsBull() && visit.ThirdDart.IsDouble(), &visit.PlayerID, &visit.ID
 }
 
-func (b BadgeShanghai) GetID() int {
+func (b BadgeShanghaiCheckout) GetID() int {
 	return b.ID
 }
-func (b BadgeShanghai) Validate(leg *Leg) (bool, *int, *int) {
+func (b BadgeShanghaiCheckout) Validate(leg *Leg) (bool, *int, *int) {
 	visit := leg.GetLastVisit()
 	return visit.IsShanghai(), &visit.PlayerID, &visit.ID
+}
+
+func (b BadgeTripleTrouble) GetID() int {
+	return b.ID
+}
+func (b BadgeTripleTrouble) Validate(leg *Leg) (bool, *int, *int) {
+	visit := leg.GetLastVisit()
+
+	if visit.FirstDart.IsDouble() && visit.SecondDart.IsDouble() && visit.ThirdDart.IsDouble() &&
+		visit.FirstDart.ValueRaw() == visit.SecondDart.ValueRaw() && visit.FirstDart.ValueRaw() == visit.ThirdDart.ValueRaw() {
+		return true, &visit.PlayerID, &visit.ID
+
+	}
+	return false, nil, nil
+}
+
+func (b BadgePerfection) GetID() int {
+	return b.ID
+}
+func (b BadgePerfection) Validate(leg *Leg) (bool, *int, *int) {
+	visit := leg.GetLastVisit()
+	if leg.StartingScore == 501 && visit.DartsThrown == 9 {
+		return true, &visit.PlayerID, nil
+	}
+	return false, nil, nil
+}
+
+func (b BadgeChampagneShot) GetID() int {
+	return b.ID
+}
+func (b BadgeChampagneShot) Validate(leg *Leg) (bool, *int, *int) {
+	visit := leg.GetLastVisit()
+
+	if visit.FirstDart.IsBull() && visit.FirstDart.IsDouble() &&
+		visit.SecondDart.IsBull() && visit.SecondDart.IsDouble() &&
+		visit.ThirdDart.ValueRaw() == 16 && visit.ThirdDart.IsDouble() {
+		return true, &visit.PlayerID, &visit.ID
+
+	}
+	return false, nil, nil
+}
+
+func (b BadgeYin) GetID() int {
+	return b.ID
+}
+func (b BadgeYin) Validate(leg *Leg) (bool, *int, *int) {
+	black := []int{0, 20, 18, 13, 10, 2, 3, 7, 8, 14, 12}
+
+	completed := true
+	winner := leg.GetLastVisit().PlayerID
+	for _, visit := range leg.Visits {
+		if visit.PlayerID != winner {
+			continue
+		}
+		if !containsInt(black, visit.FirstDart.ValueRaw()) ||
+			!containsInt(black, visit.SecondDart.ValueRaw()) ||
+			!containsInt(black, visit.ThirdDart.ValueRaw()) {
+			completed = false
+			break
+
+		}
+	}
+	if completed {
+		return true, &winner, nil
+	}
+	return false, nil, nil
+}
+
+func (b BadgeYang) GetID() int {
+	return b.ID
+}
+func (b BadgeYang) Validate(leg *Leg) (bool, *int, *int) {
+	white := []int{0, 1, 4, 6, 15, 17, 19, 16, 11, 9, 5}
+	completed := true
+	winner := leg.GetLastVisit().PlayerID
+	for _, visit := range leg.Visits {
+		if visit.PlayerID != winner {
+			continue
+		}
+		if !containsInt(white, visit.FirstDart.ValueRaw()) ||
+			!containsInt(white, visit.SecondDart.ValueRaw()) ||
+			!containsInt(white, visit.ThirdDart.ValueRaw()) {
+			completed = false
+			break
+
+		}
+	}
+	if completed {
+		return true, &winner, nil
+	}
+	return false, nil, nil
 }
 
 var LegPlayerBadges = []LegPlayerBadge{
@@ -389,6 +546,7 @@ var LegPlayerBadges = []LegPlayerBadge{
 	BadgeBotBeaterEasy{ID: 22},
 	BadgeBotBeaterMedium{ID: 23},
 	BadgeBotBeaterHard{ID: 24},
+	BadgeBeerGame{ID: 43},
 }
 
 type LegPlayerBadge interface {
@@ -401,6 +559,7 @@ type BadgeImpersonator struct{ ID int }
 type BadgeBotBeaterEasy struct{ ID int }
 type BadgeBotBeaterMedium struct{ ID int }
 type BadgeBotBeaterHard struct{ ID int }
+type BadgeBeerGame struct{ ID int }
 
 func (b BadgeImpersonator) GetID() int {
 	return b.ID
@@ -455,11 +614,29 @@ func (b BadgeBotBeaterHard) Validate(leg *Leg, players []*Player2Leg) (bool, *in
 	return false, nil
 }
 
+func (b BadgeBeerGame) GetID() int {
+	return b.ID
+}
+func (b BadgeBeerGame) Validate(leg *Leg, players []*Player2Leg) (bool, *int) {
+	visit := leg.GetLastVisit()
+
+	for _, player := range players {
+		if player.PlayerID == visit.PlayerID {
+			continue
+		}
+		if player.CurrentScore >= 200 {
+			return true, &visit.PlayerID
+		}
+	}
+	return false, nil
+}
+
 var VisitBadgesLevel = []VisitBadgeLevel{
 	BadgeHighScore{ID: 1},
 	BadgeHigherScore{ID: 2},
 	BadgeTheMaximum{ID: 3},
 	BadgeMonotonous{ID: 30},
+	BadgeShanghai{ID: 46},
 }
 
 type VisitBadgeLevel interface {
@@ -473,6 +650,7 @@ type BadgeHighScore struct{ ID int }
 type BadgeHigherScore struct{ ID int }
 type BadgeTheMaximum struct{ ID int }
 type BadgeMonotonous struct{ ID int }
+type BadgeShanghai struct{ ID int }
 
 func (b BadgeHighScore) GetID() int {
 	return b.ID
@@ -557,6 +735,27 @@ func (b BadgeMonotonous) Validate(stats *PlayerBadgeStatistics, visits []*Visit)
 			level := i + 1
 			return true, &level, &visit.ID
 		}
+	}
+	return false, nil, nil
+}
+
+func (b BadgeShanghai) GetID() int {
+	return b.ID
+}
+func (b BadgeShanghai) Levels() []int {
+	return []int{1, 5, 10, 15, 20}
+}
+func (b BadgeShanghai) Validate(stats *PlayerBadgeStatistics, visits []*Visit) (bool, *int, *int) {
+	count := 0
+	playerVisits := getVisitsForPlayer(visits, stats.PlayerID)
+	for _, visit := range playerVisits {
+		if visit.IsShanghai() && containsInt(stats.Shanghais, visit.FirstDart.ValueRaw()) {
+			count++
+		}
+	}
+	if count > 0 {
+		level := GetLevel(len(stats.Shanghais)+count, b.Levels())
+		return true, &level, nil
 	}
 	return false, nil, nil
 }

@@ -313,3 +313,8 @@ func containsInt(s []int, e int) bool {
 	}
 	return false
 }
+
+func removeInt(s []int, i int) []int {
+	s[i] = s[len(s)-1]
+	return s[:len(s)-1]
+}

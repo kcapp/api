@@ -127,6 +127,7 @@ func GetBadgeStatistics(badgeID int) ([]*models.PlayerBadge, error) {
 	}
 	defer rows.Close()
 
+	playerIds := make([]int, 0)
 	badges := make([]*models.PlayerBadge, 0)
 	for rows.Next() {
 		badge := new(models.PlayerBadge)
@@ -161,12 +162,28 @@ func GetBadgeStatistics(badgeID int) ([]*models.PlayerBadge, error) {
 			badge.Darts = darts
 		}
 		badges = append(badges, badge)
+		playerIds = append(playerIds, badge.PlayerID)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
+
+	if len(badges) > 0 {
+		badge := badges[0]
+		if badge.Level.Valid {
+			stats, err := GetPlayerBadgeStatistics(playerIds, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, badge := range badges {
+				badge.Statistics = stats[badge.PlayerID]
+			}
+		}
+	}
 	return badges, nil
 }
+
 func CheckLegForBadges(leg *models.Leg, statistics map[int]*models.PlayerBadgeStatistics) error {
 	tx, err := models.DB.Begin()
 	if err != nil {

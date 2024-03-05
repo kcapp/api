@@ -954,6 +954,7 @@ func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.PlayerBadg
 	}
 	for rows.Next() {
 		s := new(models.PlayerBadgeStatistics)
+		s.BadgeMap = make(map[int]interface{}, 0)
 		err := rows.Scan(&s.PlayerID, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
 		if err != nil {
 			return nil, err
@@ -964,5 +965,48 @@ func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.PlayerBadg
 		return nil, err
 	}
 
+	q, args, err = sqlx.In(`
+		SELECT
+			player_id, first_dart
+		FROM score s
+		WHERE
+			first_dart = second_dart AND first_dart = third_dart
+			and ((first_dart_multiplier = 1 and second_dart_multiplier = 2 and third_dart_multiplier = 3)
+				or (first_dart_multiplier = 2 and second_dart_multiplier = 3 and third_dart_multiplier = 1)
+				or (first_dart_multiplier = 3 and second_dart_multiplier = 1 and third_dart_multiplier = 2)
+				or (first_dart_multiplier = 3 and second_dart_multiplier = 2 and third_dart_multiplier = 1)
+				or (first_dart_multiplier = 1 and second_dart_multiplier = 3 and third_dart_multiplier = 2)
+				or (first_dart_multiplier = 2 and second_dart_multiplier = 1 and third_dart_multiplier = 3))
+			AND is_bust = 0 AND s.player_id IN (?) AND leg_id <= COALESCE(?, ~0) -- BIGINT hack
+		GROUP BY first_dart, player_id`, ids, legID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err = models.DB.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	shanghai := make(map[int][]int, 0)
+	for _, playerID := range ids {
+		shanghai[playerID] = make([]int, 0)
+	}
+	for rows.Next() {
+		var playerID int
+		var number int
+		err := rows.Scan(&playerID, &number)
+		if err != nil {
+			return nil, err
+		}
+		shanghai[playerID] = append(shanghai[playerID], number)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	for playerID, stats := range statistics {
+		stats.Shanghais = shanghai[playerID]
+	}
 	return statistics, nil
 }
