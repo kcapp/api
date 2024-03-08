@@ -511,6 +511,9 @@ func GetX01HistoryForPlayer(id int, limit int, matchType int) ([]*models.Leg, er
 		legIDs = append(legIDs, s.LegID)
 	}
 
+	if len(legIDs) == 0 {
+		return []*models.Leg{}, nil
+	}
 	legs, err := GetLegs(legIDs)
 	if err != nil {
 		return nil, err
