@@ -644,9 +644,6 @@ func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, e
 
 		metadata = append(metadata, m)
 	}
-	if err != nil {
-		return nil, err
-	}
 	return metadata, nil
 }
 

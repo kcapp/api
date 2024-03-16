@@ -167,9 +167,6 @@ func GetPlayerEloChangelog(id int, start int, limit int) (*models.PlayerEloChang
 	}
 	defer rows.Close()
 
-	if err != nil {
-		return nil, err
-	}
 	changelogs := new(models.PlayerEloChangelogs)
 	changelogs.Total = total
 	changelogs.Changelog = make([]*models.PlayerEloChangelog, 0)
@@ -311,10 +308,10 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			FROM player2leg p2l
 				LEFT JOIN player p on p.id = p2l.player_id
 				LEFT JOIN leg l ON l.id = p2l.leg_id
-				LEFT JOIN score s ON s.leg_id = p2l.leg_id AND s.player_id = p2l.player_id
+				LEFT JOIN score s ON s.leg_id = p2l.leg_id AND s.player_id = p2l.player_id AND s.is_bust = 0
 				LEFT JOIN matches m on m.id = l.match_id
 				LEFT JOIN bot2player2leg b ON b.player2leg_id = p2l.id
-			WHERE p2l.leg_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
+			WHERE p2l.leg_id = ?
 			GROUP BY p2l.player_id
 			ORDER BY p2l.order ASC`, legID)
 	if err != nil {
@@ -626,22 +623,7 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 				round++
 			}
 			player := scores[visit.PlayerID]
-
-			player.DartsThrown += 3
-			if !visit.IsBust {
-				player.CurrentScore -= visit.GetScore()
-			}
-
-			if player.CurrentScore == 0 && visit.GetLastDart().IsDouble() {
-				// We hit a checkout, reset
-				player.CurrentScore = 170
-				player.CurrentPoints.Int64++
-				player.DartsThrown = 0
-			} else if round != 1 && player.DartsThrown%9 == 0 {
-				// 9 Darts have been thrown, reset
-				player.CurrentScore = 170
-				player.DartsThrown = 0
-			}
+			visit.Calculate170Score(round, player)
 		}
 	}
 	return scores, nil

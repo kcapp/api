@@ -601,6 +601,28 @@ func (visit *Visit) CalculateScamMarks(scores map[int]*Player2Leg) int {
 	return marks
 }
 
+func (visit *Visit) Calculate170Score(round int, player *Player2Leg) int {
+	player.DartsThrown += 3
+	score := 0
+	if !visit.IsBust {
+		player.CurrentScore -= visit.GetScore()
+		score = visit.GetScore()
+	}
+
+	if player.CurrentScore == 0 && visit.GetLastDart().IsDouble() {
+		// We hit a checkout, reset
+		player.CurrentScore = 170
+		player.CurrentPoints.Int64++
+		player.DartsThrown = 0
+	} else if round != 1 && player.DartsThrown%9 == 0 {
+		// 9 Darts have been thrown, reset
+		player.CurrentScore = 170
+		player.DartsThrown = 0
+		score = 0
+	}
+	return score
+}
+
 // IsShanghai will check if the given visit is a "Shanghai". A Shanghai visit is one where a single, double and triple multipler is hit with each dart
 func (visit *Visit) IsShanghai() bool {
 	first := visit.FirstDart

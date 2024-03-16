@@ -9,7 +9,7 @@ import (
 )
 
 // Get170Statistics will return statistics for all players active during the given period
-func Get170Statistics(from string, to string) ([]*models.StatisticsScam, error) {
+func Get170Statistics(from string, to string) ([]*models.Statistics170, error) {
 	rows, err := models.DB.Query(`
 			SELECT
 				p.id,
@@ -18,13 +18,23 @@ func Get170Statistics(from string, to string) ([]*models.StatisticsScam, error) 
 				COUNT(DISTINCT l.id) AS 'legs_played',
 				COUNT(DISTINCT l2.id) AS 'legs_won',
 				m.office_id AS 'office_id',
-				SUM(s.darts_thrown_stopper) as 'darts_thrown_stopper',
-				SUM(s.darts_thrown_scorer) as 'darts_thrown_scorer',
-				SUM(s.score) / SUM(s.darts_thrown_scorer) as 'ppd',
-				SUM(s.score) / SUM(s.darts_thrown_scorer) * 3 as 'three_dart_avg',
-				CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
-				(20 * COUNT(DISTINCT l.id)) / SUM(darts_thrown_stopper) * 3 as 'mpr'
-			FROM statistics_scam s
+				SUM(s.points),
+				IF(s.darts_thrown = 0, 0, SUM(s.ppd_score) / SUM(s.darts_thrown)),
+				IF(s.darts_thrown = 0, 0, SUM(s.ppd_score) / SUM(s.darts_thrown) * 3),
+				SUM(s.rounds),
+				COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100,
+				SUM(s.checkout_completed),
+				SUM(s.checkout_attempts),
+				MAX(s.highest_checkout),
+				SUM(s.darts_thrown),
+				SUM(s.checkout_9_darts),
+				SUM(s.checkout_8_darts),
+				SUM(s.checkout_7_darts),
+				SUM(s.checkout_6_darts),
+				SUM(s.checkout_5_darts),
+				SUM(s.checkout_4_darts),
+				SUM(s.checkout_3_darts)
+			FROM statistics_170 s
 				JOIN player p ON p.id = s.player_id
 				JOIN leg l ON l.id = s.leg_id
 				JOIN matches m ON m.id = l.match_id
@@ -40,32 +50,53 @@ func Get170Statistics(from string, to string) ([]*models.StatisticsScam, error) 
 	}
 	defer rows.Close()
 
-	stats := make([]*models.StatisticsScam, 0)
+	stats := make([]*models.Statistics170, 0)
 	for rows.Next() {
-		s := new(models.StatisticsScam)
-		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID, &s.DartsThrownStopper, &s.DartsThrownScorer,
-			&s.PPD, &s.ThreeDartAvg, &s.Score, &s.MPR)
+		s := new(models.Statistics170)
+		var darts9, darts8, darts7, darts6, darts5, darts4, darts3 int
+
+		checkoutDarts := make(map[int]int, 0)
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.Points, &s.PPD, &s.ThreeDartAvg, &s.Rounds, &s.CheckoutPercentage, &s.CheckoutCompleted,
+			&s.CheckoutAttempts, &s.HighestCheckout, &s.DartsThrown, &darts9, &darts8, &darts7, &darts6, &darts5, &darts4, &darts3)
 		if err != nil {
 			return nil, err
 		}
+		checkoutDarts[9] = darts9
+		checkoutDarts[8] = darts8
+		checkoutDarts[7] = darts7
+		checkoutDarts[6] = darts6
+		checkoutDarts[5] = darts5
+		checkoutDarts[4] = darts4
+		checkoutDarts[3] = darts3
+		s.CheckoutDarts = checkoutDarts
 		stats = append(stats, s)
 	}
 	return stats, nil
 }
 
 // Get170StatisticsForLeg will return statistics for all players in the given leg
-func Get170StatisticsForLeg(id int) ([]*models.StatisticsScam, error) {
+func Get170StatisticsForLeg(id int) ([]*models.Statistics170, error) {
 	rows, err := models.DB.Query(`
 			SELECT
 				l.id,
 				p.id,
-				s.darts_thrown_scorer,
-				s.darts_thrown_stopper,
-				s.score,
-				s.mpr,
+				s.points,
 				s.ppd,
-				s.ppd / 3 as 'three_dart_avg'
-			FROM statistics_scam s
+				s.ppd_score / s.darts_thrown * 3,
+				s.rounds,
+				s.checkout_percentage,
+				s.checkout_completed,
+				s.checkout_attempts,
+				s.highest_checkout,
+				s.darts_thrown,
+				s.checkout_9_darts,
+				s.checkout_8_darts,
+				s.checkout_7_darts,
+				s.checkout_6_darts,
+				s.checkout_5_darts,
+				s.checkout_4_darts,
+				s.checkout_3_darts
+			FROM statistics_170 s
 				JOIN player p ON p.id = s.player_id
 				JOIN leg l ON l.id = s.leg_id
 				JOIN player2leg p2l on l.id = p2l.leg_id AND p.id = p2l.player_id
@@ -75,30 +106,52 @@ func Get170StatisticsForLeg(id int) ([]*models.StatisticsScam, error) {
 	}
 	defer rows.Close()
 
-	stats := make([]*models.StatisticsScam, 0)
+	stats := make([]*models.Statistics170, 0)
 	for rows.Next() {
-		s := new(models.StatisticsScam)
-		err := rows.Scan(&s.LegID, &s.PlayerID, &s.DartsThrownScorer, &s.DartsThrownStopper, &s.Score, &s.MPR, &s.PPD, &s.ThreeDartAvg)
+		s := new(models.Statistics170)
+		var darts9, darts8, darts7, darts6, darts5, darts4, darts3 int
+
+		checkoutDarts := make(map[int]int, 0)
+		err := rows.Scan(&s.LegID, &s.PlayerID, &s.Points, &s.PPD, &s.ThreeDartAvg, &s.Rounds, &s.CheckoutPercentage, &s.CheckoutCompleted,
+			&s.CheckoutAttempts, &s.HighestCheckout, &s.DartsThrown, &darts9, &darts8, &darts7, &darts6, &darts5, &darts4, &darts3)
 		if err != nil {
 			return nil, err
 		}
+		checkoutDarts[9] = darts9
+		checkoutDarts[8] = darts8
+		checkoutDarts[7] = darts7
+		checkoutDarts[6] = darts6
+		checkoutDarts[5] = darts5
+		checkoutDarts[4] = darts4
+		checkoutDarts[3] = darts3
+		s.CheckoutDarts = checkoutDarts
 		stats = append(stats, s)
 	}
 	return stats, nil
 }
 
 // Get170StatisticsForMatch will return statistics for all players in the given match
-func Get170StatisticsForMatch(id int) ([]*models.StatisticsScam, error) {
+func Get170StatisticsForMatch(id int) ([]*models.Statistics170, error) {
 	rows, err := models.DB.Query(`
 			SELECT
 				p.id,
-				SUM(s.darts_thrown_scorer) as 'darts_thrown_scorer',
-				SUM(s.darts_thrown_stopper) as 'darts_thrown_stopper',
-				CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
-				SUM(s.score) / SUM(s.darts_thrown_scorer) as 'ppd',
-				SUM(s.score) / SUM(s.darts_thrown_scorer) * 3 as 'three_dart_avg',
-				(20 * COUNT(DISTINCT l.id)) / SUM(darts_thrown_stopper) * 3 as 'mpr'
-			FROM statistics_scam s
+				SUM(s.points),
+				IF(s.darts_thrown = 0, 0, SUM(s.ppd_score) / SUM(s.darts_thrown)),
+				IF(s.darts_thrown = 0, 0, SUM(s.ppd_score) / SUM(s.darts_thrown) * 3),
+				SUM(s.rounds),
+				SUM(s.checkout_completed) / SUM(s.checkout_attempts) * 100,
+				SUM(s.checkout_completed),
+				SUM(s.checkout_attempts),
+				MAX(s.highest_checkout),
+				SUM(s.darts_thrown),
+				SUM(s.checkout_9_darts),
+				SUM(s.checkout_8_darts),
+				SUM(s.checkout_7_darts),
+				SUM(s.checkout_6_darts),
+				SUM(s.checkout_5_darts),
+				SUM(s.checkout_4_darts),
+				SUM(s.checkout_3_darts)
+			FROM statistics_170 s
 				JOIN player p ON p.id = s.player_id
 				JOIN leg l ON l.id = s.leg_id
 				JOIN matches m ON m.id = l.match_id
@@ -111,35 +164,52 @@ func Get170StatisticsForMatch(id int) ([]*models.StatisticsScam, error) {
 	}
 	defer rows.Close()
 
-	stats := make([]*models.StatisticsScam, 0)
+	stats := make([]*models.Statistics170, 0)
 	for rows.Next() {
-		s := new(models.StatisticsScam)
-		err := rows.Scan(&s.PlayerID, &s.DartsThrownScorer, &s.DartsThrownStopper, &s.Score, &s.PPD, &s.ThreeDartAvg, &s.MPR)
+		s := new(models.Statistics170)
+		var darts9, darts8, darts7, darts6, darts5, darts4, darts3 int
+
+		checkoutDarts := make(map[int]int, 0)
+		err := rows.Scan(&s.PlayerID, &s.Points, &s.PPD, &s.ThreeDartAvg, &s.Rounds, &s.CheckoutPercentage, &s.CheckoutCompleted,
+			&s.CheckoutAttempts, &s.HighestCheckout, &s.DartsThrown, &darts9, &darts8, &darts7, &darts6, &darts5, &darts4, &darts3)
 		if err != nil {
 			return nil, err
 		}
+		checkoutDarts[9] = darts9
+		checkoutDarts[8] = darts8
+		checkoutDarts[7] = darts7
+		checkoutDarts[6] = darts6
+		checkoutDarts[5] = darts5
+		checkoutDarts[4] = darts4
+		checkoutDarts[3] = darts3
+		s.CheckoutDarts = checkoutDarts
 		stats = append(stats, s)
 	}
 	return stats, nil
 }
 
 // Get170StatisticsForPlayer will return Scam statistics for the given player
-func Get170StatisticsForPlayer(id int) (*models.StatisticsScam, error) {
-	s := new(models.StatisticsScam)
+func Get170StatisticsForPlayer(id int) (*models.Statistics170, error) {
+	s := new(models.Statistics170)
+	var darts9, darts8, darts7, darts6, darts5, darts4, darts3 int
 	err := models.DB.QueryRow(`
 			SELECT
 				p.id,
-				COUNT(DISTINCT m.id) AS 'matches_played',
-				COUNT(DISTINCT m2.id) AS 'matches_won',
-				COUNT(DISTINCT l.id) AS 'legs_played',
-				COUNT(DISTINCT l2.id) AS 'legs_won',
-				SUM(s.darts_thrown_scorer) as 'darts_thrown_scorer',
-				SUM(s.darts_thrown_stopper) as 'darts_thrown_stopper',
-				CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
-				SUM(darts_thrown_stopper) / 20 * COUNT(DISTINCT l.id) * 3 as 'mpr',
-				SUM(s.score) / SUM(s.darts_thrown_scorer) as 'ppd',
-				SUM(s.score) / SUM(s.darts_thrown_scorer) * 3 as 'three_dart_avg'
-			FROM statistics_scam s
+				SUM(s.points),
+				SUM(s.ppd_score) / SUM(s.darts_thrown),
+				SUM(s.rounds),
+				SUM(s.checkout_attempts) / COUNT(DISTINCT l2.id),
+				SUM(s.checkout_attempts),
+				MAX(s.highest_checkout),
+				SUM(s.darts_thrown),
+				SUM(s.checkout_9_darts),
+				SUM(s.checkout_8_darts),
+				SUM(s.checkout_7_darts),
+				SUM(s.checkout_6_darts),
+				SUM(s.checkout_5_darts),
+				SUM(s.checkout_4_darts),
+				SUM(s.checkout_3_darts)
+			FROM statistics_170 s
 				JOIN player p ON p.id = s.player_id
 				JOIN leg l ON l.id = s.leg_id
 				JOIN matches m ON m.id = l.match_id
@@ -147,15 +217,24 @@ func Get170StatisticsForPlayer(id int) (*models.StatisticsScam, error) {
 				LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 			WHERE s.player_id = ?
 				AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
-				AND m.match_type_id = 16
-			GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.DartsThrownScorer, &s.DartsThrownStopper,
-		&s.Score, &s.MPR, &s.PPD, &s.ThreeDartAvg)
+				AND m.match_type_id = 17
+			GROUP BY p.id`, id).Scan(&s.LegID, &s.PlayerID, &s.Points, &s.PPD, &s.Rounds, &s.CheckoutPercentage, &s.CheckoutAttempts,
+		&s.HighestCheckout, &s.DartsThrown, &darts9, &darts8, &darts7, &darts6, &darts5, &darts4, &darts3)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return new(models.StatisticsScam), nil
+			return new(models.Statistics170), nil
 		}
 		return nil, err
 	}
+	checkoutDarts := make(map[int]int, 0)
+	checkoutDarts[9] = darts9
+	checkoutDarts[8] = darts8
+	checkoutDarts[7] = darts7
+	checkoutDarts[6] = darts6
+	checkoutDarts[5] = darts5
+	checkoutDarts[4] = darts4
+	checkoutDarts[3] = darts3
+	s.CheckoutDarts = checkoutDarts
 	return s, nil
 }
 
@@ -261,13 +340,8 @@ func Calculate170Statistics(legID int) (map[int]*models.Statistics170, error) {
 			stats.PPDScore += visit.GetScore()
 		}
 		stats.DartsThrown = visit.DartsThrown
+		player.DartsThrown += 3
 
-		stats.DartsThrown += 3
-		if !visit.IsBust {
-			player.CurrentScore -= visit.GetScore()
-		}
-
-		// TODO checkout attempts
 		currentScore := player.CurrentScore
 		if visit.FirstDart.IsCheckoutAttempt(currentScore, 1, models.OUTSHOTDOUBLE) {
 			stats.CheckoutAttempts++
@@ -279,6 +353,10 @@ func Calculate170Statistics(legID int) (map[int]*models.Statistics170, error) {
 		currentScore -= visit.SecondDart.GetScore()
 		if visit.ThirdDart.IsCheckoutAttempt(currentScore, 3, models.OUTSHOTDOUBLE) {
 			stats.CheckoutAttempts++
+		}
+
+		if !visit.IsBust {
+			player.CurrentScore -= visit.GetScore()
 		}
 
 		if player.CurrentScore == 0 && visit.GetLastDart().IsDouble() {
@@ -297,11 +375,16 @@ func Calculate170Statistics(legID int) (map[int]*models.Statistics170, error) {
 	}
 
 	for _, stats := range statisticsMap {
-		stats.PPD = float32(stats.PPDScore) / float32(stats.DartsThrown)
-		if stats.CheckoutAttempts > 0 {
-			stats.CheckoutPercentage = null.FloatFrom(100 / float64(stats.CheckoutAttempts))
+		if stats.PPDScore == 0 {
+			stats.PPD = 0
+		} else {
+			stats.PPD = float32(stats.PPDScore) / float32(stats.DartsThrown)
+		}
+		if stats.CheckoutCompleted > 0 {
+			stats.CheckoutPercentage = null.FloatFrom(float64(stats.CheckoutCompleted) / float64(stats.CheckoutAttempts) * 100.0)
 		}
 		stats.ThreeDartAvg = stats.PPD * 3
+		stats.Rounds -= 1
 	}
 	return statisticsMap, nil
 }
@@ -310,13 +393,26 @@ func Calculate170Statistics(legID int) (map[int]*models.Statistics170, error) {
 func ReCalculate170Statistics(legs []int) ([]string, error) {
 	queries := make([]string, 0)
 	for _, legID := range legs {
-		stats, err := CalculateScamStatistics(legID)
+		stats, err := Calculate170Statistics(legID)
 		if err != nil {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			queries = append(queries, fmt.Sprintf(`UPDATE statistics_170 SET darts_thrown_stopper = %d, darts_thrown_scorer = %d, mpr = %f, score = %d, WHERE leg_id = %d AND player_id = %d;`,
-				stat.DartsThrownStopper, stat.DartsThrownScorer, stat.MPR, stat.Score, legID, playerID))
+			query := fmt.Sprintf(`UPDATE statistics_170 SET points = %d, ppd = %f, ppd_score = %d, rounds = %d, checkout_attempts = %d, 
+			checkout_completed = %d, darts_thrown = %d,  checkout_9_darts = %d, checkout_8_darts = %d, 
+			checkout_7_darts = %d, checkout_6_darts = %d, checkout_5_darts = %d, checkout_4_darts = %d, checkout_3_darts = %d`,
+				stat.Points, stat.PPD, stat.PPDScore, stat.Rounds, stat.CheckoutAttempts, stat.CheckoutCompleted,
+				stat.DartsThrown, stat.CheckoutDarts[9], stat.CheckoutDarts[8], stat.CheckoutDarts[7],
+				stat.CheckoutDarts[6], stat.CheckoutDarts[5], stat.CheckoutDarts[4], stat.CheckoutDarts[3])
+
+			if stat.CheckoutPercentage.Valid {
+				query += fmt.Sprintf(", checkout_percentage = %f", stat.CheckoutPercentage.Float64)
+			}
+			if stat.HighestCheckout.Valid {
+				query += fmt.Sprintf(", highest_checkout = %d", stat.HighestCheckout.Int64)
+			}
+			query += fmt.Sprintf(" WHERE leg_id = %d AND player_id = %d;", legID, playerID)
+			queries = append(queries, query)
 		}
 	}
 

@@ -87,6 +87,13 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 			tx.Rollback()
 			return nil, err
 		}
+	} else if *matchType == models.ONESEVENTY {
+		params := match.Legs[0].Parameters
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, max_rounds, points_to_win) VALUES (?, ?, ?)", legID, params.MaxRounds, params.PointsToWin)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	for idx, playerID := range players {
@@ -702,6 +709,11 @@ func UndoLegFinish(legID int) error {
 		tx.Rollback()
 		return err
 	}
+	_, err = tx.Exec("DELETE FROM statistics_170 WHERE leg_id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 
 	// Remove the last score
 	_, err = tx.Exec("DELETE FROM score WHERE leg_id = ? ORDER BY id DESC LIMIT 1", legID)
@@ -831,7 +843,8 @@ func GetLegs(ids []int) ([]*models.Leg, error) {
 		leg.Visits = visits
 
 		matchType := leg.LegType.ID
-		if matchType == models.X01 || matchType == models.X01HANDICAP || matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
+		if matchType == models.X01 || matchType == models.X01HANDICAP || matchType == models.TICTACTOE || matchType == models.KNOCKOUT ||
+			matchType == models.ONESEVENTY {
 			leg.Parameters, err = GetLegParameters(leg.ID)
 			if err != nil {
 				return nil, err
@@ -881,7 +894,8 @@ func GetLegsOfType(matchType int, loadVisits bool) ([]*models.Leg, error) {
 			}
 			leg.Visits = visits
 		}
-		if matchType == models.X01 || matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
+		if matchType == models.X01 || matchType == models.TICTACTOE || matchType == models.KNOCKOUT ||
+			matchType == models.ONESEVENTY {
 			leg.Parameters, err = GetLegParameters(leg.ID)
 			if err != nil {
 				return nil, err
@@ -1188,6 +1202,9 @@ func GetLeg(id int) (*models.Leg, error) {
 					score = visit.CalculateScamScore(scores)
 					scores[visit.PlayerID].CurrentScore += score
 				}
+			} else if matchType == models.ONESEVENTY {
+				player := scores[visit.PlayerID]
+				score = visit.Calculate170Score(round, player)
 			} else {
 				scores[visit.PlayerID].CurrentScore -= score
 			}
