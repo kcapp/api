@@ -372,6 +372,14 @@ func GetStatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.ONESEVENTY {
+		stats, err := data.Get170StatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get 170 statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
 	} else {
 		stats, err := data.GetX01StatisticsForMatch(matchID)
 		if err != nil {

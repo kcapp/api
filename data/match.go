@@ -72,6 +72,13 @@ func NewMatch(match models.Match) (*models.Match, error) {
 			tx.Rollback()
 			return nil, err
 		}
+	} else if match.MatchType.ID == models.ONESEVENTY {
+		params := match.Legs[0].Parameters
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, points_to_win, max_rounds) VALUES (?, ?, ?)", legID, params.PointsToWin, params.MaxRounds)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	tx.Exec("UPDATE matches SET current_leg_id = ? WHERE id = ?", legID, matchID)
@@ -636,9 +643,6 @@ func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, e
 		}
 
 		metadata = append(metadata, m)
-	}
-	if err != nil {
-		return nil, err
 	}
 	return metadata, nil
 }

@@ -167,9 +167,6 @@ func GetPlayerEloChangelog(id int, start int, limit int) (*models.PlayerEloChang
 	}
 	defer rows.Close()
 
-	if err != nil {
-		return nil, err
-	}
 	changelogs := new(models.PlayerEloChangelogs)
 	changelogs.Total = total
 	changelogs.Changelog = make([]*models.PlayerEloChangelog, 0)
@@ -311,10 +308,10 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			FROM player2leg p2l
 				LEFT JOIN player p on p.id = p2l.player_id
 				LEFT JOIN leg l ON l.id = p2l.leg_id
-				LEFT JOIN score s ON s.leg_id = p2l.leg_id AND s.player_id = p2l.player_id
+				LEFT JOIN score s ON s.leg_id = p2l.leg_id AND s.player_id = p2l.player_id AND s.is_bust = 0
 				LEFT JOIN matches m on m.id = l.match_id
 				LEFT JOIN bot2player2leg b ON b.player2leg_id = p2l.id
-			WHERE p2l.leg_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
+			WHERE p2l.leg_id = ?
 			GROUP BY p2l.player_id
 			ORDER BY p2l.order ASC`, legID)
 	if err != nil {
@@ -608,6 +605,25 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 					player.CurrentScore += visit.ThirdDart.GetScore()
 				}
 			}
+		}
+	} else if matchType == models.ONESEVENTY {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			player.CurrentScore = 170
+			player.DartsThrown = 0
+			player.CurrentPoints = null.IntFrom(0)
+		}
+
+		round := 1
+		for i, visit := range visits {
+			if i > 0 && i%len(players) == 0 {
+				round++
+			}
+			player := scores[visit.PlayerID]
+			visit.Calculate170Score(round, player)
 		}
 	}
 	return scores, nil

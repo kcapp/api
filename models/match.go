@@ -50,6 +50,8 @@ const (
 	KNOCKOUT = 15
 	// SCAM constant representing type 16
 	SCAM = 16
+	// ONESEVENTY contenst representing type 17
+	ONESEVENTY = 17
 )
 
 var MatchTypes = map[int]string{

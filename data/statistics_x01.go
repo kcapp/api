@@ -187,12 +187,7 @@ func GetPlayerX01PreviousStatistics(id int) (*models.StatisticsX01, error) {
 		return nil, err
 	}
 	if len(statistics) > 0 {
-		stats := statistics[0]
-		if err != nil {
-			return nil, err
-		}
-
-		return stats, nil
+		return statistics[0], nil
 	}
 	return new(models.StatisticsX01), nil
 }

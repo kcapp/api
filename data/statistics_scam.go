@@ -63,7 +63,7 @@ func GetScamStatisticsForLeg(id int) ([]*models.StatisticsScam, error) {
 				s.score,
 				s.mpr,
 				s.ppd,
-				s.ppd / 3 as 'three_dart_avg'
+				s.ppd * 3 as 'three_dart_avg'
 			FROM statistics_scam s
 				JOIN player p ON p.id = s.player_id
 				JOIN leg l ON l.id = s.leg_id

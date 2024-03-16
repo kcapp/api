@@ -2,6 +2,7 @@
 
 ## [2.8.0] - TBD
 #### Feature
+- New game type `170`
 - Endpoint for getting badge statistics
 - Added Darts Per Leg `DPL` metric to tournament
 - Lots of new badges

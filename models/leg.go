@@ -39,6 +39,8 @@ type LegParameters struct {
 	Numbers       []int        `json:"numbers"`
 	Hits          map[int]int  `json:"hits"`
 	StartingLives null.Int     `json:"starting_lives,omitempty"`
+	PointsToWin   null.Int     `json:"points_to_win,omitempty"`
+	MaxRounds     null.Int     `json:"max_rounds,omitempty"`
 }
 
 // IsTicTacToeWinner will check if the given player has won a game of Tic Tac Toe
@@ -174,7 +176,11 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 		Statistics         interface{}         `json:"statistics,omitempty"`
 		Parameters         *LegParameters      `json:"parameters,omitempty"`
 	}
+
 	round := int(math.Floor(float64(len(leg.Visits))/float64(len(leg.Players))) + 1)
+	if leg.LegType.ID == ONESEVENTY {
+		round = len(leg.Visits)/len(leg.Players)/3 + 1
+	}
 
 	startTime := null.TimeFrom(leg.CreatedAt)
 	endTime := leg.Endtime
@@ -225,9 +231,10 @@ type Player2Leg struct {
 	Player          *Player          `json:"player,omitempty"`
 	BotConfig       *BotConfig       `json:"bot_config,omitempty"`
 	Hits            HitsMap          `json:"hits"`
-	DartsThrown     int              `json:"darts_thrown,omitempty"`
+	DartsThrown     int              `json:"darts_thrown"`
 	IsStopper       null.Bool        `json:"is_stopper,omitempty"`
 	IsScorer        null.Bool        `json:"is_scorer,omitempty"`
+	CurrentPoints   null.Int         `json:"current_points"`
 }
 
 type HitsMap map[int]*Hits
@@ -333,7 +340,9 @@ func (p2l *Player2Leg) AddVisitStatistics(leg Leg) {
 			} else if visit.IsScore180() {
 				p2l.VisitStatistics.Score180Counter++
 			}
-			p2l.DartsThrown = visit.DartsThrown
+			if leg.LegType.ID != ONESEVENTY {
+				p2l.DartsThrown = visit.DartsThrown
+			}
 		}
 	}
 }
