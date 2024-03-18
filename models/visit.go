@@ -441,13 +441,13 @@ func (visit *Visit) CalculateAroundTheClockScore(currentScore int) int {
 func (visit *Visit) CalculateAroundTheWorldScore(round int) int {
 	score := 0
 	if round == visit.FirstDart.ValueRaw() || (round == 21 && visit.FirstDart.IsBull()) {
-		score += visit.FirstDart.GetScore()
+		score += int(visit.FirstDart.Multiplier)
 	}
 	if round == visit.SecondDart.ValueRaw() || (round == 21 && visit.SecondDart.IsBull()) {
-		score += visit.SecondDart.GetScore()
+		score += int(visit.SecondDart.Multiplier)
 	}
 	if round == visit.ThirdDart.ValueRaw() || (round == 21 && visit.ThirdDart.IsBull()) {
-		score += visit.ThirdDart.GetScore()
+		score += int(visit.ThirdDart.Multiplier)
 	}
 	return score
 }

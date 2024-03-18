@@ -10,6 +10,7 @@
 #### Changed
 - Sort tournament best statistics by leg id for equal values
 - Use tournament elo if available for odds
+- Switched `Around the World` and `Shanghai` to count multiplers as points instead of value
 
 #### Fixed
 - Return `outshot_type` for `X01 Handicap`

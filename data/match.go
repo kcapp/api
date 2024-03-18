@@ -181,7 +181,7 @@ func GetMatchesCount() (int, error) {
 }
 
 // GetActiveMatches returns all active matches
-func GetActiveMatches() ([]*models.Match, error) {
+func GetActiveMatches(since int) ([]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id, m.winner_id, m.office_id, m.is_practice,
@@ -196,10 +196,10 @@ func GetActiveMatches() ([]*models.Match, error) {
 			LEFT JOIN venue v on v.id = m.venue_id
 			LEFT JOIN player2leg p2l ON p2l.match_id = m.id
 		WHERE m.is_finished = 0
-			AND l.updated_at > NOW() - INTERVAL 2 MINUTE
+			AND l.updated_at > NOW() - INTERVAL ? MINUTE
 			AND m.is_bye <> 1
 		GROUP BY m.id
-		ORDER BY m.id DESC`)
+		ORDER BY m.id DESC`, since)
 	if err != nil {
 		return nil, err
 	}

@@ -98,7 +98,11 @@ func GetMatches(w http.ResponseWriter, r *http.Request) {
 // GetActiveMatches will return a list of active matches
 func GetActiveMatches(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-	matches, err := data.GetActiveMatches()
+	since, err := strconv.Atoi(r.URL.Query().Get("since"))
+	if err != nil {
+		since = 2
+	}
+	matches, err := data.GetActiveMatches(since)
 	if err != nil {
 		log.Println("Unable to get active matches", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

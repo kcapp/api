@@ -67,6 +67,8 @@ func RecalculateStatistics(matchType int, legID int, since string, dryRun bool) 
 		queries, err = RecalculateKnockoutStatistics(legs)
 	case models.SCAM:
 		queries, err = ReCalculateScamStatistics(legs)
+	case models.ONESEVENTY:
+		queries, err = ReCalculate170Statistics(legs)
 	default:
 		return fmt.Errorf("cannot recalculate statistics for type %d", matchType)
 	}
