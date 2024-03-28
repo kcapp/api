@@ -329,3 +329,8 @@ type MatchConfigError struct {
 func (e *MatchConfigError) Error() string {
 	return e.Err.Error()
 }
+
+// IsX01 returns true if this match is a X01 match
+func (m Match) IsX01() bool {
+	return m.MatchType.ID == X01
+}

@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"log"
 	"sort"
 	"time"
 
@@ -216,6 +217,9 @@ func (b BadgeJustAQuickie) GetID() int {
 	return b.ID
 }
 func (b BadgeJustAQuickie) Validate(match *Match) (bool, []int) {
+	if !match.IsX01() {
+		return false, nil
+	}
 	if len(match.Legs) == 3 && len(match.Players) > 1 {
 		first := match.Legs[0]
 		second := match.Legs[1]
@@ -226,6 +230,7 @@ func (b BadgeJustAQuickie) Validate(match *Match) (bool, []int) {
 			return true, []int{int(match.WinnerID.Int64)}
 		}
 	}
+
 	return false, nil
 }
 
@@ -233,6 +238,10 @@ func (b BadgeAroundTheWorld) GetID() int {
 	return b.ID
 }
 func (b BadgeAroundTheWorld) Validate(match *Match) (bool, []int) {
+	if !match.IsX01() {
+		return false, nil
+	}
+
 	playerHits := make(map[int][]int)
 	for playerID := range match.Players {
 		playerHits[playerID] = make([]int, 0)
@@ -308,6 +317,7 @@ var LegBadges = []LegBadge{
 	BadgeChampagneShot{ID: 42},
 	BadgeYin{ID: 44},
 	BadgeYang{ID: 45},
+	BadgeZebra{ID: 47},
 }
 
 type LegBadge interface {
@@ -335,11 +345,15 @@ type BadgePerfection struct{ ID int }
 type BadgeChampagneShot struct{ ID int }
 type BadgeYin struct{ ID int }
 type BadgeYang struct{ ID int }
+type BadgeZebra struct{ ID int }
 
 func (b BadgeDoubleDouble) GetID() int {
 	return b.ID
 }
 func (b BadgeDoubleDouble) Validate(leg *Leg) (bool, *int, *int) {
+	if !leg.IsX01() {
+		return false, nil, nil
+	}
 	visit := leg.GetLastVisit()
 	doubles := 0
 	if visit.ThirdDart.IsDouble() {
@@ -358,6 +372,9 @@ func (b BadgeTripleDouble) GetID() int {
 	return b.ID
 }
 func (b BadgeTripleDouble) Validate(leg *Leg) (bool, *int, *int) {
+	if !leg.IsX01() {
+		return false, nil, nil
+	}
 	visit := leg.GetLastVisit()
 	return visit.FirstDart.IsDouble() && visit.SecondDart.IsDouble() && visit.ThirdDart.IsDouble(), &visit.PlayerID, &visit.ID
 }
@@ -366,6 +383,9 @@ func (b BadgeMadHouse) GetID() int {
 	return b.ID
 }
 func (b BadgeMadHouse) Validate(leg *Leg) (bool, *int, *int) {
+	if !leg.IsX01() {
+		return false, nil, nil
+	}
 	visit := leg.GetLastVisit()
 	last := visit.GetLastDart()
 	return last.IsDouble() && last.ValueRaw() == 1, &visit.PlayerID, &visit.ID
@@ -408,6 +428,9 @@ func (b BadgeBullseye) GetID() int {
 	return b.ID
 }
 func (b BadgeBullseye) Validate(leg *Leg) (bool, *int, *int) {
+	if !leg.IsX01() {
+		return false, nil, nil
+	}
 	visit := leg.GetLastVisit()
 	last := visit.GetLastDart()
 	return last.ValueRaw() == BULLSEYE && last.Multiplier == DOUBLE, &visit.PlayerID, &visit.ID
@@ -417,6 +440,9 @@ func (b BadgeEasyAs123) GetID() int {
 	return b.ID
 }
 func (b BadgeEasyAs123) Validate(leg *Leg) (bool, *int, *int) {
+	if !leg.IsX01() {
+		return false, nil, nil
+	}
 	visit := leg.GetLastVisit()
 	last := visit.GetLastDart()
 	return visit.GetScore() == 123 && last.IsDouble(), &visit.PlayerID, &visit.ID
@@ -426,6 +452,9 @@ func (b BadgeCloseToPerfect) GetID() int {
 	return b.ID
 }
 func (b BadgeCloseToPerfect) Validate(leg *Leg) (bool, *int, *int) {
+	if !leg.IsX01() {
+		return false, nil, nil
+	}
 	visit := leg.GetLastVisit()
 	return leg.StartingScore == 501 && visit.DartsThrown < 15 && visit.DartsThrown > 9, &visit.PlayerID, nil
 }
@@ -445,6 +474,9 @@ func (b BadgeShanghaiCheckout) GetID() int {
 	return b.ID
 }
 func (b BadgeShanghaiCheckout) Validate(leg *Leg) (bool, *int, *int) {
+	if !leg.IsX01() {
+		return false, nil, nil
+	}
 	visit := leg.GetLastVisit()
 	return visit.IsShanghai(), &visit.PlayerID, &visit.ID
 }
@@ -453,8 +485,11 @@ func (b BadgeTripleTrouble) GetID() int {
 	return b.ID
 }
 func (b BadgeTripleTrouble) Validate(leg *Leg) (bool, *int, *int) {
-	visit := leg.GetLastVisit()
+	if !leg.IsX01() {
+		return false, nil, nil
+	}
 
+	visit := leg.GetLastVisit()
 	if visit.FirstDart.IsDouble() && visit.SecondDart.IsDouble() && visit.ThirdDart.IsDouble() &&
 		visit.FirstDart.ValueRaw() == visit.SecondDart.ValueRaw() && visit.FirstDart.ValueRaw() == visit.ThirdDart.ValueRaw() {
 		return true, &visit.PlayerID, &visit.ID
@@ -467,6 +502,10 @@ func (b BadgePerfection) GetID() int {
 	return b.ID
 }
 func (b BadgePerfection) Validate(leg *Leg) (bool, *int, *int) {
+	if !leg.IsX01() {
+		return false, nil, nil
+	}
+
 	visit := leg.GetLastVisit()
 	if leg.StartingScore == 501 && visit.DartsThrown == 9 {
 		return true, &visit.PlayerID, nil
@@ -478,6 +517,10 @@ func (b BadgeChampagneShot) GetID() int {
 	return b.ID
 }
 func (b BadgeChampagneShot) Validate(leg *Leg) (bool, *int, *int) {
+	if !leg.IsX01() {
+		return false, nil, nil
+	}
+
 	visit := leg.GetLastVisit()
 
 	if visit.FirstDart.IsBull() && visit.FirstDart.IsDouble() &&
@@ -493,7 +536,9 @@ func (b BadgeYin) GetID() int {
 	return b.ID
 }
 func (b BadgeYin) Validate(leg *Leg) (bool, *int, *int) {
-	black := []int{0, 20, 18, 13, 10, 2, 3, 7, 8, 14, 12}
+	if !leg.IsX01() {
+		return false, nil, nil
+	}
 
 	completed := true
 	winner := leg.GetLastVisit().PlayerID
@@ -501,9 +546,9 @@ func (b BadgeYin) Validate(leg *Leg) (bool, *int, *int) {
 		if visit.PlayerID != winner {
 			continue
 		}
-		if !containsInt(black, visit.FirstDart.ValueRaw()) ||
-			!containsInt(black, visit.SecondDart.ValueRaw()) ||
-			!containsInt(black, visit.ThirdDart.ValueRaw()) {
+		if !containsInt(NUMS_BLACK, visit.FirstDart.ValueRaw()) ||
+			!containsInt(NUMS_BLACK, visit.SecondDart.ValueRaw()) ||
+			!containsInt(NUMS_BLACK, visit.ThirdDart.ValueRaw()) {
 			completed = false
 			break
 
@@ -519,19 +564,73 @@ func (b BadgeYang) GetID() int {
 	return b.ID
 }
 func (b BadgeYang) Validate(leg *Leg) (bool, *int, *int) {
-	white := []int{0, 1, 4, 6, 15, 17, 19, 16, 11, 9, 5}
+	if !leg.IsX01() {
+		return false, nil, nil
+	}
+
 	completed := true
 	winner := leg.GetLastVisit().PlayerID
 	for _, visit := range leg.Visits {
 		if visit.PlayerID != winner {
 			continue
 		}
-		if !containsInt(white, visit.FirstDart.ValueRaw()) ||
-			!containsInt(white, visit.SecondDart.ValueRaw()) ||
-			!containsInt(white, visit.ThirdDart.ValueRaw()) {
+		if !containsInt(NUMS_WHITE, visit.FirstDart.ValueRaw()) ||
+			!containsInt(NUMS_WHITE, visit.SecondDart.ValueRaw()) ||
+			!containsInt(NUMS_WHITE, visit.ThirdDart.ValueRaw()) {
 			completed = false
 			break
 
+		}
+	}
+	if completed {
+		return true, &winner, nil
+	}
+	return false, nil, nil
+}
+
+func (b BadgeZebra) GetID() int {
+	return b.ID
+}
+func (b BadgeZebra) Validate(leg *Leg) (bool, *int, *int) {
+	if !leg.IsX01() {
+		return false, nil, nil
+	}
+	winner := leg.GetLastVisit().PlayerID
+
+	COLORS := map[int][]int{
+		0: NUMS_BLACK,
+		1: NUMS_WHITE,
+	}
+	completed := true
+
+	first := leg.GetFirstHitDart(winner)
+	var color int
+	if containsInt(COLORS[0], first.ValueRaw()) {
+		color = 0
+	} else {
+		color = 1
+	}
+	for _, visit := range leg.Visits {
+		if visit.PlayerID != winner {
+			continue
+		}
+
+		for _, dart := range visit.GetDarts() {
+			if dart.IsMiss() {
+				log.Printf("Skipping Missed dart")
+				continue
+			}
+			colors := COLORS[color%2]
+			log.Printf("Checking if %d is %d in %v", dart.ValueRaw(), color, colors)
+			if !containsInt(colors, dart.ValueRaw()) {
+				completed = false
+				break
+			}
+			color++
+		}
+
+		if !completed {
+			break
 		}
 	}
 	if completed {
@@ -838,7 +937,7 @@ func (b BadgeSoClose) Validate(playerID int, visits []*Visit) (bool, *int) {
 func GetLevel(value int, levels []int) int {
 	level := 1
 	for i, treshold := range levels {
-		if value > treshold {
+		if value >= treshold {
 			level = i + 1
 		}
 	}

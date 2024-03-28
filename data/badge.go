@@ -17,6 +17,8 @@ func GetBadges() ([]*models.Badge, error) {
 			b.name,
 			b.description,
 			b.filename,
+			b.secret,
+			b.hidden,
 			b.levels
 		FROM badge b`)
 	if err != nil {
@@ -27,7 +29,7 @@ func GetBadges() ([]*models.Badge, error) {
 	badges := make([]*models.Badge, 0)
 	for rows.Next() {
 		badge := new(models.Badge)
-		err := rows.Scan(&badge.ID, &badge.Name, &badge.Description, &badge.Filename, &badge.Levels)
+		err := rows.Scan(&badge.ID, &badge.Name, &badge.Description, &badge.Filename, &badge.Secret, &badge.Hidden, &badge.Levels)
 		if err != nil {
 			return nil, err
 		}
@@ -239,6 +241,7 @@ func CheckLegForBadges(leg *models.Leg, statistics map[int]*models.PlayerBadgeSt
 			}
 		}
 	}
+
 	for _, badge := range models.VisitBadges {
 		for _, playerID := range leg.Players {
 			valid, visitID := badge.Validate(playerID, leg.Visits)

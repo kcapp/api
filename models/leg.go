@@ -411,3 +411,23 @@ func DecorateVisitsScam(players map[int]*Player2Leg, visits []*Visit) {
 func (leg Leg) GetLastVisit() *Visit {
 	return leg.Visits[len(leg.Visits)-1]
 }
+
+// IsX01 returns true if this leg is a X01 leg
+func (leg Leg) IsX01() bool {
+	return leg.LegType.ID == X01
+}
+
+// GetFirstHitDart will return the first (non-Miss) dart for the given player
+func (leg Leg) GetFirstHitDart(playerID int) *Dart {
+	for _, visit := range leg.Visits {
+		if visit.PlayerID != playerID {
+			continue
+		}
+		for _, dart := range visit.GetDarts() {
+			if !dart.IsMiss() {
+				return &dart
+			}
+		}
+	}
+	return nil
+}

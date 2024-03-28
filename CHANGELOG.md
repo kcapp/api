@@ -5,6 +5,7 @@
 - New game type `170`
 - Endpoint for getting badge statistics
 - Added Darts Per Leg `DPL` metric to tournament
+- Count badges for all leg types
 - Lots of new badges
 
 #### Changed

@@ -933,7 +933,6 @@ func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.PlayerBadg
 			LEFT JOIN matches m ON l.match_id = m.id
 		WHERE player_id IN (?)
 			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
-			AND COALESCE(l.leg_type_id, m.match_type_id) = 1 -- X01
 			AND m.is_bye = 0 AND m.is_walkover = 0 AND leg_id <= COALESCE(?, ~0) -- BIGINT hack
 		GROUP BY player_id
 		ORDER BY player_id DESC`, ids, legID)
@@ -979,7 +978,6 @@ func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.PlayerBadg
 				or (first_dart_multiplier = 2 and second_dart_multiplier = 1 and third_dart_multiplier = 3))
 			AND is_bust = 0 AND s.player_id IN (?) AND leg_id <= COALESCE(?, ~0) -- BIGINT hack
 			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
-			AND COALESCE(l.leg_type_id, m.match_type_id) = 1 -- X01
 			AND m.is_bye = 0 AND m.is_walkover = 0
 		GROUP BY first_dart, player_id`, ids, legID)
 	if err != nil {

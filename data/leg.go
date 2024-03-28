@@ -949,7 +949,7 @@ func GetBadgeLegsToRecalculate() ([]int, error) {
 		SELECT l.id
 		FROM leg l
 			JOIN matches m on m.id = l.match_id
-		WHERE l.has_scores = 1 AND COALESCE(l.leg_type_id, m.match_type_id) = 1 -- X01
+		WHERE l.has_scores = 1
 			AND m.is_abandoned = 0 AND m.is_bye = 0 AND m.is_walkover = 0
 			AND l.is_finished = 1
 		GROUP BY l.id

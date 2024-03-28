@@ -9,6 +9,9 @@ import (
 	"github.com/guregu/null"
 )
 
+var NUMS_WHITE = []int{0, 1, 4, 6, 15, 17, 19, 16, 11, 9, 5}
+var NUMS_BLACK = []int{0, 20, 18, 13, 10, 2, 3, 7, 8, 14, 12}
+
 // Visit struct used for storing legs
 type Visit struct {
 	ID          int         `json:"id"`
