@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"log"
 	"sort"
 	"time"
 
@@ -617,11 +616,9 @@ func (b BadgeZebra) Validate(leg *Leg) (bool, *int, *int) {
 
 		for _, dart := range visit.GetDarts() {
 			if dart.IsMiss() {
-				log.Printf("Skipping Missed dart")
 				continue
 			}
 			colors := COLORS[color%2]
-			log.Printf("Checking if %d is %d in %v", dart.ValueRaw(), color, colors)
 			if !containsInt(colors, dart.ValueRaw()) {
 				completed = false
 				break
