@@ -155,6 +155,18 @@ func (dart Dart) GetString() string {
 	return fmt.Sprintf("%d-NULL", dart.Multiplier)
 }
 
+func (dart Dart) String() string {
+	if !dart.Value.Valid {
+		return ""
+	}
+	if dart.Multiplier == TRIPLE {
+		return fmt.Sprintf("T%d", dart.ValueRaw())
+	} else if dart.Multiplier == DOUBLE {
+		return fmt.Sprintf("D%d", dart.ValueRaw())
+	}
+	return fmt.Sprintf("%d", dart.ValueRaw())
+}
+
 // NewDart will return a new dart with the given settings
 func NewDart(value null.Int, multipler int64) *Dart {
 	return &Dart{Value: value, Multiplier: multipler}
@@ -201,6 +213,15 @@ func (dart Dart) ValueRaw() int {
 		return int(dart.Value.Int64)
 	}
 	return 0
+}
+
+func (dart Dart) IsValue(values []int) bool {
+	for _, value := range values {
+		if dart.ValueRaw() == value {
+			return true
+		}
+	}
+	return false
 }
 
 // GetMarksHit will return the number of marks hit by the given darts, accounting for numbers requiring less than 3 hits to close
@@ -291,4 +312,9 @@ func containsInt(s []int, e int) bool {
 		}
 	}
 	return false
+}
+
+func removeInt(s []int, i int) []int {
+	s[i] = s[len(s)-1]
+	return s[:len(s)-1]
 }

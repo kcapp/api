@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/guregu/null"
+	"github.com/jmoiron/sqlx"
 	"github.com/kcapp/api/models"
 	"github.com/kcapp/api/util"
 )
@@ -82,6 +83,13 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 	} else if *matchType == models.KNOCKOUT {
 		params := match.Legs[0].Parameters
 		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, starting_lives) VALUES (?, ?)", legID, params.StartingLives)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	} else if *matchType == models.ONESEVENTY {
+		params := match.Legs[0].Parameters
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, max_rounds, points_to_win) VALUES (?, ?, ?)", legID, params.MaxRounds, params.PointsToWin)
 		if err != nil {
 			tx.Rollback()
 			return nil, err
@@ -184,6 +192,22 @@ func FinishLeg(visit models.Visit) error {
 		for _, player := range scores {
 			if player.Lives.Int64 > 0 {
 				winnerID = null.IntFrom(int64(player.PlayerID))
+			}
+		}
+	} else if matchType == models.ONESEVENTY {
+		scores, err := GetPlayersScore(visit.LegID)
+		if err != nil {
+			return err
+		}
+
+		mostPoints := int64(0)
+		for playerID, player := range scores {
+			if player.CurrentPoints.Int64 == mostPoints {
+				winnerID = null.IntFromPtr(nil)
+			}
+			if player.CurrentPoints.Int64 > mostPoints {
+				mostPoints = player.CurrentPoints.Int64
+				winnerID = null.IntFrom(int64(playerID))
 			}
 		}
 	}
@@ -425,6 +449,26 @@ func FinishLeg(visit models.Visit) error {
 			}
 			log.Printf("[%d] Inserting Scam statistics for player %d", visit.LegID, playerID)
 		}
+	} else if matchType == models.ONESEVENTY {
+		statisticsMap, err := Calculate170Statistics(visit.LegID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+				INSERT INTO statistics_170
+					(leg_id, player_id, points, ppd, ppd_score, rounds, checkout_percentage, checkout_attempts, checkout_completed, highest_checkout, darts_thrown, 
+					checkout_9_darts, checkout_8_darts, checkout_7_darts, checkout_6_darts, checkout_5_darts, checkout_4_darts, checkout_3_darts)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.Points, stats.PPD, stats.PPDScore, stats.Rounds,
+				stats.CheckoutPercentage, stats.CheckoutAttempts, stats.CheckoutCompleted, stats.HighestCheckout, stats.DartsThrown, stats.CheckoutDarts[9],
+				stats.CheckoutDarts[8], stats.CheckoutDarts[7], stats.CheckoutDarts[6], stats.CheckoutDarts[5], stats.CheckoutDarts[4], stats.CheckoutDarts[3])
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("[%d] Inserting 170 statistics for player %d", visit.LegID, playerID)
+		}
 	} else {
 		statisticsMap, err := CalculateX01Statistics(visit.LegID)
 		if err != nil {
@@ -549,6 +593,11 @@ func FinishLeg(visit models.Visit) error {
 				}
 			}
 		}
+
+		err = CheckMatchForBadges(match)
+		if err != nil {
+			return err
+		}
 	} else {
 		log.Printf("Match %d is not finished, creating next leg", match.ID)
 		var matchType *int
@@ -660,6 +709,11 @@ func UndoLegFinish(legID int) error {
 		tx.Rollback()
 		return err
 	}
+	_, err = tx.Exec("DELETE FROM statistics_170 WHERE leg_id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 
 	// Remove the last score
 	_, err = tx.Exec("DELETE FROM score WHERE leg_id = ? ORDER BY id DESC LIMIT 1", legID)
@@ -730,7 +784,67 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 		leg.Visits = visits
 
 		matchType := leg.LegType.ID
-		if matchType == models.X01 || matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
+		if matchType == models.X01 || matchType == models.X01HANDICAP || matchType == models.TICTACTOE || matchType == models.KNOCKOUT ||
+			matchType == models.ONESEVENTY {
+			leg.Parameters, err = GetLegParameters(leg.ID)
+			if err != nil {
+				return nil, err
+			}
+		}
+		legs = append(legs, leg)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return legs, nil
+}
+
+// GetLegs returns all legs with the given IDs
+func GetLegs(ids []int) ([]*models.Leg, error) {
+	q, args, err := sqlx.In(`
+		SELECT
+			l.id, l.end_time, l.starting_score, l.is_finished,
+			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
+			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC) as "players",
+			mt.id as 'match_type_id', mt.name, mt.description
+		FROM leg l
+			LEFT JOIN player2leg p2l ON p2l.leg_id = l.id
+			LEFT JOIN matches m ON m.id = l.match_id
+			LEFT JOIN match_type mt on mt.id = IFNULL(l.leg_type_id, m.match_type_id)
+		WHERE l.id IN(?)
+		GROUP BY l.id
+		ORDER BY l.id ASC`, ids)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := models.DB.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	legs := make([]*models.Leg, 0)
+	for rows.Next() {
+		leg := new(models.Leg)
+		leg.LegType = new(models.MatchType)
+		var players string
+		err := rows.Scan(&leg.ID, &leg.Endtime, &leg.StartingScore, &leg.IsFinished, &leg.CurrentPlayerID,
+			&leg.WinnerPlayerID, &leg.CreatedAt, &leg.UpdatedAt, &leg.MatchID, &leg.HasScores, &players, &leg.LegType.ID,
+			&leg.LegType.Name, &leg.LegType.Description)
+		if err != nil {
+			return nil, err
+		}
+		leg.Players = util.StringToIntArray(players)
+		visits, err := GetLegVisits(leg.ID)
+		if err != nil {
+			return nil, err
+		}
+		leg.Visits = visits
+
+		matchType := leg.LegType.ID
+		if matchType == models.X01 || matchType == models.X01HANDICAP || matchType == models.TICTACTOE || matchType == models.KNOCKOUT ||
+			matchType == models.ONESEVENTY {
 			leg.Parameters, err = GetLegParameters(leg.ID)
 			if err != nil {
 				return nil, err
@@ -780,12 +894,14 @@ func GetLegsOfType(matchType int, loadVisits bool) ([]*models.Leg, error) {
 			}
 			leg.Visits = visits
 		}
-		if matchType == models.X01 || matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
+		if matchType == models.X01 || matchType == models.TICTACTOE || matchType == models.KNOCKOUT ||
+			matchType == models.ONESEVENTY {
 			leg.Parameters, err = GetLegParameters(leg.ID)
 			if err != nil {
 				return nil, err
 			}
 		}
+		leg.LegType = &models.MatchType{ID: matchType}
 		legs = append(legs, leg)
 	}
 	if err = rows.Err(); err != nil {
@@ -833,7 +949,7 @@ func GetBadgeLegsToRecalculate() ([]int, error) {
 		SELECT l.id
 		FROM leg l
 			JOIN matches m on m.id = l.match_id
-		WHERE l.has_scores = 1 AND COALESCE(l.leg_type_id, m.match_type_id) = 1 -- X01
+		WHERE l.has_scores = 1
 			AND m.is_abandoned = 0 AND m.is_bye = 0 AND m.is_walkover = 0
 			AND l.is_finished = 1
 		GROUP BY l.id
@@ -928,7 +1044,8 @@ func GetLeg(id int) (*models.Leg, error) {
 	}
 
 	matchType := leg.LegType.ID
-	if matchType == models.X01 || matchType == models.X01HANDICAP || matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
+	if matchType == models.X01 || matchType == models.X01HANDICAP || matchType == models.TICTACTOE ||
+		matchType == models.KNOCKOUT || matchType == models.ONESEVENTY {
 		leg.Parameters, err = GetLegParameters(id)
 		if err != nil {
 			return nil, err
@@ -1085,6 +1202,9 @@ func GetLeg(id int) (*models.Leg, error) {
 					score = visit.CalculateScamScore(scores)
 					scores[visit.PlayerID].CurrentScore += score
 				}
+			} else if matchType == models.ONESEVENTY {
+				player := scores[visit.PlayerID]
+				score = visit.Calculate170Score(round, player)
 			} else {
 				scores[visit.PlayerID].CurrentScore -= score
 			}
@@ -1313,8 +1433,10 @@ func GetLegParameters(legID int) (*models.LegParameters, error) {
 	n := make([]null.Int, 9)
 	var ost null.Int
 	err := models.DB.QueryRow(`
-		SELECT outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9, starting_lives
-		FROM leg_parameters WHERE leg_id = ?`, legID).Scan(&ost, &n[0], &n[1], &n[2], &n[3], &n[4], &n[5], &n[6], &n[7], &n[8], &params.StartingLives)
+		SELECT outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9, starting_lives, 
+			points_to_win, max_rounds
+		FROM leg_parameters WHERE leg_id = ?`, legID).Scan(&ost, &n[0], &n[1], &n[2], &n[3], &n[4], &n[5], &n[6], &n[7], &n[8],
+		&params.StartingLives, &params.PointsToWin, &params.MaxRounds)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return new(models.LegParameters), nil

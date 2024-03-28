@@ -196,6 +196,25 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 				isFinished = true
 			}
 		}
+	} else if matchType == models.ONESEVENTY {
+		visit.SetIsBust(players[visit.PlayerID].CurrentScore, models.OUTSHOTDOUBLE)
+		if visit.IsCheckout(players[visit.PlayerID].CurrentScore, models.OUTSHOTDOUBLE) {
+			players[visit.PlayerID].CurrentPoints.Int64++
+		}
+
+		for _, player := range players {
+			if player.CurrentPoints.Int64 >= leg.Parameters.PointsToWin.Int64 {
+				// One player hit required number of points
+				isFinished = true
+				break
+			}
+		}
+
+		round := (len(leg.Visits)+1)/len(leg.Players)/3 + 1
+		if leg.Parameters.MaxRounds.Valid && round > int(leg.Parameters.MaxRounds.Int64) {
+			// We hit max number of rounds, so we are finished
+			isFinished = true
+		}
 	}
 
 	// Determine who will be the next player

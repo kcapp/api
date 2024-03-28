@@ -72,6 +72,13 @@ func NewMatch(match models.Match) (*models.Match, error) {
 			tx.Rollback()
 			return nil, err
 		}
+	} else if match.MatchType.ID == models.ONESEVENTY {
+		params := match.Legs[0].Parameters
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, points_to_win, max_rounds) VALUES (?, ?, ?)", legID, params.PointsToWin, params.MaxRounds)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	tx.Exec("UPDATE matches SET current_leg_id = ? WHERE id = ?", legID, matchID)
@@ -174,7 +181,7 @@ func GetMatchesCount() (int, error) {
 }
 
 // GetActiveMatches returns all active matches
-func GetActiveMatches() ([]*models.Match, error) {
+func GetActiveMatches(since int) ([]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id, m.winner_id, m.office_id, m.is_practice,
@@ -189,10 +196,10 @@ func GetActiveMatches() ([]*models.Match, error) {
 			LEFT JOIN venue v on v.id = m.venue_id
 			LEFT JOIN player2leg p2l ON p2l.match_id = m.id
 		WHERE m.is_finished = 0
-			AND l.updated_at > NOW() - INTERVAL 2 MINUTE
+			AND l.updated_at > NOW() - INTERVAL ? MINUTE
 			AND m.is_bye <> 1
 		GROUP BY m.id
-		ORDER BY m.id DESC`)
+		ORDER BY m.id DESC`, since)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +244,7 @@ func GetMatchProbabilities(id int) (*models.Probability, error) {
 			m.id, m.created_at, m.updated_at, IF(TIMEDIFF(MAX(l.updated_at), NOW() - INTERVAL 15 MINUTE) > 0, 1, 0) AS 'is_started',
 			m.is_finished, m.is_abandoned, m.is_walkover, m.winner_id,
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
-			GROUP_CONCAT(DISTINCT pe.current_elo ORDER BY p2l.order) AS 'elos',
+			GROUP_CONCAT(DISTINCT if(pe.tournament_elo_matches<6, pe.current_elo, pe.tournament_elo) ORDER BY p2l.order) AS 'elos',
 			mm.is_draw_possible
 		FROM matches m
 			JOIN player2leg p2l ON p2l.match_id = m.id
@@ -637,9 +644,6 @@ func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, e
 
 		metadata = append(metadata, m)
 	}
-	if err != nil {
-		return nil, err
-	}
 	return metadata, nil
 }
 
@@ -888,4 +892,34 @@ func SwapPlayers(matchID int, newPlayerID int, oldPlayerID int) error {
 	tx.Commit()
 	log.Printf("Swapped player %d with %d for match %d", oldPlayerID, newPlayerID, matchID)
 	return nil
+}
+
+// GetBadgeMatchesToRecalculate returns all matches which can generate badges which can be recalculated
+func GetBadgeMatchesToRecalculate() ([]int, error) {
+	rows, err := models.DB.Query(`
+		SELECT m.id FROM matches m
+			LEFT JOIN leg l ON l.match_id = m.id
+		WHERE m.is_abandoned = 0 AND m.is_bye = 0 AND m.is_walkover = 0
+			AND m.is_finished = 1 AND l.has_scores = 1 AND m.match_type_id = 1
+		GROUP BY m.id
+		ORDER BY m.id ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	matches := make([]int, 0)
+	for rows.Next() {
+		var matchID int
+		err := rows.Scan(&matchID)
+		if err != nil {
+			return nil, err
+		}
+		matches = append(matches, matchID)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return matches, nil
 }

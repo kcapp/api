@@ -182,7 +182,15 @@ func GetStatistics(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewEncoder(w).Encode(stats)
 		return
-
+	case models.ONESEVENTY:
+		stats, err := data.Get170Statistics(params["from"], params["to"])
+		if err != nil {
+			log.Println("Unable to get 170 Statistics", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
 	default:
 		log.Println("Unknown match type parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)

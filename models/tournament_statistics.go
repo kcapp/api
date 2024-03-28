@@ -44,6 +44,7 @@ type TournamentOverview struct {
 	FirstNineThreeDartAvg float32          `json:"first_nine_three_dart_avg"`
 	CheckoutAttempts      int              `json:"checkout_attempts"`
 	CheckoutPercentage    float32          `json:"checkout_percentage"`
+	DartsPerLeg           float32          `json:"darts_per_leg"`
 	Score60sPlus          int              `json:"scores_60s_plus"`
 	Score100sPlus         int              `json:"scores_100s_plus"`
 	Score140sPlus         int              `json:"scores_140s_plus"`

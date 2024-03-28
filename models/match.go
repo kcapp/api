@@ -50,6 +50,8 @@ const (
 	KNOCKOUT = 15
 	// SCAM constant representing type 16
 	SCAM = 16
+	// ONESEVENTY contenst representing type 17
+	ONESEVENTY = 17
 )
 
 var MatchTypes = map[int]string{
@@ -326,4 +328,9 @@ type MatchConfigError struct {
 
 func (e *MatchConfigError) Error() string {
 	return e.Err.Error()
+}
+
+// IsX01 returns true if this match is a X01 match
+func (m Match) IsX01() bool {
+	return m.MatchType.ID == X01
 }

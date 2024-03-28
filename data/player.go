@@ -167,9 +167,6 @@ func GetPlayerEloChangelog(id int, start int, limit int) (*models.PlayerEloChang
 	}
 	defer rows.Close()
 
-	if err != nil {
-		return nil, err
-	}
 	changelogs := new(models.PlayerEloChangelogs)
 	changelogs.Total = total
 	changelogs.Changelog = make([]*models.PlayerEloChangelog, 0)
@@ -311,10 +308,10 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 			FROM player2leg p2l
 				LEFT JOIN player p on p.id = p2l.player_id
 				LEFT JOIN leg l ON l.id = p2l.leg_id
-				LEFT JOIN score s ON s.leg_id = p2l.leg_id AND s.player_id = p2l.player_id
+				LEFT JOIN score s ON s.leg_id = p2l.leg_id AND s.player_id = p2l.player_id AND s.is_bust = 0
 				LEFT JOIN matches m on m.id = l.match_id
 				LEFT JOIN bot2player2leg b ON b.player2leg_id = p2l.id
-			WHERE p2l.leg_id = ? AND (s.is_bust IS NULL OR is_bust = 0)
+			WHERE p2l.leg_id = ?
 			GROUP BY p2l.player_id
 			ORDER BY p2l.order ASC`, legID)
 	if err != nil {
@@ -609,6 +606,25 @@ func GetPlayersScore(legID int) (map[int]*models.Player2Leg, error) {
 				}
 			}
 		}
+	} else if matchType == models.ONESEVENTY {
+		visits, err := GetLegVisits(legID)
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			player.CurrentScore = 170
+			player.DartsThrown = 0
+			player.CurrentPoints = null.IntFrom(0)
+		}
+
+		round := 1
+		for i, visit := range visits {
+			if i > 0 && i%len(players) == 0 {
+				round++
+			}
+			player := scores[visit.PlayerID]
+			visit.Calculate170Score(round, player)
+		}
 	}
 	return scores, nil
 }
@@ -665,37 +681,19 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			player_id,
-			MAX(matches_played) AS matches_played,
-			MAX(matches_won) AS matches_won,
-			MAX(legs_played) AS legs_played,
-			MAX(legs_won) AS legs_won
-		FROM (
-			SELECT
-				p2l.player_id,
-				COUNT(DISTINCT p2l.match_id) AS matches_played,
-				SUM(CASE WHEN p2l.player_id = m.winner_id THEN 1 ELSE 0 END) AS matches_won,
-				COUNT(p2l.leg_id) AS legs_played,
-				SUM(CASE WHEN p2l.player_id = m.winner_id THEN 1 ELSE 0 END) AS legs_won
-			FROM player2leg p2l
-				JOIN matches m ON m.id = p2l.match_id
-				JOIN leg l ON l.id = p2l.leg_id AND l.match_id = m.id
-			WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
-			GROUP BY p2l.player_id
-			UNION ALL
-			SELECT
-				m.winner_id AS player_id,
-				0 AS matches_played,
-				COUNT(DISTINCT m.id) AS matches_won,
-				0 AS legs_played,
-				0 AS legs_won
-			FROM matches m
-				JOIN leg l ON l.match_id = m.id
-			WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
-			GROUP BY m.winner_id
-		) AS subquery
-		WHERE player_id IS NOT NULL
-		GROUP BY player_id`)
+			p.id AS 'player_id',
+			COUNT(DISTINCT m.id) AS 'matches_played',
+			COUNT(DISTINCT m2.id) AS 'matches_won',
+			COUNT(DISTINCT l.id) AS 'legs_played',
+			COUNT(DISTINCT l2.id) AS 'legs_won'
+		FROM statistics_x01 s
+			JOIN player p ON p.id = s.player_id
+			JOIN leg l ON l.id = s.leg_id
+			JOIN matches m ON m.id = l.match_id
+			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
+			LEFT JOIN matches m2 ON m2.id = l2.match_id AND l2.winner_id = p.id
+		WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
+		GROUP BY s.player_id`)
 	if err != nil {
 		return nil, err
 	}
@@ -888,10 +886,14 @@ func GetPlayerBadges(playerID int) ([]*models.PlayerBadge, error) {
 			p2b.match_id,
 			p2b.tournament_id,
 			p2b.opponent_player_id,
-			p2b.darts,
+			p2b.visit_id,
+			s.first_dart, IFNULL(s.first_dart_multiplier, 1),
+			s.second_dart, IFNULL(s.second_dart_multiplier, 1),
+			s.third_dart, IFNULL(s.third_dart_multiplier, 1),
 			p2b.created_at
 		FROM player2badge p2b
 			LEFT JOIN badge b ON b.id = p2b.badge_id
+			LEFT JOIN score s on s.id = p2b.visit_id
 		WHERE p2b.player_id = ?`, playerID)
 	if err != nil {
 		return nil, err
@@ -902,6 +904,11 @@ func GetPlayerBadges(playerID int) ([]*models.PlayerBadge, error) {
 	for rows.Next() {
 		badge := new(models.PlayerBadge)
 		badge.Badge = new(models.Badge)
+		darts := make([]*models.Dart, 3)
+		darts[0] = new(models.Dart)
+		darts[1] = new(models.Dart)
+		darts[2] = new(models.Dart)
+
 		err := rows.Scan(
 			&badge.Badge.ID,
 			&badge.Badge.Name,
@@ -914,11 +921,17 @@ func GetPlayerBadges(playerID int) ([]*models.PlayerBadge, error) {
 			&badge.MatchID,
 			&badge.TournamentID,
 			&badge.OpponentPlayerID,
-			&badge.Darts,
+			&badge.VisitID,
+			&darts[0].Value, &darts[0].Multiplier,
+			&darts[1].Value, &darts[1].Multiplier,
+			&darts[2].Value, &darts[2].Multiplier,
 			&badge.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
+		}
+		if badge.VisitID.Valid {
+			badge.Darts = darts
 		}
 		badges = append(badges, badge)
 	}
@@ -1339,4 +1352,35 @@ func GetPlayerHits(playerID int, visit models.Visit) ([]*models.Visit, error) {
 		return nil, err
 	}
 	return hits, nil
+}
+
+func GetPlayersMatchTypes() (map[int]int, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			p2l.player_id,
+			COUNT(DISTINCT COALESCE(l.leg_type_id, m.match_type_id)) AS 'match_types'
+		FROM kcapp.player2leg p2l
+			LEFT JOIN leg l ON l.id = p2l.leg_id
+			LEFT JOIN matches m ON l.match_id = m.id
+		WHERE l.is_finished = 1 AND m.is_finished = 1
+		GROUP BY p2l.player_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	m := make(map[int]int)
+	for rows.Next() {
+		var playerID int
+		var matchTypes int
+		err := rows.Scan(&playerID, &matchTypes)
+		if err != nil {
+			return nil, err
+		}
+		m[playerID] = matchTypes
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return m, nil
 }

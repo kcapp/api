@@ -8,7 +8,7 @@ RUN apk update && apk add --no-cache git gcc
 WORKDIR $GOPATH/src/github.com/pressly/goose
 RUN git clone https://github.com/pressly/goose .
 RUN go get -d -v
-RUN CGO_ENABLED=0 go build -tags='no_postgres no_sqlite3' -o $GOPATH/bin/goose -a -ldflags '-extldflags "-static"' ./cmd/goose
+RUN CGO_ENABLED=0 go build -tags='no_postgres no_sqlite3 no_ydb no_duckdb' -o $GOPATH/bin/goose -a -ldflags '-extldflags "-static"' ./cmd/goose
 
 # Add script to run migrations
 RUN mkdir -p /usr/local/scripts

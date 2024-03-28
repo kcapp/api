@@ -493,6 +493,7 @@ func GetShanghaiStatisticsForMatch(id int) ([]*models.StatisticsAroundThe, error
 			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 			SUM(s.mpr) / COUNT(DISTINCT l.id) as 'mpr',
 			SUM(s.total_hit_rate) / COUNT(l.id) as 'total_hit_rate',
+			MAX(shanghai) as 'shanghai',
 			IFNULL(SUM(s.hit_rate_1) / SUM(IF(shanghai < 1, 0, 1)), 0) as 'hit_rate_1',
 			IFNULL(SUM(s.hit_rate_2) / SUM(IF(shanghai < 2, 0, 1)), 0) as 'hit_rate_2',
 			IFNULL(SUM(s.hit_rate_3) / SUM(IF(shanghai < 3, 0, 1)), 0) as 'hit_rate_3',
@@ -530,7 +531,7 @@ func GetShanghaiStatisticsForMatch(id int) ([]*models.StatisticsAroundThe, error
 	for rows.Next() {
 		s := new(models.StatisticsAroundThe)
 		h := make([]*null.Float, 21)
-		err := rows.Scan(&s.PlayerID, &s.DartsThrown, &s.Score, &s.MPR, &s.TotalHitRate,
+		err := rows.Scan(&s.PlayerID, &s.DartsThrown, &s.Score, &s.MPR, &s.TotalHitRate, &s.Shanghai,
 			&h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8], &h[9], &h[10], &h[11],
 			&h[12], &h[13], &h[14], &h[15], &h[16], &h[17], &h[18], &h[19], &h[20])
 		if err != nil {

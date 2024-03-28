@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.8.0] - TBD
+#### Feature
+- New game type `170`
+- Endpoint for getting badge statistics
+- Added Darts Per Leg `DPL` metric to tournament
+- Count badges for all leg types
+- Lots of new badges
+
+#### Changed
+- Sort tournament best statistics by leg id for equal values
+- Use tournament elo if available for odds
+- Switched `Around the World` and `Shanghai` to count multiplers as points instead of value
+
+#### Fixed
+- Return `outshot_type` for `X01 Handicap`
+
 ## [2.7.0] - 2023-09-12
 #### Feature
 - Player Badges!
@@ -140,6 +156,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
+[2.8.0]: https://github.com/kcapp/api/compare/v2.7.0...develop
 [2.7.0]: https://github.com/kcapp/api/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/kcapp/api/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/kcapp/api/compare/v2.4.0...v2.5.0
