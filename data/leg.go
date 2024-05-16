@@ -535,6 +535,7 @@ func FinishLeg(visit models.Visit) error {
 				log.Printf("Added owes of %s from player %d to player %d", match.OweType.Item.String, playerID, visit.PlayerID)
 			}
 		}
+		match.WinnerID = winnerID
 		log.Printf("Match %d finished with player %d winning", match.ID, winnerID.ValueOrZero())
 	} else if match.MatchMode.LegsRequired.Valid && playedLegs == int(match.MatchMode.LegsRequired.Int64) {
 		// Match finished, draw

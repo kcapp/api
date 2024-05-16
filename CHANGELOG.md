@@ -15,6 +15,7 @@
 
 #### Fixed
 - Return `outshot_type` for `X01 Handicap`
+- Correctly calculate match badges on match finish
 
 ## [2.7.0] - 2023-09-12
 #### Feature
