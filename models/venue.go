@@ -16,6 +16,7 @@ type VenueConfig struct {
 	VenueID                int         `json:"id"`
 	HasDualMonitor         bool        `json:"has_dual_monitor"`
 	HasLEDLights           bool        `json:"has_led_lights"`
+	HasWLEDLights          bool        `json:"has_wled_lights"`
 	HasSmartboard          bool        `json:"has_smartboard"`
 	SmartboardUUID         null.String `json:"smartboard_uuid,omitempty"`
 	SmartboardButtonNumber null.Int    `json:"smartboard_button_number,omitempty"`

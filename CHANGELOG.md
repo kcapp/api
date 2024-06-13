@@ -6,6 +6,7 @@
 - Endpoint for getting badge statistics
 - Added Darts Per Leg `DPL` metric to tournament
 - Count badges for all leg types
+- WLED support for venues
 - Lots of new badges
 
 #### Changed
