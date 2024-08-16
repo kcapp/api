@@ -7,6 +7,7 @@
 - Added Darts Per Leg `DPL` metric to tournament
 - Count badges for all leg types
 - WLED support for venues
+- TTS voice selection per venue
 - Lots of new badges
 
 #### Changed

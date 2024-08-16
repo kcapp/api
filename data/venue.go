@@ -26,9 +26,9 @@ func AddVenue(venue models.Venue) error {
 		return err
 	}
 
-	_, err = tx.Exec(`INSERT INTO venue_configuration (venue_id, has_dual_monitor, has_led_lights, has_wled_lights, has_smartboard, \
+	_, err = tx.Exec(`INSERT INTO venue_configuration (venue_id, has_dual_monitor, has_led_lights, has_wled_lights, tts_voice, has_smartboard, 
 		smartboard_uuid, smartboard_button_number) VALUES (?, ?, ?, ?, ?, ?)`, venueID, venue.Config.HasDualMonitor, venue.Config.HasLEDLights,
-		venue.Config.HasWLEDLights, venue.Config.HasSmartboard, venue.Config.SmartboardUUID, venue.Config.SmartboardButtonNumber)
+		venue.Config.HasWLEDLights, venue.Config.TTSVoice, venue.Config.HasSmartboard, venue.Config.SmartboardUUID, venue.Config.SmartboardButtonNumber)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -52,9 +52,9 @@ func UpdateVenue(venueID int, venue models.Venue) error {
 		return err
 	}
 	_, err = tx.Exec(`UPDATE venue_configuration SET has_dual_monitor = ?, has_led_lights = ?, has_wled_lights = ?, 
-		has_smartboard = ?, smartboard_uuid = ?, smartboard_button_number = ? WHERE venue_id = ?`,
-		venue.Config.HasDualMonitor, venue.Config.HasLEDLights, &venue.Config.HasWLEDLights, venue.Config.HasSmartboard,
-		venue.Config.SmartboardUUID, venue.Config.SmartboardButtonNumber, venueID)
+		tts_voice = ?, has_smartboard = ?, smartboard_uuid = ?, smartboard_button_number = ? WHERE venue_id = ?`,
+		venue.Config.HasDualMonitor, venue.Config.HasLEDLights, venue.Config.HasWLEDLights, venue.Config.TTSVoice,
+		venue.Config.HasSmartboard, venue.Config.SmartboardUUID, venue.Config.SmartboardButtonNumber, venueID)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -87,7 +87,7 @@ func GetVenues() ([]*models.Venue, error) {
 	}
 
 	rows, err = models.DB.Query(`
-		SELECT venue_id, has_dual_monitor, has_led_lights, has_wled_lights, has_smartboard, smartboard_uuid, smartboard_button_number
+		SELECT venue_id, has_dual_monitor, has_led_lights, has_wled_lights, tts_voice, has_smartboard, smartboard_uuid, smartboard_button_number
 		FROM venue_configuration`)
 	if err != nil {
 		return nil, err
@@ -95,8 +95,8 @@ func GetVenues() ([]*models.Venue, error) {
 	configs := make(map[int]*models.VenueConfig)
 	for rows.Next() {
 		config := new(models.VenueConfig)
-		err := rows.Scan(&config.VenueID, &config.HasDualMonitor, &config.HasLEDLights, &config.HasWLEDLights, &config.HasSmartboard,
-			&config.SmartboardUUID, &config.SmartboardButtonNumber)
+		err := rows.Scan(&config.VenueID, &config.HasDualMonitor, &config.HasLEDLights, &config.HasWLEDLights, &config.TTSVoice,
+			&config.HasSmartboard, &config.SmartboardUUID, &config.SmartboardButtonNumber)
 		if err != nil {
 			return nil, err
 		}
@@ -129,10 +129,10 @@ func GetVenue(id int) (*models.Venue, error) {
 func GetVenueConfiguration(id int) (*models.VenueConfig, error) {
 	config := new(models.VenueConfig)
 	err := models.DB.QueryRow(`
-		SELECT venue_id, has_dual_monitor, has_led_lights, has_wled_lights, has_smartboard, smartboard_uuid, smartboard_button_number
-		FROM venue_configuration WHERE venue_id = ?`,
-		id).Scan(&config.VenueID, &config.HasDualMonitor, &config.HasLEDLights, &config.HasWLEDLights, &config.HasSmartboard, &config.SmartboardUUID,
-		&config.SmartboardButtonNumber)
+		SELECT venue_id, has_dual_monitor, has_led_lights, has_wled_lights, tts_voice, has_smartboard, smartboard_uuid, 
+		smartboard_button_number FROM venue_configuration WHERE venue_id = ?`,
+		id).Scan(&config.VenueID, &config.HasDualMonitor, &config.HasLEDLights, &config.HasWLEDLights, &config.TTSVoice,
+		&config.HasSmartboard, &config.SmartboardUUID, &config.SmartboardButtonNumber)
 	if err != nil {
 		return nil, err
 	}
