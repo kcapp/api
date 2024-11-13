@@ -27,7 +27,7 @@ func AddVenue(venue models.Venue) error {
 	}
 
 	_, err = tx.Exec(`INSERT INTO venue_configuration (venue_id, has_dual_monitor, has_led_lights, has_wled_lights, tts_voice, has_smartboard, 
-		smartboard_uuid, smartboard_button_number) VALUES (?, ?, ?, ?, ?, ?)`, venueID, venue.Config.HasDualMonitor, venue.Config.HasLEDLights,
+		smartboard_uuid, smartboard_button_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, venueID, venue.Config.HasDualMonitor, venue.Config.HasLEDLights,
 		venue.Config.HasWLEDLights, venue.Config.TTSVoice, venue.Config.HasSmartboard, venue.Config.SmartboardUUID, venue.Config.SmartboardButtonNumber)
 	if err != nil {
 		tx.Rollback()
