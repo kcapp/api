@@ -1204,12 +1204,15 @@ func GetLeg(id int) (*models.Leg, error) {
 					scores[visit.PlayerID].CurrentScore += score
 				}
 			} else if matchType == models.ONESEVENTY {
-				player := scores[visit.PlayerID]
-				score = visit.Calculate170Score(round, player)
+				// This is done below regardless of if the visit was a bust
 			} else {
 				scores[visit.PlayerID].CurrentScore -= score
 			}
 			visit.Score = score
+		}
+		if matchType == models.ONESEVENTY {
+			player := scores[visit.PlayerID]
+			visit.Score = visit.Calculate170Score(round, player)
 		}
 
 		visit.Scores = make(map[int]int)
