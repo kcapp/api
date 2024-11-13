@@ -30,6 +30,13 @@ func AddOffice(office models.Office) error {
 		return err
 	}
 	log.Printf("Created new office (%d) %s", officeID, office.Name)
+
+	// Update any players without office
+	_, err = tx.Exec("UPDATE player SET office_id = ? WHERE office_id IS NULL", officeID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 	tx.Commit()
 	return nil
 }
