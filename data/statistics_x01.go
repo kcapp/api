@@ -738,7 +738,7 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, 
 					LEFT JOIN leg l ON l.id = s.leg_id
 					LEFT JOIN leg_parameters lp on l.id = lp.leg_id
 				WHERE s.player_id IN (?) AND l.starting_score IN (?)
-					AND (lp.outshot_type_id = 2 OR lp.outshot_type_id IS NULL)
+					AND (lp.outshot_type_id = 1 OR lp.outshot_type_id IS NULL)
 			) AS max_checkout
 			GROUP BY player_id
 		) AS max
