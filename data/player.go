@@ -691,7 +691,7 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
-			LEFT JOIN matches m2 ON m2.id = l2.match_id AND l2.winner_id = p.id
+			LEFT JOIN matches m2 ON m2.id = l2.match_id AND m2.winner_id = p.id
 		WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 		GROUP BY s.player_id`)
 	if err != nil {
