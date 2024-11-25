@@ -8,6 +8,7 @@
 - Count badges for all leg types
 - WLED support for venues
 - TTS voice selection per venue
+- Improved Tournament Generation
 - Lots of new badges
 
 #### Changed

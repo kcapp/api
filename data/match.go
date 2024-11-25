@@ -472,8 +472,8 @@ func SetScore(matchID int, result models.MatchResult) (*models.Match, error) {
 	// TODO Improve by only inserting legs where there is no score?
 
 	for i := 0; i < result.LooserScore; i++ {
-		res, err := tx.Exec(`INSERT INTO leg (end_time, starting_score, current_player_id, match_id, created_at, is_finished, winner_id, has_scores) VALUES
-			(NOW(), ?, ?, ?, NOW(), 1, ?, 0)`, match.Legs[0].StartingScore, result.LooserID, matchID, result.LooserID)
+		res, err := tx.Exec(`INSERT INTO leg (end_time, starting_score, current_player_id, match_id, created_at, is_finished, winner_id, has_scores, num_players) VALUES
+			(NOW(), ?, ?, ?, NOW(), 1, ?, 0, 2)`, match.Legs[0].StartingScore, result.LooserID, matchID, result.LooserID)
 		if err != nil {
 			tx.Rollback()
 			return nil, err
@@ -495,8 +495,8 @@ func SetScore(matchID int, result models.MatchResult) (*models.Match, error) {
 	}
 	var legID int64
 	for i := 0; i < result.WinnerScore; i++ {
-		res, err := tx.Exec(`INSERT INTO leg (end_time, starting_score, current_player_id, match_id, created_at, is_finished, winner_id, has_scores) VALUES
-			(NOW(), ?, ?, ?, NOW(), 1, ?, 0)`, match.Legs[0].StartingScore, result.WinnerID, matchID, result.WinnerID)
+		res, err := tx.Exec(`INSERT INTO leg (end_time, starting_score, current_player_id, match_id, created_at, is_finished, winner_id, has_scores, num_players) VALUES
+			(NOW(), ?, ?, ?, NOW(), 1, ?, 0, 2)`, match.Legs[0].StartingScore, result.WinnerID, matchID, result.WinnerID)
 		if err != nil {
 			tx.Rollback()
 			return nil, err

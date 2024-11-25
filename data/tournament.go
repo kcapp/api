@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"math"
 	"sort"
@@ -68,7 +69,7 @@ func AddTournamentGroup(group models.TournamentGroup) error {
 
 // GetTournamentGroups will return all tournament groups
 func GetTournamentGroups() (map[int]*models.TournamentGroup, error) {
-	rows, err := models.DB.Query("SELECT id, name, division FROM tournament_group")
+	rows, err := models.DB.Query("SELECT id, name, is_generated, is_playoffs, division FROM tournament_group")
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +78,7 @@ func GetTournamentGroups() (map[int]*models.TournamentGroup, error) {
 	groups := make(map[int]*models.TournamentGroup)
 	for rows.Next() {
 		group := new(models.TournamentGroup)
-		err := rows.Scan(&group.ID, &group.Name, &group.Division)
+		err := rows.Scan(&group.ID, &group.Name, &group.IsGenerated, &group.IsPlayoffs, &group.Division)
 		if err != nil {
 			return nil, err
 		}
@@ -827,19 +828,13 @@ func NewTournament(tournament models.Tournament) (*models.Tournament, error) {
 }
 
 // GenerateTournament generates a new tournament
-func GenerateTournament(input models.Tournament) (*models.Tournament, error) {
-	preset, err := GetTournamentPreset(int(input.PresetID.Int64))
-	if err != nil {
-		return nil, err
-	}
-
+func GenerateTournament(input models.GenerateTournamentInput) (*models.Tournament, error) {
 	officeID := input.OfficeID
 	tournament, err := NewTournament(models.Tournament{
 		Name:        input.Name,
 		ShortName:   input.ShortName,
-		IsPlayoffs:  false,
+		IsPlayoffs:  input.IsPlayoffs,
 		OfficeID:    officeID,
-		PresetID:    input.PresetID,
 		ManualAdmin: input.ManualAdmin,
 		Players:     input.Players,
 		StartTime:   null.TimeFrom(time.Now()),
@@ -848,6 +843,9 @@ func GenerateTournament(input models.Tournament) (*models.Tournament, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	matchType := models.MatchType{ID: input.MatchTypeID}
+	matchMode := models.MatchMode{ID: input.MatchModeID}
 
 	players := input.Players
 	for i := 0; i < len(players); i++ {
@@ -858,15 +856,15 @@ func GenerateTournament(input models.Tournament) (*models.Tournament, error) {
 			}
 
 			match, err := NewMatch(models.Match{
-				MatchType: preset.MatchType,
-				MatchMode: preset.MatchMode,
+				MatchType: &matchType,
+				MatchMode: &matchMode,
 				//VenueID:      1,
 				OfficeID:     null.IntFrom(int64(officeID)),
 				IsPractice:   false,
 				TournamentID: null.IntFrom(int64(tournament.ID)),
 				Players:      []int{players[i].PlayerID, players[j].PlayerID},
 				Legs: []*models.Leg{{
-					StartingScore: preset.StartingScore,
+					StartingScore: input.StartingScore,
 					Parameters:    &models.LegParameters{OutshotType: &models.OutshotType{ID: models.OUTSHOTDOUBLE}}}},
 			})
 			if err != nil {
@@ -879,7 +877,7 @@ func GenerateTournament(input models.Tournament) (*models.Tournament, error) {
 }
 
 // GeneratePlayoffsTournament generates playoffs matches for the given tournament
-func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
+func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsInput) (*models.Tournament, error) {
 	tournament, err := GetTournament(tournamentID)
 	if err != nil {
 		return nil, err
@@ -902,13 +900,49 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 		group2 = overview[keys[1]]
 	}
 
-	preset := tournament.Preset
-	playoffsGroupID := preset.PlayoffsTournamentGroup.ID
-	mt := preset.MatchType
-	walkoverPlayerID := preset.PlayerIDWalkover
-	placeholderHomeID := preset.PlayerIDPlaceholderHome
-	placeholderAwayID := preset.PlayerIDPlaceholderAway
-	startingScore := preset.StartingScore
+	// Get the playoff tournament group
+	groups, err := GetTournamentGroups()
+	if err != nil {
+		return nil, err
+	}
+	var playoffsGroup *models.TournamentGroup
+	for _, group := range groups {
+		if group.IsPlayoffs {
+			playoffsGroup = group
+			break
+		}
+	}
+	playoffsGroupID := playoffsGroup.ID
+
+	// Get type and starting score from the regular season matches
+	regularSeasonMatches, err := GetTournamentMatches(tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	var regularSeasonMatch models.Match
+	var startingScore int
+	for _, value := range regularSeasonMatches {
+		regularSeasonMatch = *value[0]
+		legs, err := GetLegsForMatch(regularSeasonMatch.ID)
+		if err != nil {
+			return nil, err
+		}
+		startingScore = legs[0].StartingScore
+		break
+	}
+	matchType := regularSeasonMatch.MatchType
+
+	// Get placeholder players
+	placeholders, err := GetPlaceholderPlayers()
+	if err != nil {
+		return nil, err
+	}
+	if len(placeholders) < 3 {
+		return nil, errors.New("missing 3 placeholder players from database")
+	}
+	placeholderHomeID := placeholders[0].ID
+	placeholderAwayID := placeholders[1].ID
+	walkoverPlayerID := placeholders[2].ID
 
 	players := make([]*models.Player2Tournament, 0)
 	for _, groupPlayer := range append(group1, group2...) {
@@ -928,7 +962,6 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 		IsPlayoffs:  true,
 		OfficeID:    tournament.OfficeID,
 		Players:     players,
-		PresetID:    tournament.PresetID,
 		StartTime:   null.TimeFrom(time.Now()),
 		EndTime:     null.TimeFrom(time.Now()),
 		ManualAdmin: tournament.ManualAdmin,
@@ -944,8 +977,8 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 
 	matches := make([]*models.Match, 0)
 	// Create Grand Final
-	match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, models.X01,
-		tournament.OfficeID, mt, preset.MatchModeGrandFinal)
+	match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, -1,
+		tournament.OfficeID, matchType, input.MatchModeGFID)
 	if err != nil {
 		return nil, err
 	}
@@ -953,8 +986,8 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 
 	// Create Semi Final Matches
 	if numPlayers > 4 {
-		semis, err := createTournamentMatches(2, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, models.X01,
-			tournament.OfficeID, mt, preset.MatchModeSemiFinal)
+		semis, err := createTournamentMatches(2, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, -1,
+			tournament.OfficeID, matchType, input.MatchModeSFID)
 		if err != nil {
 			return nil, err
 		}
@@ -979,8 +1012,8 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 				// Walkover, so use placeholder
 				away = walkoverPlayerID
 			}
-			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, models.X01,
-				tournament.OfficeID, mt, preset.MatchModeSemiFinal)
+			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, -1,
+				tournament.OfficeID, matchType, input.MatchModeSFID)
 			if err != nil {
 				return nil, err
 			}
@@ -990,8 +1023,8 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 
 	// Create Quarter Final Matches
 	if numPlayers > 8 {
-		quarters, err := createTournamentMatches(4, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, models.X01,
-			tournament.OfficeID, mt, preset.MatchModeQuarterFinal)
+		quarters, err := createTournamentMatches(4, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, -1,
+			tournament.OfficeID, matchType, input.MatchModeQFID)
 		if err != nil {
 			return nil, err
 		}
@@ -1010,8 +1043,8 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 				// Walkover, so use placeholder
 				away = walkoverPlayerID
 			}
-			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, models.X01,
-				tournament.OfficeID, mt, preset.MatchModeLast16)
+			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, -1,
+				tournament.OfficeID, matchType, input.MatchModeLast16ID)
 			if err != nil {
 				return nil, err
 			}
@@ -1037,8 +1070,8 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 				// Walkover, so use placeholder
 				away = walkoverPlayerID
 			}
-			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, models.X01,
-				tournament.OfficeID, mt, preset.MatchModeQuarterFinal)
+			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, -1,
+				tournament.OfficeID, matchType, input.MatchModeQFID)
 			if err != nil {
 				return nil, err
 			}
@@ -1125,10 +1158,10 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 	return GetTournament(playoffs.ID)
 }
 
-func createTournamentMatches(num int, tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchMode *models.MatchMode) ([]*models.Match, error) {
+func createTournamentMatches(num int, tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchModeID int) ([]*models.Match, error) {
 	matches := make([]*models.Match, 0)
 	for i := 0; i < num; i++ {
-		match, err := createTournamentMatch(tournamentID, players, startingScore, venueID, officeID, matchType, matchMode)
+		match, err := createTournamentMatch(tournamentID, players, startingScore, venueID, officeID, matchType, matchModeID)
 		if err != nil {
 			return nil, err
 		}
@@ -1137,10 +1170,10 @@ func createTournamentMatches(num int, tournamentID int, players []int, startingS
 	return matches, nil
 }
 
-func createTournamentMatch(tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchMode *models.MatchMode) (*models.Match, error) {
+func createTournamentMatch(tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchModeID int) (*models.Match, error) {
 	match, err := NewMatch(models.Match{
 		MatchType: matchType,
-		MatchMode: matchMode,
+		MatchMode: &models.MatchMode{ID: matchModeID},
 		//VenueID:      null.IntFrom(int64(venueID)),
 		OfficeID:     null.IntFrom(int64(officeID)),
 		IsPractice:   false,

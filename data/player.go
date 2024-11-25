@@ -1384,3 +1384,34 @@ func GetPlayersMatchTypes() (map[int]int, error) {
 	}
 	return m, nil
 }
+
+// GetPlaceholderPlayers returns all placeholder players
+func GetPlaceholderPlayers() ([]*models.Player, error) {
+	rows, err := models.DB.Query(`
+		SELECT
+			p.id, p.first_name, p.last_name, p.vocal_name, p.nickname, p.slack_handle, p.color, p.profile_pic_url, p.smartcard_uid,
+			 p.board_stream_url, p.board_stream_css, p.active, p.office_id, p.is_bot, p.is_placeholder, p.is_supporter, p.created_at,
+			 p.updated_at
+		FROM player p WHERE is_placeholder = 1`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	players := make([]*models.Player, 0)
+	for rows.Next() {
+		p := new(models.Player)
+		err := rows.Scan(&p.ID, &p.FirstName, &p.LastName, &p.VocalName, &p.Nickname, &p.SlackHandle, &p.Color, &p.ProfilePicURL,
+			&p.SmartcardUID, &p.BoardStreamURL, &p.BoardStreamCSS, &p.IsActive, &p.OfficeID, &p.IsBot, &p.IsPlaceholder, &p.IsSupporter,
+			&p.CreatedAt, &p.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		players = append(players, p)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return players, nil
+}
