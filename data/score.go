@@ -49,7 +49,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 	// Invalidate extra darts not thrown, and check if leg is finished
 	if matchType == models.X01 || matchType == models.X01HANDICAP {
 		visit.SetIsBust(players[visit.PlayerID].CurrentScore, leg.Parameters.OutshotType.ID)
-		isFinished = !visit.IsBust && visit.IsCheckout(players[visit.PlayerID].CurrentScore, leg.Parameters.OutshotType.ID)
+		isFinished = !visit.IsBust && visit.IsVisitCheckout(players[visit.PlayerID].CurrentScore, leg.Parameters.OutshotType.ID)
 	} else if matchType == models.SHOOTOUT {
 		isFinished = ((len(leg.Visits) + 1) * 3) >= (9 * len(leg.Players))
 		if isFinished {
@@ -198,7 +198,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		}
 	} else if matchType == models.ONESEVENTY {
 		visit.SetIsBust(players[visit.PlayerID].CurrentScore, models.OUTSHOTDOUBLE)
-		if visit.IsCheckout(players[visit.PlayerID].CurrentScore, models.OUTSHOTDOUBLE) {
+		if visit.IsVisitCheckout(players[visit.PlayerID].CurrentScore, models.OUTSHOTDOUBLE) {
 			players[visit.PlayerID].CurrentPoints.Int64++
 		}
 
@@ -274,7 +274,11 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		visit.IsBust)
 
 	if isFinished {
-		err = FinishLeg(visit)
+		winnerID, err := getLegWinner(leg, visit, matchType)
+		if err != nil {
+			return nil, err
+		}
+		err = FinishLeg(visit.LegID, visit.PlayerID, *winnerID)
 		if err != nil {
 			return nil, err
 		}

@@ -21,6 +21,7 @@ type Visit struct {
 	SecondDart  *Dart       `json:"second_dart"`
 	ThirdDart   *Dart       `json:"third_dart"`
 	IsBust      bool        `json:"is_bust"`
+	IsCheckout  bool        `json:"is_checkout"`
 	CreatedAt   time.Time   `json:"created_at"`
 	UpdatedAt   time.Time   `json:"updated_at"`
 	Count       int         `json:"count,omitempty"`
@@ -147,7 +148,7 @@ func (visit *Visit) SetIsBustAbove(currentScore int, targetScore int) {
 }
 
 // IsCheckout will check if the given visit is a checkout (remaining score is 0 and last dart thrown is a double)
-func (visit Visit) IsCheckout(currentScore int, outshotTypeId int) bool {
+func (visit Visit) IsVisitCheckout(currentScore int, outshotTypeId int) bool {
 	remaining := currentScore - visit.GetScore()
 	if remaining == 0 {
 		if outshotTypeId == OUTSHOTANY {

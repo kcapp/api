@@ -9,6 +9,7 @@
 - WLED support for venues
 - TTS voice selection per venue
 - Improved Tournament Generation
+- Support for `Max Rounds` in `X01`
 - Lots of new badges
 
 #### Changed
@@ -19,6 +20,7 @@
 #### Fixed
 - Return `outshot_type` for `X01 Handicap`
 - Correctly calculate match badges on match finish
+- Remove any earned badges on leg finish undo
 
 ## [2.7.0] - 2023-09-12
 #### Feature

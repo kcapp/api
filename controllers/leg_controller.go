@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/guregu/null"
 	"github.com/kcapp/api/data"
 	"github.com/kcapp/api/models"
 
@@ -336,6 +337,37 @@ func UndoFinishLeg(w http.ResponseWriter, r *http.Request) {
 	err = data.UndoLegFinish(legID)
 	if err != nil {
 		log.Println("Unable to undo leg finish", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// FinishLeg will finalize a leg without a proper finish
+func FinishLeg(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	params := mux.Vars(r)
+	legID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Println("Invalid id parameter")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	body := make(map[string]int)
+	err = json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	winnerID, ok := body["winner_id"]
+	if !ok {
+		http.Error(w, "winner_id is required", http.StatusBadRequest)
+		return
+	}
+
+	err = data.FinishLeg(legID, winnerID, null.IntFrom(int64(winnerID)))
+	if err != nil {
+		log.Println("Unable to finish leg", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

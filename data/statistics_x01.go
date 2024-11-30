@@ -547,13 +547,15 @@ func CalculateX01Statistics(legID int) (map[int]*models.StatisticsX01, error) {
 		}
 	}
 
+	isCheckout := false // Check if player actually checked out or max rounds were reached
 	for _, visit := range visits {
 		player := playersMap[visit.PlayerID]
 		stats := statisticsMap[visit.PlayerID]
 
 		currentScore := player.CurrentScore
-		if visit.IsCheckout(currentScore, leg.Parameters.OutshotType.ID) {
+		if visit.IsVisitCheckout(currentScore, leg.Parameters.OutshotType.ID) {
 			stats.Checkout = null.IntFrom(int64(currentScore))
+			isCheckout = true
 		}
 		if visit.FirstDart.IsCheckoutAttempt(currentScore, 1, leg.Parameters.OutshotType.ID) {
 			stats.CheckoutAttempts++
@@ -607,7 +609,7 @@ func CalculateX01Statistics(legID int) (map[int]*models.StatisticsX01, error) {
 	}
 
 	for playerID, stats := range statisticsMap {
-		if playerID == winnerID {
+		if playerID == winnerID && isCheckout {
 			stats.CheckoutPercentage = null.FloatFrom(100 / float64(stats.CheckoutAttempts))
 
 			// When checking out, it might be done in 1, 2 or 3 darts, so make

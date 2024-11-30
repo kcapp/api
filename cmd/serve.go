@@ -57,6 +57,7 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/leg/{id}/order", controllers.ChangePlayerOrder).Methods("PUT")
 		router.HandleFunc("/leg/{id}/warmup", controllers.StartWarmup).Methods("PUT")
 		router.HandleFunc("/leg/{id}/undo", controllers.UndoFinishLeg).Methods("PUT")
+		router.HandleFunc("/leg/{id}/finish", controllers.FinishLeg).Methods("PUT")
 
 		router.HandleFunc("/visit", controllers.AddVisit).Methods("POST")
 		router.HandleFunc("/visit/{id}/modify", controllers.ModifyVisit).Methods("PUT")

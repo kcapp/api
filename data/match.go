@@ -51,7 +51,7 @@ func NewMatch(match models.Match) (*models.Match, error) {
 		if params != nil {
 			outshotType = params.OutshotType.ID
 		}
-		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id) VALUES (?, ?)", legID, outshotType)
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, max_rounds) VALUES (?, ?, ?)", legID, outshotType, params.MaxRounds)
 		if err != nil {
 			tx.Rollback()
 			return nil, err

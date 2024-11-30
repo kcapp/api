@@ -350,7 +350,7 @@ func (b BadgeDoubleDouble) GetID() int {
 	return b.ID
 }
 func (b BadgeDoubleDouble) Validate(leg *Leg) (bool, *int, *int) {
-	if !leg.IsX01() {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
 		return false, nil, nil
 	}
 	visit := leg.GetLastVisit()
@@ -371,7 +371,7 @@ func (b BadgeTripleDouble) GetID() int {
 	return b.ID
 }
 func (b BadgeTripleDouble) Validate(leg *Leg) (bool, *int, *int) {
-	if !leg.IsX01() {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
 		return false, nil, nil
 	}
 	visit := leg.GetLastVisit()
@@ -382,7 +382,7 @@ func (b BadgeMadHouse) GetID() int {
 	return b.ID
 }
 func (b BadgeMadHouse) Validate(leg *Leg) (bool, *int, *int) {
-	if !leg.IsX01() {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
 		return false, nil, nil
 	}
 	visit := leg.GetLastVisit()
@@ -427,7 +427,7 @@ func (b BadgeBullseye) GetID() int {
 	return b.ID
 }
 func (b BadgeBullseye) Validate(leg *Leg) (bool, *int, *int) {
-	if !leg.IsX01() {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
 		return false, nil, nil
 	}
 	visit := leg.GetLastVisit()
@@ -439,7 +439,7 @@ func (b BadgeEasyAs123) GetID() int {
 	return b.ID
 }
 func (b BadgeEasyAs123) Validate(leg *Leg) (bool, *int, *int) {
-	if !leg.IsX01() {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
 		return false, nil, nil
 	}
 	visit := leg.GetLastVisit()
@@ -451,7 +451,7 @@ func (b BadgeCloseToPerfect) GetID() int {
 	return b.ID
 }
 func (b BadgeCloseToPerfect) Validate(leg *Leg) (bool, *int, *int) {
-	if !leg.IsX01() {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
 		return false, nil, nil
 	}
 	visit := leg.GetLastVisit()
@@ -473,7 +473,7 @@ func (b BadgeShanghaiCheckout) GetID() int {
 	return b.ID
 }
 func (b BadgeShanghaiCheckout) Validate(leg *Leg) (bool, *int, *int) {
-	if !leg.IsX01() {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
 		return false, nil, nil
 	}
 	visit := leg.GetLastVisit()
@@ -484,7 +484,7 @@ func (b BadgeTripleTrouble) GetID() int {
 	return b.ID
 }
 func (b BadgeTripleTrouble) Validate(leg *Leg) (bool, *int, *int) {
-	if !leg.IsX01() {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
 		return false, nil, nil
 	}
 
@@ -501,7 +501,7 @@ func (b BadgePerfection) GetID() int {
 	return b.ID
 }
 func (b BadgePerfection) Validate(leg *Leg) (bool, *int, *int) {
-	if !leg.IsX01() {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
 		return false, nil, nil
 	}
 
@@ -516,7 +516,7 @@ func (b BadgeChampagneShot) GetID() int {
 	return b.ID
 }
 func (b BadgeChampagneShot) Validate(leg *Leg) (bool, *int, *int) {
-	if !leg.IsX01() {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
 		return false, nil, nil
 	}
 
@@ -535,7 +535,7 @@ func (b BadgeYin) GetID() int {
 	return b.ID
 }
 func (b BadgeYin) Validate(leg *Leg) (bool, *int, *int) {
-	if !leg.IsX01() {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
 		return false, nil, nil
 	}
 
@@ -563,7 +563,7 @@ func (b BadgeYang) GetID() int {
 	return b.ID
 }
 func (b BadgeYang) Validate(leg *Leg) (bool, *int, *int) {
-	if !leg.IsX01() {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
 		return false, nil, nil
 	}
 
@@ -591,7 +591,7 @@ func (b BadgeZebra) GetID() int {
 	return b.ID
 }
 func (b BadgeZebra) Validate(leg *Leg) (bool, *int, *int) {
-	if !leg.IsX01() {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
 		return false, nil, nil
 	}
 	winner := leg.GetLastVisit().PlayerID
@@ -713,6 +713,9 @@ func (b BadgeBeerGame) GetID() int {
 	return b.ID
 }
 func (b BadgeBeerGame) Validate(leg *Leg, players []*Player2Leg) (bool, *int) {
+	if !leg.IsX01() || !leg.IsLegCheckout() {
+		return false, nil
+	}
 	visit := leg.GetLastVisit()
 
 	for _, player := range players {

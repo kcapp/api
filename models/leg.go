@@ -414,7 +414,7 @@ func (leg Leg) GetLastVisit() *Visit {
 
 // IsX01 returns true if this leg is a X01 leg
 func (leg Leg) IsX01() bool {
-	return leg.LegType.ID == X01
+	return leg.LegType.ID == X01 || leg.LegType.ID == X01HANDICAP
 }
 
 // GetFirstHitDart will return the first (non-Miss) dart for the given player
@@ -430,4 +430,12 @@ func (leg Leg) GetFirstHitDart(playerID int) *Dart {
 		}
 	}
 	return nil
+}
+
+func (leg Leg) IsLegCheckout() bool {
+	if !leg.IsX01() {
+		return false
+	}
+	lastVisit := leg.Visits[len(leg.Visits)-1]
+	return lastVisit.IsCheckout
 }
