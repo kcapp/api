@@ -10,6 +10,7 @@
 - TTS voice selection per venue
 - Improved Tournament Generation
 - Support for `Max Rounds` in `X01`
+- Added `players` to match presets
 - Lots of new badges
 
 #### Changed
