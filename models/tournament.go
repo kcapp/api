@@ -132,6 +132,7 @@ type GenerateTournamentInput struct {
 	MatchModeID   int                  `json:"match_mode_id"`
 	MatchTypeID   int                  `json:"match_type_id"`
 	StartingScore int                  `json:"starting_score"`
+	MaxRounds     int                  `json:"max_rounds"`
 	Players       []*Player2Tournament `json:"players,omitempty"`
 }
 

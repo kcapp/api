@@ -865,7 +865,15 @@ func GenerateTournament(input models.GenerateTournamentInput) (*models.Tournamen
 				Players:      []int{players[i].PlayerID, players[j].PlayerID},
 				Legs: []*models.Leg{{
 					StartingScore: input.StartingScore,
-					Parameters:    &models.LegParameters{OutshotType: &models.OutshotType{ID: models.OUTSHOTDOUBLE}}}},
+					Parameters: &models.LegParameters{
+						OutshotType: &models.OutshotType{ID: models.OUTSHOTDOUBLE},
+						MaxRounds: func() null.Int {
+							if input.MaxRounds != -1 {
+								return null.IntFrom(int64(input.MaxRounds))
+							}
+							return null.Int{}
+						}(),
+					}}},
 			})
 			if err != nil {
 				return nil, err
@@ -921,6 +929,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 	}
 	var regularSeasonMatch models.Match
 	var startingScore int
+	maxRounds := null.Int{}
 	for _, value := range regularSeasonMatches {
 		regularSeasonMatch = *value[0]
 		legs, err := GetLegsForMatch(regularSeasonMatch.ID)
@@ -928,6 +937,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 			return nil, err
 		}
 		startingScore = legs[0].StartingScore
+		maxRounds = legs[0].Parameters.MaxRounds
 		break
 	}
 	matchType := regularSeasonMatch.MatchType
@@ -978,7 +988,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 	matches := make([]*models.Match, 0)
 	// Create Grand Final
 	match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, -1,
-		tournament.OfficeID, matchType, input.MatchModeGFID)
+		tournament.OfficeID, matchType, input.MatchModeGFID, maxRounds)
 	if err != nil {
 		return nil, err
 	}
@@ -987,7 +997,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 	// Create Semi Final Matches
 	if numPlayers > 4 {
 		semis, err := createTournamentMatches(2, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, -1,
-			tournament.OfficeID, matchType, input.MatchModeSFID)
+			tournament.OfficeID, matchType, input.MatchModeSFID, maxRounds)
 		if err != nil {
 			return nil, err
 		}
@@ -1013,7 +1023,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 				away = walkoverPlayerID
 			}
 			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, -1,
-				tournament.OfficeID, matchType, input.MatchModeSFID)
+				tournament.OfficeID, matchType, input.MatchModeSFID, maxRounds)
 			if err != nil {
 				return nil, err
 			}
@@ -1024,7 +1034,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 	// Create Quarter Final Matches
 	if numPlayers > 8 {
 		quarters, err := createTournamentMatches(4, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, -1,
-			tournament.OfficeID, matchType, input.MatchModeQFID)
+			tournament.OfficeID, matchType, input.MatchModeQFID, maxRounds)
 		if err != nil {
 			return nil, err
 		}
@@ -1044,7 +1054,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 				away = walkoverPlayerID
 			}
 			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, -1,
-				tournament.OfficeID, matchType, input.MatchModeLast16ID)
+				tournament.OfficeID, matchType, input.MatchModeLast16ID, maxRounds)
 			if err != nil {
 				return nil, err
 			}
@@ -1071,7 +1081,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 				away = walkoverPlayerID
 			}
 			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, -1,
-				tournament.OfficeID, matchType, input.MatchModeQFID)
+				tournament.OfficeID, matchType, input.MatchModeQFID, maxRounds)
 			if err != nil {
 				return nil, err
 			}
@@ -1158,10 +1168,10 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 	return GetTournament(playoffs.ID)
 }
 
-func createTournamentMatches(num int, tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchModeID int) ([]*models.Match, error) {
+func createTournamentMatches(num int, tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchModeID int, maxRounds null.Int) ([]*models.Match, error) {
 	matches := make([]*models.Match, 0)
 	for i := 0; i < num; i++ {
-		match, err := createTournamentMatch(tournamentID, players, startingScore, venueID, officeID, matchType, matchModeID)
+		match, err := createTournamentMatch(tournamentID, players, startingScore, venueID, officeID, matchType, matchModeID, maxRounds)
 		if err != nil {
 			return nil, err
 		}
@@ -1170,7 +1180,7 @@ func createTournamentMatches(num int, tournamentID int, players []int, startingS
 	return matches, nil
 }
 
-func createTournamentMatch(tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchModeID int) (*models.Match, error) {
+func createTournamentMatch(tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchModeID int, maxRounds null.Int) (*models.Match, error) {
 	match, err := NewMatch(models.Match{
 		MatchType: matchType,
 		MatchMode: &models.MatchMode{ID: matchModeID},
@@ -1181,7 +1191,10 @@ func createTournamentMatch(tournamentID int, players []int, startingScore int, v
 		Players:      players,
 		Legs: []*models.Leg{{
 			StartingScore: startingScore,
-			Parameters:    &models.LegParameters{OutshotType: &models.OutshotType{ID: models.OUTSHOTDOUBLE}}}},
+			Parameters: &models.LegParameters{
+				OutshotType: &models.OutshotType{ID: models.OUTSHOTDOUBLE},
+				MaxRounds:   maxRounds,
+			}}},
 	})
 	if err != nil {
 		return nil, err
@@ -1383,7 +1396,7 @@ func insertMetadata(matches []*models.MatchMetadata) error {
 	if err != nil {
 		return err
 	}
-	stmt, err := tx.Prepare(`INSERT INTO match_metadata (match_id, order_of_play, tournament_group_id, match_displayname, elimination, promotion, 
+	stmt, err := tx.Prepare(`INSERT INTO match_metadata (match_id, order_of_play, tournament_group_id, match_displayname, elimination, promotion,
 		trophy, semi_final,  grand_final, winner_outcome_match_id, is_winner_outcome_home) VALUES (?, ?, ?, ?, 1, 0, 0, ?, ?, ?, ?)`)
 	if err != nil {
 		tx.Rollback()
