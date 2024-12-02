@@ -21,6 +21,7 @@
 #### Fixed
 - Return `outshot_type` for `X01 Handicap`
 - Correctly calculate match badges on match finish
+- Player checkout statistics correctly counts Double Out only
 - Remove any earned badges on leg finish undo
 
 ## [2.7.0] - 2023-09-12
