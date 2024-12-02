@@ -22,7 +22,7 @@ func GetGlobalStatistics() (map[int]*models.GlobalStatistics, error) {
 				LEFT JOIN leg l on l.match_id = m.id
 				LEFT JOIN score s on s.leg_id = l.id
 				LEFT JOIN player p on p.id = s.player_id
-			WHERE m.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0 AND (p.id is null OR p.is_bot = 0)
+			WHERE m.is_finished = 1 AND m.is_abandoned = 0 AND m.is_bye = 0 AND m.is_walkover = 0 AND (p.id is null OR p.is_bot = 0)
 			GROUP BY m.office_id`)
 	if err != nil {
 		return nil, err
