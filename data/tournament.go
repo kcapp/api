@@ -855,10 +855,14 @@ func GenerateTournament(input models.GenerateTournamentInput) (*models.Tournamen
 				continue
 			}
 
+			venue := null.Int{}
+			if value, ok := input.Venues[players[i].TournamentGroupID]; ok {
+				venue = null.IntFrom(int64(value))
+			}
 			match, err := NewMatch(models.Match{
-				MatchType: &matchType,
-				MatchMode: &matchMode,
-				//VenueID:      1,
+				MatchType:    &matchType,
+				MatchMode:    &matchMode,
+				VenueID:      venue,
 				OfficeID:     null.IntFrom(int64(officeID)),
 				IsPractice:   false,
 				TournamentID: null.IntFrom(int64(tournament.ID)),
@@ -930,8 +934,10 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 	var regularSeasonMatch models.Match
 	var startingScore int
 	maxRounds := null.Int{}
+	venueID := null.Int{}
 	for _, value := range regularSeasonMatches {
 		regularSeasonMatch = *value[0]
+		venueID = regularSeasonMatch.VenueID
 		legs, err := GetLegsForMatch(regularSeasonMatch.ID)
 		if err != nil {
 			return nil, err
@@ -966,8 +972,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 		&models.Player2Tournament{PlayerID: placeholderAwayID, TournamentGroupID: playoffsGroupID})
 
 	playoffs, err := NewTournament(models.Tournament{
-		Name: tournament.Name + " Playoffs",
-		//ShortName:  tournament.ShortName + "P",
+		Name:        tournament.Name + " Playoffs",
 		ShortName:   tournament.ShortName,
 		IsPlayoffs:  true,
 		OfficeID:    tournament.OfficeID,
@@ -987,7 +992,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 
 	matches := make([]*models.Match, 0)
 	// Create Grand Final
-	match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, -1,
+	match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, venueID,
 		tournament.OfficeID, matchType, input.MatchModeGFID, maxRounds)
 	if err != nil {
 		return nil, err
@@ -996,7 +1001,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 
 	// Create Semi Final Matches
 	if numPlayers > 4 {
-		semis, err := createTournamentMatches(2, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, -1,
+		semis, err := createTournamentMatches(2, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, venueID,
 			tournament.OfficeID, matchType, input.MatchModeSFID, maxRounds)
 		if err != nil {
 			return nil, err
@@ -1022,7 +1027,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 				// Walkover, so use placeholder
 				away = walkoverPlayerID
 			}
-			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, -1,
+			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, venueID,
 				tournament.OfficeID, matchType, input.MatchModeSFID, maxRounds)
 			if err != nil {
 				return nil, err
@@ -1033,7 +1038,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 
 	// Create Quarter Final Matches
 	if numPlayers > 8 {
-		quarters, err := createTournamentMatches(4, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, -1,
+		quarters, err := createTournamentMatches(4, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, venueID,
 			tournament.OfficeID, matchType, input.MatchModeQFID, maxRounds)
 		if err != nil {
 			return nil, err
@@ -1053,7 +1058,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 				// Walkover, so use placeholder
 				away = walkoverPlayerID
 			}
-			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, -1,
+			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, venueID,
 				tournament.OfficeID, matchType, input.MatchModeLast16ID, maxRounds)
 			if err != nil {
 				return nil, err
@@ -1080,7 +1085,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 				// Walkover, so use placeholder
 				away = walkoverPlayerID
 			}
-			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, -1,
+			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, venueID,
 				tournament.OfficeID, matchType, input.MatchModeQFID, maxRounds)
 			if err != nil {
 				return nil, err
@@ -1168,7 +1173,7 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 	return GetTournament(playoffs.ID)
 }
 
-func createTournamentMatches(num int, tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchModeID int, maxRounds null.Int) ([]*models.Match, error) {
+func createTournamentMatches(num int, tournamentID int, players []int, startingScore int, venueID null.Int, officeID int, matchType *models.MatchType, matchModeID int, maxRounds null.Int) ([]*models.Match, error) {
 	matches := make([]*models.Match, 0)
 	for i := 0; i < num; i++ {
 		match, err := createTournamentMatch(tournamentID, players, startingScore, venueID, officeID, matchType, matchModeID, maxRounds)
@@ -1180,11 +1185,11 @@ func createTournamentMatches(num int, tournamentID int, players []int, startingS
 	return matches, nil
 }
 
-func createTournamentMatch(tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchModeID int, maxRounds null.Int) (*models.Match, error) {
+func createTournamentMatch(tournamentID int, players []int, startingScore int, venueID null.Int, officeID int, matchType *models.MatchType, matchModeID int, maxRounds null.Int) (*models.Match, error) {
 	match, err := NewMatch(models.Match{
-		MatchType: matchType,
-		MatchMode: &models.MatchMode{ID: matchModeID},
-		//VenueID:      null.IntFrom(int64(venueID)),
+		MatchType:    matchType,
+		MatchMode:    &models.MatchMode{ID: matchModeID},
+		VenueID:      venueID,
 		OfficeID:     null.IntFrom(int64(officeID)),
 		IsPractice:   false,
 		TournamentID: null.IntFrom(int64(tournamentID)),

@@ -134,6 +134,7 @@ type GenerateTournamentInput struct {
 	StartingScore int                  `json:"starting_score"`
 	MaxRounds     int                  `json:"max_rounds"`
 	Players       []*Player2Tournament `json:"players,omitempty"`
+	Venues        map[int]int          `json:"venues,omitempty"`
 }
 
 // GeneratePlayoffsInput struct for storing generate playoffs inputs
