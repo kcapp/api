@@ -239,8 +239,8 @@ func Get170StatisticsForPlayer(id int) (*models.Statistics170, error) {
 }
 
 // Get170HistoryForPlayer will return history of Scam statistics for the given player
-func Get170HistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.ONESEVENTY, false)
+func Get170HistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.ONESEVENTY, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}

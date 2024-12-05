@@ -270,8 +270,8 @@ func GetAroundTheWorldStatisticsForPlayer(id int) (*models.StatisticsAroundThe, 
 }
 
 // GetAroundTheWorldHistoryForPlayer will return history of Around the World statistics for the given player
-func GetAroundTheWorldHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.AROUNDTHEWORLD, false)
+func GetAroundTheWorldHistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.AROUNDTHEWORLD, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}
@@ -619,8 +619,8 @@ func GetShanghaiStatisticsForPlayer(id int) (*models.StatisticsAroundThe, error)
 }
 
 // GetShanghaiHistoryForPlayer will return history of Shanghai statistics for the given player
-func GetShanghaiHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.SHANGHAI, false)
+func GetShanghaiHistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.SHANGHAI, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}

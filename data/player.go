@@ -686,14 +686,14 @@ func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won'
-		FROM statistics_x01 s
-			JOIN player p ON p.id = s.player_id
-			JOIN leg l ON l.id = s.leg_id
+		FROM leg l
+			JOIN player2leg p2l on p2l.leg_id = l.id
+			JOIN player p ON p.id = p2l.player_id
 			JOIN matches m ON m.id = l.match_id
-			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
+			LEFT JOIN leg l2 ON l2.id = l.id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l2.match_id AND m2.winner_id = p.id
-		WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
-		GROUP BY s.player_id`)
+		WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0 AND m.is_bye = 0
+		GROUP by p.id`)
 	if err != nil {
 		return nil, err
 	}

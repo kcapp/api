@@ -150,8 +150,8 @@ func GetTicTacToeStatisticsForPlayer(id int) (*models.StatisticsTicTacToe, error
 }
 
 // GetTicTacToeHistoryForPlayer will return history of statistics for the given player
-func GetTicTacToeHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.TICTACTOE, false)
+func GetTicTacToeHistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.TICTACTOE, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}

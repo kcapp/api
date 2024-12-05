@@ -155,8 +155,8 @@ func GetKnockoutStatisticsForPlayer(id int) (*models.StatisticsKnockout, error) 
 }
 
 // GetKnockoutHistoryForPlayer will return history of Knockout statistics for the given player
-func GetKnockoutHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.KNOCKOUT, false)
+func GetKnockoutHistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.KNOCKOUT, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}

@@ -208,8 +208,8 @@ func GetDartsAtXStatisticsForPlayer(id int) (*models.StatisticsDartsAtX, error) 
 }
 
 // GetDartsAtXHistoryForPlayer will return history of Darts at X statistics for the given player
-func GetDartsAtXHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.DARTSATX, false)
+func GetDartsAtXHistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.DARTSATX, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}

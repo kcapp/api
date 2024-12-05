@@ -424,7 +424,7 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 		WHERE m.tournament_id = ? AND m.match_type_id = 1
 			AND m.is_bye <> 1
 		GROUP BY p2l.player_id, tg.id
-		ORDER BY tg.division, pts DESC, diff DESC, three_dart_avg DESC, is_relegated, manual_order`, id)
+		ORDER BY tg.division, pts DESC, manual_order, diff DESC, three_dart_avg DESC, is_relegated`, id)
 	if err != nil {
 		return nil, err
 	}

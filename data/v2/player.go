@@ -49,37 +49,19 @@ func GetPlayers() ([]*models.Player, error) {
 func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			player_id,
-			MAX(matches_played) AS matches_played,
-			MAX(matches_won) AS matches_won,
-			MAX(legs_played) AS legs_played,
-			MAX(legs_won) AS legs_won
-		FROM (
-			SELECT
-				p2l.player_id,
-				COUNT(DISTINCT p2l.match_id) AS matches_played,
-				SUM(CASE WHEN p2l.player_id = m.winner_id THEN 1 ELSE 0 END) AS matches_won,
-				COUNT(p2l.leg_id) AS legs_played,
-				SUM(CASE WHEN p2l.player_id = m.winner_id THEN 1 ELSE 0 END) AS legs_won
-			FROM player2leg p2l
-				JOIN matches m ON m.id = p2l.match_id
-				JOIN leg l ON l.id = p2l.leg_id AND l.match_id = m.id
-			WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
-			GROUP BY p2l.player_id
-			UNION ALL
-			SELECT
-				m.winner_id AS player_id,
-				0 AS matches_played,
-				COUNT(DISTINCT m.id) AS matches_won,
-				0 AS legs_played,
-				0 AS legs_won
-			FROM matches m
-				JOIN leg l ON l.match_id = m.id
-			WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
-			GROUP BY m.winner_id
-		) AS subquery
-		WHERE player_id IS NOT NULL
-		GROUP BY player_id`)
+			p.id AS 'player_id',
+			COUNT(DISTINCT m.id) AS 'matches_played',
+			COUNT(DISTINCT m2.id) AS 'matches_won',
+			COUNT(DISTINCT l.id) AS 'legs_played',
+			COUNT(DISTINCT l2.id) AS 'legs_won'
+		FROM leg l
+			JOIN player2leg p2l on p2l.leg_id = l.id
+			JOIN player p ON p.id = p2l.player_id
+			JOIN matches m ON m.id = l.match_id
+			LEFT JOIN leg l2 ON l2.id = l.id AND l2.winner_id = p.id
+			LEFT JOIN matches m2 ON m2.id = l2.match_id AND m2.winner_id = p.id
+		WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0 AND m.is_bye = 0
+		GROUP by p.id`)
 	if err != nil {
 		return nil, err
 	}

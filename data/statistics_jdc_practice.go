@@ -157,8 +157,8 @@ func GetJDCPracticeStatisticsForPlayer(id int) (*models.StatisticsJDCPractice, e
 }
 
 // GetJDCPracticeHistoryForPlayer will return history of JDC Practice statistics for the given player
-func GetJDCPracticeHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.JDCPRACTICE, false)
+func GetJDCPracticeHistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.JDCPRACTICE, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}

@@ -799,19 +799,22 @@ func GetLegs(ids []int) ([]*models.Leg, error) {
 	return legs, nil
 }
 
-// GetLegsOfType returns all legs with scores for the given match type
-func GetLegsOfType(matchType int, loadVisits bool) ([]*models.Leg, error) {
+// GetLegsOfType returns legs with scores for the given match type and player
+func GetLegsOfType(matchType int, playerID int, start int, limit int, loadVisits bool) ([]*models.Leg, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			l.id, l.end_time, l.starting_score, l.is_finished,
 			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
-			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
+			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC) as 'players'
 		FROM leg l
 			JOIN matches m on m.id = l.match_id
 			JOIN player2leg p2l ON p2l.leg_id = l.id
-		WHERE l.has_scores = 1 AND (m.match_type_id = ? OR l.leg_type_id = ?)
+		WHERE l.is_finished AND m.is_abandoned = 0 AND m.is_bye = 0 AND 
+			l.has_scores = 1 AND (m.match_type_id = ? OR l.leg_type_id = ?)
 		GROUP BY l.id
-		ORDER BY l.id DESC`, matchType, matchType)
+		HAVING FIND_IN_SET(?, players) > 0
+		ORDER BY l.id DESC
+		LIMIT ?, ?`, matchType, matchType, playerID, start, limit)
 	if err != nil {
 		return nil, err
 	}

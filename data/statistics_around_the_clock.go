@@ -273,8 +273,8 @@ func GetAroundTheClockStatisticsForPlayer(id int) (*models.StatisticsAroundThe, 
 }
 
 // GetAroundTheClockHistoryForPlayer will return history of Around the Clock statistics for the given player
-func GetAroundTheClockHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.AROUNDTHECLOCK, false)
+func GetAroundTheClockHistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.AROUNDTHECLOCK, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}

@@ -259,8 +259,8 @@ func Get420StatisticsForPlayer(id int) (*models.Statistics420, error) {
 }
 
 // Get420HistoryForPlayer will return history of 420 statistics for the given player
-func Get420HistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.FOURTWENTY, false)
+func Get420HistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.FOURTWENTY, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}
