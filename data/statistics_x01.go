@@ -792,9 +792,10 @@ func GetOfficeStatistics(from string, to string) ([]*models.OfficeStatistics, er
 					s.second_dart, s.second_dart_multiplier,
 					s.third_dart, s.third_dart_multiplier
 			FROM score s
-					JOIN leg l ON l.id = s.leg_id
-					JOIN matches m ON m.id = l.match_id
-					JOIN player p ON s.player_id = p.id
+				JOIN leg l ON l.id = s.leg_id
+				JOIN matches m ON m.id = l.match_id
+				JOIN player p ON s.player_id = p.id
+				JOIN statistics_x01 x on l.id = x.leg_id
 			WHERE s.id IN (
 				SELECT MAX(id) FROM score
 				WHERE leg_id IN (
@@ -803,6 +804,7 @@ func GetOfficeStatistics(from string, to string) ([]*models.OfficeStatistics, er
 						AND m.is_finished = 1 AND m.updated_at >= ? AND m.updated_at < ?)
 					AND (leg_type_id = 1 OR leg_type_id IS NULL))
 				GROUP BY leg_id)
+				AND x.checkout IS NOT NULL
 			ORDER BY checkout DESC, leg_id
 		) checkouts
 		GROUP BY player_id, office_id, checkout

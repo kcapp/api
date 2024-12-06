@@ -681,19 +681,18 @@ func GetPlayersInLeg(legID int) (map[int]*models.Player, error) {
 func GetMatchesPlayedPerPlayer() (map[int]*models.Player, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			p.id AS 'player_id',
+			p2l.player_id,
 			COUNT(DISTINCT m.id) AS 'matches_played',
 			COUNT(DISTINCT m2.id) AS 'matches_won',
 			COUNT(DISTINCT l.id) AS 'legs_played',
 			COUNT(DISTINCT l2.id) AS 'legs_won'
 		FROM leg l
 			JOIN player2leg p2l on p2l.leg_id = l.id
-			JOIN player p ON p.id = p2l.player_id
 			JOIN matches m ON m.id = l.match_id
-			LEFT JOIN leg l2 ON l2.id = l.id AND l2.winner_id = p.id
-			LEFT JOIN matches m2 ON m2.id = l2.match_id AND m2.winner_id = p.id
+			LEFT JOIN leg l2 ON l2.id = l.id AND l2.winner_id = p2l.player_id
+			LEFT JOIN matches m2 ON m2.id = l2.match_id AND m2.winner_id = p2l.player_id
 		WHERE l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0 AND m.is_bye = 0
-		GROUP by p.id`)
+		GROUP by p2l.player_id`)
 	if err != nil {
 		return nil, err
 	}
