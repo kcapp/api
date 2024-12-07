@@ -94,6 +94,8 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/preset/{id}", controllers.UpdatePreset).Methods("PUT")
 		router.HandleFunc("/preset/{id}", controllers.DeletePreset).Methods("DELETE")
 
+		router.HandleFunc("/option/default", controllers.GetDefaultOptions).Methods("GET")
+
 		router.HandleFunc("/statistics/global", controllers.GetGlobalStatistics).Methods("GET")
 		router.HandleFunc("/statistics/global/fnc", controllers.GetGlobalStatisticsFnc).Methods("GET")
 		router.HandleFunc("/statistics/office/{from}/{to}", controllers.GetOfficeStatistics).Methods("GET")

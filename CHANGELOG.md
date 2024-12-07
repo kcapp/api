@@ -11,6 +11,7 @@
 - Improved Tournament Generation
 - Support for `Max Rounds` in `X01`
 - Added `players` to match presets
+- Default options when configuring matches
 - Lots of new badges
 
 #### Changed
