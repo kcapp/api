@@ -1148,7 +1148,11 @@ func GetLeg(id int) (*models.Leg, error) {
 			} else if matchType == models.ONESEVENTY {
 				// This is done below regardless of if the visit was a bust
 			} else if matchType == models.X01 || matchType == models.X01HANDICAP {
-				visit.IsCheckout = visit.IsVisitCheckout(scores[visit.PlayerID].CurrentScore, leg.Parameters.OutshotType.ID)
+				outshotType := models.OUTSHOTDOUBLE
+				if leg.Parameters != nil && leg.Parameters.OutshotType != nil {
+					outshotType = leg.Parameters.OutshotType.ID
+				}
+				visit.IsCheckout = visit.IsVisitCheckout(scores[visit.PlayerID].CurrentScore, outshotType)
 				scores[visit.PlayerID].CurrentScore -= score
 			} else {
 				scores[visit.PlayerID].CurrentScore -= score
