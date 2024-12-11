@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.9.0] - TBD
+
+
 ## [2.8.0] - 2024-12-11
 #### Feature
 - New game type `170`
@@ -165,6 +168,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
+[2.9.0]: https://github.com/kcapp/api/compare/v2.8.0...develop
 [2.8.0]: https://github.com/kcapp/api/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/kcapp/api/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/kcapp/api/compare/v2.5.0...v2.6.0
