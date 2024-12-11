@@ -170,8 +170,8 @@ func GetKillBullStatisticsForPlayer(id int) (*models.StatisticsKillBull, error) 
 }
 
 // GetKillBullHistoryForPlayer will return history of Kill Bull statistics for the given player
-func GetKillBullHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.KILLBULL, false)
+func GetKillBullHistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.KILLBULL, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}

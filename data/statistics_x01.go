@@ -40,7 +40,7 @@ func GetX01Statistics(from string, to string, matchType int, startingScores ...i
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
 			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0 AND m.is_bye = 0
 			AND m.match_type_id = ?
 		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC,
@@ -187,12 +187,7 @@ func GetPlayerX01PreviousStatistics(id int) (*models.StatisticsX01, error) {
 		return nil, err
 	}
 	if len(statistics) > 0 {
-		stats := statistics[0]
-		if err != nil {
-			return nil, err
-		}
-
-		return stats, nil
+		return statistics[0], nil
 	}
 	return new(models.StatisticsX01), nil
 }
@@ -230,8 +225,8 @@ func GetPlayersX01Statistics(ids []int, startingScores ...int) ([]*models.Statis
 			LEFT JOIN matches m2 ON m2.id = l2.match_id AND l2.winner_id = p.id
 		WHERE s.player_id IN (?)
 			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0 AND m.is_walkover = 0
-			AND IFNULL(l.leg_type_id, m.match_type_id) = 1
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0 AND m.is_bye = 0
+			AND COALESCE(l.leg_type_id, m.match_type_id) = 1
 		GROUP BY s.player_id
 		ORDER BY p.id`, ids, startingScores)
 	if err != nil {
@@ -318,8 +313,8 @@ func GetPlayersX01PreviousStatistics(ids []int, startingScores ...int) ([]*model
 			LEFT JOIN matches m2 ON m2.id = l2.match_id AND l2.winner_id = p.id
 		WHERE s.player_id IN (?)
 			AND l.starting_score IN (?)
-			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0 AND m.is_walkover = 0
-			AND m.match_type_id = 1
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
+			AND COALESCE(l.leg_type_id, m.match_type_id) = 1
 			-- Exclude all matches played this week
 			AND m.updated_at < (CURRENT_DATE - INTERVAL WEEKDAY(CURRENT_DATE) DAY)
 		GROUP BY s.player_id
@@ -391,7 +386,7 @@ func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
 			JOIN matches m ON m.id = l.match_id
 		WHERE s.player_id = ?
 			AND m.match_type_id = 1
-			AND m.is_finished = 1 AND m.is_abandoned = 0 AND m.is_practice = 0
+			AND m.is_finished = 1 AND m.is_abandoned = 0
 		GROUP BY YEAR(m.updated_at), WEEK(m.updated_at)
 		ORDER BY date DESC`, id)
 	if err != nil {
@@ -463,8 +458,8 @@ func GetX01StatisticsForPlayer(id int, matchType int) (*models.StatisticsX01, er
 }
 
 // GetX01HistoryForPlayer will return history of X01 statistics for the given player
-func GetX01HistoryForPlayer(id int, limit int, matchType int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(matchType, false)
+func GetX01HistoryForPlayer(id int, start int, limit int, matchType int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(matchType, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}
@@ -498,9 +493,9 @@ func GetX01HistoryForPlayer(id int, limit int, matchType int) ([]*models.Leg, er
 			LEFT JOIN matches m ON m.id = l.match_id
 		WHERE s.player_id = ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
-			AND m.match_type_id = ?
+			AND (m.match_type_id = ? OR l.leg_type_id = ?)
 		ORDER BY l.id DESC
-		LIMIT ?`, id, matchType, limit)
+		LIMIT ?`, id, matchType, matchType, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -550,13 +545,15 @@ func CalculateX01Statistics(legID int) (map[int]*models.StatisticsX01, error) {
 		}
 	}
 
+	isCheckout := false // Check if player actually checked out or max rounds were reached
 	for _, visit := range visits {
 		player := playersMap[visit.PlayerID]
 		stats := statisticsMap[visit.PlayerID]
 
 		currentScore := player.CurrentScore
-		if visit.IsCheckout(currentScore, leg.Parameters.OutshotType.ID) {
+		if visit.IsVisitCheckout(currentScore, leg.Parameters.OutshotType.ID) {
 			stats.Checkout = null.IntFrom(int64(currentScore))
+			isCheckout = true
 		}
 		if visit.FirstDart.IsCheckoutAttempt(currentScore, 1, leg.Parameters.OutshotType.ID) {
 			stats.CheckoutAttempts++
@@ -610,7 +607,7 @@ func CalculateX01Statistics(legID int) (map[int]*models.StatisticsX01, error) {
 	}
 
 	for playerID, stats := range statisticsMap {
-		if playerID == winnerID {
+		if playerID == winnerID && isCheckout {
 			stats.CheckoutPercentage = null.FloatFrom(100 / float64(stats.CheckoutAttempts))
 
 			// When checking out, it might be done in 1, 2 or 3 darts, so make
@@ -741,7 +738,7 @@ func getHighestCheckout(ids []int, statisticsMap map[int]*models.StatisticsX01, 
 					LEFT JOIN leg l ON l.id = s.leg_id
 					LEFT JOIN leg_parameters lp on l.id = lp.leg_id
 				WHERE s.player_id IN (?) AND l.starting_score IN (?)
-					AND (lp.outshot_type_id = 2 OR lp.outshot_type_id IS NULL)
+					AND (lp.outshot_type_id = 1 OR lp.outshot_type_id IS NULL)
 			) AS max_checkout
 			GROUP BY player_id
 		) AS max
@@ -795,9 +792,10 @@ func GetOfficeStatistics(from string, to string) ([]*models.OfficeStatistics, er
 					s.second_dart, s.second_dart_multiplier,
 					s.third_dart, s.third_dart_multiplier
 			FROM score s
-					JOIN leg l ON l.id = s.leg_id
-					JOIN matches m ON m.id = l.match_id
-					JOIN player p ON s.player_id = p.id
+				JOIN leg l ON l.id = s.leg_id
+				JOIN matches m ON m.id = l.match_id
+				JOIN player p ON s.player_id = p.id
+				JOIN statistics_x01 x on l.id = x.leg_id
 			WHERE s.id IN (
 				SELECT MAX(id) FROM score
 				WHERE leg_id IN (
@@ -806,6 +804,7 @@ func GetOfficeStatistics(from string, to string) ([]*models.OfficeStatistics, er
 						AND m.is_finished = 1 AND m.updated_at >= ? AND m.updated_at < ?)
 					AND (leg_type_id = 1 OR leg_type_id IS NULL))
 				GROUP BY leg_id)
+				AND x.checkout IS NOT NULL
 			ORDER BY checkout DESC, leg_id
 		) checkouts
 		GROUP BY player_id, office_id, checkout
@@ -924,7 +923,7 @@ func RecalculateX01Statistics(legs []int) ([]string, error) {
 }
 
 // GetPlayerBadgeStatistics will return statistics calculate badges for the given players
-func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.BadgeStatistics, error) {
+func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.PlayerBadgeStatistics, error) {
 	q, args, err := sqlx.In(`
 		SELECT
 			player_id,
@@ -934,7 +933,8 @@ func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.BadgeStati
 		FROM statistics_x01 s
 			LEFT JOIN leg l ON s.leg_id = l.id
 			LEFT JOIN matches m ON l.match_id = m.id
-		WHERE player_id IN (?) AND l.num_players = 2 AND m.is_practice = 0
+		WHERE player_id IN (?)
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND m.is_bye = 0 AND m.is_walkover = 0 AND leg_id <= COALESCE(?, ~0) -- BIGINT hack
 		GROUP BY player_id
 		ORDER BY player_id DESC`, ids, legID)
@@ -947,12 +947,13 @@ func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.BadgeStati
 	}
 	defer rows.Close()
 
-	statistics := make(map[int]*models.BadgeStatistics)
+	statistics := make(map[int]*models.PlayerBadgeStatistics)
 	for _, playerID := range ids {
-		statistics[playerID] = new(models.BadgeStatistics)
+		statistics[playerID] = new(models.PlayerBadgeStatistics)
 	}
 	for rows.Next() {
-		s := new(models.BadgeStatistics)
+		s := new(models.PlayerBadgeStatistics)
+		s.BadgeMap = make(map[int]interface{}, 0)
 		err := rows.Scan(&s.PlayerID, &s.Score100sPlus, &s.Score140sPlus, &s.Score180s)
 		if err != nil {
 			return nil, err
@@ -963,5 +964,52 @@ func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.BadgeStati
 		return nil, err
 	}
 
+	q, args, err = sqlx.In(`
+		SELECT
+			player_id, first_dart
+		FROM score s
+			LEFT JOIN leg l ON s.leg_id = l.id
+			LEFT JOIN matches m ON l.match_id = m.id
+		WHERE
+			first_dart = second_dart AND first_dart = third_dart
+			and ((first_dart_multiplier = 1 and second_dart_multiplier = 2 and third_dart_multiplier = 3)
+				or (first_dart_multiplier = 2 and second_dart_multiplier = 3 and third_dart_multiplier = 1)
+				or (first_dart_multiplier = 3 and second_dart_multiplier = 1 and third_dart_multiplier = 2)
+				or (first_dart_multiplier = 3 and second_dart_multiplier = 2 and third_dart_multiplier = 1)
+				or (first_dart_multiplier = 1 and second_dart_multiplier = 3 and third_dart_multiplier = 2)
+				or (first_dart_multiplier = 2 and second_dart_multiplier = 1 and third_dart_multiplier = 3))
+			AND is_bust = 0 AND s.player_id IN (?) AND leg_id <= COALESCE(?, ~0) -- BIGINT hack
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
+			AND m.is_bye = 0 AND m.is_walkover = 0
+		GROUP BY first_dart, player_id`, ids, legID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err = models.DB.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	shanghai := make(map[int][]int, 0)
+	for _, playerID := range ids {
+		shanghai[playerID] = make([]int, 0)
+	}
+	for rows.Next() {
+		var playerID int
+		var number int
+		err := rows.Scan(&playerID, &number)
+		if err != nil {
+			return nil, err
+		}
+		shanghai[playerID] = append(shanghai[playerID], number)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	for playerID, stats := range statistics {
+		stats.Shanghais = shanghai[playerID]
+	}
 	return statistics, nil
 }

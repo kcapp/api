@@ -57,6 +57,7 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/leg/{id}/order", controllers.ChangePlayerOrder).Methods("PUT")
 		router.HandleFunc("/leg/{id}/warmup", controllers.StartWarmup).Methods("PUT")
 		router.HandleFunc("/leg/{id}/undo", controllers.UndoFinishLeg).Methods("PUT")
+		router.HandleFunc("/leg/{id}/finish", controllers.FinishLeg).Methods("PUT")
 
 		router.HandleFunc("/visit", controllers.AddVisit).Methods("POST")
 		router.HandleFunc("/visit/{id}/modify", controllers.ModifyVisit).Methods("PUT")
@@ -92,6 +93,8 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/preset/{id}", controllers.GetPreset).Methods("GET")
 		router.HandleFunc("/preset/{id}", controllers.UpdatePreset).Methods("PUT")
 		router.HandleFunc("/preset/{id}", controllers.DeletePreset).Methods("DELETE")
+
+		router.HandleFunc("/option/default", controllers.GetDefaultOptions).Methods("GET")
 
 		router.HandleFunc("/statistics/global", controllers.GetGlobalStatistics).Methods("GET")
 		router.HandleFunc("/statistics/global/fnc", controllers.GetGlobalStatisticsFnc).Methods("GET")
@@ -143,6 +146,9 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/tournament/match/{id}/probabilities", controllers.GetMatchProbabilities).Methods("GET")
 
 		router.HandleFunc("/badge", controllers.GetBadges).Methods("GET")
+		router.HandleFunc("/badge/statistics", controllers.GetBadgesStatistics).Methods("GET")
+		router.HandleFunc("/badge/{id}", controllers.GetBadge).Methods("GET")
+		router.HandleFunc("/badge/{id}/statistics", controllers.GetBadgeStatistics).Methods("GET")
 
 		log.Printf("Listening on port %d", config.APIConfig.Port)
 		log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.APIConfig.Port), router))

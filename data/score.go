@@ -49,7 +49,7 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 	// Invalidate extra darts not thrown, and check if leg is finished
 	if matchType == models.X01 || matchType == models.X01HANDICAP {
 		visit.SetIsBust(players[visit.PlayerID].CurrentScore, leg.Parameters.OutshotType.ID)
-		isFinished = !visit.IsBust && visit.IsCheckout(players[visit.PlayerID].CurrentScore, leg.Parameters.OutshotType.ID)
+		isFinished = !visit.IsBust && visit.IsVisitCheckout(players[visit.PlayerID].CurrentScore, leg.Parameters.OutshotType.ID)
 	} else if matchType == models.SHOOTOUT {
 		isFinished = ((len(leg.Visits) + 1) * 3) >= (9 * len(leg.Players))
 		if isFinished {
@@ -196,6 +196,25 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 				isFinished = true
 			}
 		}
+	} else if matchType == models.ONESEVENTY {
+		visit.SetIsBust(players[visit.PlayerID].CurrentScore, models.OUTSHOTDOUBLE)
+		if visit.IsVisitCheckout(players[visit.PlayerID].CurrentScore, models.OUTSHOTDOUBLE) {
+			players[visit.PlayerID].CurrentPoints.Int64++
+		}
+
+		for _, player := range players {
+			if player.CurrentPoints.Int64 >= leg.Parameters.PointsToWin.Int64 {
+				// One player hit required number of points
+				isFinished = true
+				break
+			}
+		}
+
+		round := (len(leg.Visits)+1)/len(leg.Players)/3 + 1
+		if leg.Parameters.MaxRounds.Valid && round > int(leg.Parameters.MaxRounds.Int64) {
+			// We hit max number of rounds, so we are finished
+			isFinished = true
+		}
 	}
 
 	// Determine who will be the next player
@@ -255,7 +274,11 @@ func AddVisit(visit models.Visit) (*models.Visit, error) {
 		visit.IsBust)
 
 	if isFinished {
-		err = FinishLeg(visit)
+		winnerID, err := getLegWinner(leg, visit, matchType)
+		if err != nil {
+			return nil, err
+		}
+		err = FinishLeg(visit.LegID, visit.PlayerID, *winnerID)
 		if err != nil {
 			return nil, err
 		}

@@ -39,6 +39,8 @@ type LegParameters struct {
 	Numbers       []int        `json:"numbers"`
 	Hits          map[int]int  `json:"hits"`
 	StartingLives null.Int     `json:"starting_lives,omitempty"`
+	PointsToWin   null.Int     `json:"points_to_win,omitempty"`
+	MaxRounds     null.Int     `json:"max_rounds,omitempty"`
 }
 
 // IsTicTacToeWinner will check if the given player has won a game of Tic Tac Toe
@@ -153,6 +155,7 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 	// Use a type to get consistent order of JSON key-value pairs.
 	type legJSON struct {
 		ID                 int                 `json:"id"`
+		StartTime          null.Time           `json:"start_time,omitempty"`
 		Endtime            null.Time           `json:"end_time"`
 		StartingScore      int                 `json:"starting_score"`
 		IsFinished         bool                `json:"is_finished"`
@@ -173,11 +176,23 @@ func (leg Leg) MarshalJSON() ([]byte, error) {
 		Statistics         interface{}         `json:"statistics,omitempty"`
 		Parameters         *LegParameters      `json:"parameters,omitempty"`
 	}
+
 	round := int(math.Floor(float64(len(leg.Visits))/float64(len(leg.Players))) + 1)
+	if leg.LegType.ID == ONESEVENTY {
+		round = len(leg.Visits)/len(leg.Players)/3 + 1
+	}
+
+	startTime := null.TimeFrom(leg.CreatedAt)
+	endTime := leg.Endtime
+	if leg.Visits != nil && len(leg.Visits) > 0 {
+		startTime = null.TimeFrom(leg.Visits[0].CreatedAt)
+		endTime = null.TimeFrom(leg.GetLastVisit().CreatedAt)
+	}
 
 	return json.Marshal(legJSON{
 		ID:                 leg.ID,
-		Endtime:            leg.Endtime,
+		StartTime:          startTime,
+		Endtime:            endTime,
 		StartingScore:      leg.StartingScore,
 		IsFinished:         leg.IsFinished,
 		CurrentPlayerID:    leg.CurrentPlayerID,
@@ -216,9 +231,10 @@ type Player2Leg struct {
 	Player          *Player          `json:"player,omitempty"`
 	BotConfig       *BotConfig       `json:"bot_config,omitempty"`
 	Hits            HitsMap          `json:"hits"`
-	DartsThrown     int              `json:"darts_thrown,omitempty"`
+	DartsThrown     int              `json:"darts_thrown"`
 	IsStopper       null.Bool        `json:"is_stopper,omitempty"`
 	IsScorer        null.Bool        `json:"is_scorer,omitempty"`
+	CurrentPoints   null.Int         `json:"current_points"`
 }
 
 type HitsMap map[int]*Hits
@@ -324,7 +340,9 @@ func (p2l *Player2Leg) AddVisitStatistics(leg Leg) {
 			} else if visit.IsScore180() {
 				p2l.VisitStatistics.Score180Counter++
 			}
-			p2l.DartsThrown = visit.DartsThrown
+			if leg.LegType.ID != ONESEVENTY {
+				p2l.DartsThrown = visit.DartsThrown
+			}
 		}
 	}
 }
@@ -392,4 +410,32 @@ func DecorateVisitsScam(players map[int]*Player2Leg, visits []*Visit) {
 // GetLastVisit returns the last visit of the leg.
 func (leg Leg) GetLastVisit() *Visit {
 	return leg.Visits[len(leg.Visits)-1]
+}
+
+// IsX01 returns true if this leg is a X01 leg
+func (leg Leg) IsX01() bool {
+	return leg.LegType.ID == X01 || leg.LegType.ID == X01HANDICAP
+}
+
+// GetFirstHitDart will return the first (non-Miss) dart for the given player
+func (leg Leg) GetFirstHitDart(playerID int) *Dart {
+	for _, visit := range leg.Visits {
+		if visit.PlayerID != playerID {
+			continue
+		}
+		for _, dart := range visit.GetDarts() {
+			if !dart.IsMiss() {
+				return &dart
+			}
+		}
+	}
+	return nil
+}
+
+func (leg Leg) IsLegCheckout() bool {
+	if !leg.IsX01() {
+		return false
+	}
+	lastVisit := leg.Visits[len(leg.Visits)-1]
+	return lastVisit.IsCheckout
 }

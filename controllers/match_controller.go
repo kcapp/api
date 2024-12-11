@@ -98,7 +98,11 @@ func GetMatches(w http.ResponseWriter, r *http.Request) {
 // GetActiveMatches will return a list of active matches
 func GetActiveMatches(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-	matches, err := data.GetActiveMatches()
+	since, err := strconv.Atoi(r.URL.Query().Get("since"))
+	if err != nil {
+		since = 2
+	}
+	matches, err := data.GetActiveMatches(since)
 	if err != nil {
 		log.Println("Unable to get active matches", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -368,6 +372,14 @@ func GetStatisticsForMatch(w http.ResponseWriter, r *http.Request) {
 		stats, err := data.GetScamStatisticsForMatch(matchID)
 		if err != nil {
 			log.Printf("Unable to get Scam statistics for match %d: %s", matchID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+	} else if match.MatchType.ID == models.ONESEVENTY {
+		stats, err := data.Get170StatisticsForMatch(matchID)
+		if err != nil {
+			log.Printf("Unable to get 170 statistics for match %d: %s", matchID, err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
