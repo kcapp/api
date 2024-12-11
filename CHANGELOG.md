@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.8.0] - TBD
+## [2.8.0] - 2024-12-11
 #### Feature
 - New game type `170`
 - Endpoint for getting badge statistics
@@ -165,7 +165,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
-[2.8.0]: https://github.com/kcapp/api/compare/v2.7.0...develop
+[2.8.0]: https://github.com/kcapp/api/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/kcapp/api/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/kcapp/api/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/kcapp/api/compare/v2.4.0...v2.5.0
