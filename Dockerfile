@@ -1,5 +1,5 @@
 # Create our build image
-FROM golang:alpine AS BUILD_IMAGE
+FROM golang:1.23-alpine AS BUILD_IMAGE
 
 # Add git, required to install dependencies
 RUN apk update && apk add --no-cache git gcc
