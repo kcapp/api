@@ -600,8 +600,8 @@ func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic
 				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id JOIN matches m on l.match_id = m.id WHERE m.tournament_id = ? AND l.winner_id = s.player_id GROUP BY leg_id)
 				AND IFNULL(l.leg_type_id, m.match_type_id) = 1 -- X01
 			GROUP BY s.player_id, s.id
-			ORDER BY checkout DESC) checkouts
-			GROUP BY player_id
+			ORDER BY checkout DESC, l.end_time) checkouts
+			GROUP BY leg_id
 		ORDER BY checkout DESC`, tournamentID, tournamentID)
 	if err != nil {
 		return nil, err
@@ -638,7 +638,8 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
-		WHERE s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))`, tournamentID)
+		WHERE s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))
+		ORDER BY l.end_time`, tournamentID)
 	if err != nil {
 		return nil, err
 	}
@@ -657,14 +658,9 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 		return nil, err
 	}
 
-	bestStatistics := make(map[int]*models.StatisticsX01)
+	bestStatistics := make([]*models.StatisticsX01, 0)
 	for _, stat := range stats {
-		best := bestStatistics[stat.PlayerID]
-		if best == nil {
-			best = new(models.StatisticsX01)
-			best.PlayerID = stat.PlayerID
-			bestStatistics[stat.PlayerID] = best
-		}
+		best := new(models.StatisticsX01)
 
 		if stat.PlayerID == stat.WinnerID {
 			if stat.StartingScore.Int64 == 301 {
@@ -697,7 +693,9 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 					best.Best701.PlayerID = stat.PlayerID
 				}
 			}
+			bestStatistics = append(bestStatistics, best)
 		}
+
 		if best.BestThreeDartAvg == nil {
 			best.BestThreeDartAvg = new(models.BestStatisticFloat)
 		}
@@ -717,9 +715,7 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 	}
 
 	s := make([]*models.StatisticsX01, 0)
-	for _, val := range bestStatistics {
-		s = append(s, val)
-	}
+	s = append(s, bestStatistics...)
 	return s, nil
 }
 

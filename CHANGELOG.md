@@ -1,6 +1,9 @@
 # Changelog
 
 ## [2.9.0] - TBD
+#### Changes
+- Return tournament statistics for all legs, not just the best per player
+
 #### Fixed
 - Always return legs won for player Shootout statistics
 - Removed `bye` matches from player head2head statistics
