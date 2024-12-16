@@ -28,9 +28,8 @@ jobs:
       run: |
         docker buildx build . \
         --file Dockerfile \
-          --cache-from=type=registry,ref=kcapp/api:cache \
-          --cache-to=type=registry,ref=kcapp/api:cache,mode=max \
-        --cache-from=type=local,src=/tmp/docker-cache \
+        --cache-from=type=registry,ref=kcapp/api:cache \
+        --cache-to=type=registry,ref=kcapp/api:cache,mode=max \
         -t kcapp/api:latest \
         --platform=linux/arm,linux/arm64,linux/amd64 \
         --push
