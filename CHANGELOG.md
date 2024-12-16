@@ -1,7 +1,8 @@
 # Changelog
 
 ## [2.9.0] - TBD
-
+#### Fixed
+- Always return legs won for player Shootout statistics
 
 ## [2.8.0] - 2024-12-11
 #### Feature
