@@ -768,7 +768,7 @@ func GetHeadToHeadMatches(player1 int, player2 int) ([]*models.Match, error) {
 			JOIN player2leg p2l ON p2l.match_id = m.id
 			JOIN leg l ON l.match_id = m.id
 		WHERE l.num_players = 2
-			AND m.is_finished = 1 AND m.is_abandoned = 0
+			AND m.is_finished = 1 AND m.is_abandoned = 0 AND m.is_bye = 0
 			AND m.match_type_id = 1
 			AND p2l.player_id IN (?, ?)
 		GROUP BY m.id
