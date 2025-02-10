@@ -39,6 +39,26 @@ func NewMatch(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(match)
 }
 
+// UpdateMatch will update a match
+func UpdateMatch(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	var matchInput models.Match
+	err := json.NewDecoder(r.Body).Decode(&matchInput)
+	if err != nil {
+		log.Println("Unable to deserialize body", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	match, err := data.UpdateMatch(matchInput)
+	if err != nil {
+		log.Println("Unable to update match", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(match)
+}
+
 // ReMatch will start a new match with same settings as the given match ID
 func ReMatch(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)

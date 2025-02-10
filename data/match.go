@@ -116,6 +116,23 @@ func NewMatch(match models.Match) (*models.Match, error) {
 	return GetMatch(int(matchID))
 }
 
+// UpdateMatch will update the given match
+func UpdateMatch(match models.Match) (*models.Match, error) {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	_, err = tx.Exec(`UPDATE matches SET venue_id = ? WHERE id = ?`, match.Venue.ID, match.ID)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	tx.Commit()
+	log.Printf("Updated match %d", match.ID)
+	return GetMatch(match.ID)
+}
+
 // GetMatches returns all matches
 func GetMatches() ([]*models.Match, error) {
 	rows, err := models.DB.Query(`

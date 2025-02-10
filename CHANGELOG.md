@@ -1,6 +1,9 @@
 # Changelog
 
 ## [2.9.0] - TBD
+#### Feature
+- Added method for updating venue of a match
+
 #### Changes
 - Return tournament statistics for all legs, not just the best per player
 
