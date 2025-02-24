@@ -414,7 +414,7 @@ func GetMatch(id int) (*models.Match, error) {
 			MAX(l.updated_at) AS 'last_throw',
 			MIN(s.created_at) AS 'first_throw',
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
-			m.tournament_id, t.id, t.name, t.office_id, tg.id, tg.name, t.is_playoffs
+			m.tournament_id, t.id, t.name, t.office_id, tg.id, tg.name, t.is_season, t.is_playoffs, t.is_finished
 		FROM matches m
 			JOIN match_type mt ON mt.id = m.match_type_id
 			JOIN match_mode mm ON mm.id = m.match_mode_id
@@ -430,7 +430,8 @@ func GetMatch(id int) (*models.Match, error) {
 		&m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 		&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired, &m.MatchMode.TieBreakMatchTypeID,
 		&ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &m.FirstThrow, &players, &m.TournamentID, &tournament.TournamentID,
-		&tournament.TournamentName, &tournament.OfficeID, &tournament.TournamentGroupID, &tournament.TournamentGroupName, &tournament.IsPlayoffs)
+		&tournament.TournamentName, &tournament.OfficeID, &tournament.TournamentGroupID, &tournament.TournamentGroupName, &tournament.IsSeason,
+		&tournament.IsPlayoffs, &tournament.IsFinished)
 	if err != nil {
 		return nil, err
 	}
@@ -487,7 +488,6 @@ func SetScore(matchID int, result models.MatchResult) (*models.Match, error) {
 	}
 
 	// TODO Improve by only inserting legs where there is no score?
-
 	for i := 0; i < result.LooserScore; i++ {
 		res, err := tx.Exec(`INSERT INTO leg (end_time, starting_score, current_player_id, match_id, created_at, is_finished, winner_id, has_scores, num_players) VALUES
 			(NOW(), ?, ?, ?, NOW(), 1, ?, 0, 2)`, match.Legs[0].StartingScore, result.LooserID, matchID, result.LooserID)
@@ -539,6 +539,8 @@ func SetScore(matchID int, result models.MatchResult) (*models.Match, error) {
 		return nil, err
 	}
 	tx.Commit()
+	match.WinnerID = null.IntFrom(int64(result.WinnerID))
+	match.IsFinished = true
 
 	// Update Elo for players if match is finished
 	err = UpdateEloForMatch(matchID)
@@ -547,41 +549,11 @@ func SetScore(matchID int, result models.MatchResult) (*models.Match, error) {
 	}
 
 	if match.TournamentID.Valid {
-		metadata, err := GetMatchMetadata(matchID)
+		err = AdvanceTournamentAfterMatch(match)
 		if err != nil {
 			return nil, err
 		}
-
-		if metadata.WinnerOutcomeMatchID.Valid {
-			winnerMatch, err := GetMatch(int(metadata.WinnerOutcomeMatchID.Int64))
-			if err != nil {
-				return nil, err
-			}
-			idx := 0
-			if !metadata.IsWinnerOutcomeHome {
-				idx = 1
-			}
-			err = SwapPlayers(winnerMatch.ID, result.WinnerID, winnerMatch.Players[idx])
-			if err != nil {
-				return nil, err
-			}
-		}
-		if metadata.LooserOutcomeMatchID.Valid {
-			looserMatch, err := GetMatch(int(metadata.LooserOutcomeMatchID.Int64))
-			if err != nil {
-				return nil, err
-			}
-			idx := 0
-			if !metadata.IsLooserOutcomeHome {
-				idx = 1
-			}
-			err = SwapPlayers(looserMatch.ID, result.LooserID, looserMatch.Players[idx])
-			if err != nil {
-				return nil, err
-			}
-		}
 	}
-
 	return GetMatch(int(matchID))
 }
 
@@ -595,7 +567,7 @@ func GetMatchMetadata(id int) (*models.MatchMetadata, error) {
 			mm.id, mm.match_id, mm.order_of_play, mm.match_displayname, mm.elimination,
 			mm.trophy, mm.promotion, mm.semi_final, mm.grand_final, mm.winner_outcome_match_id,
 			mm.is_winner_outcome_home,  mm.looser_outcome_match_id, mm.is_looser_outcome_home,
-			mm.winner_outcome, mm.looser_outcome,
+			mm.winner_outcome, mm.looser_outcome, mm.looser_outcome_standing,
 			tg.id, tg.name, GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
 		FROM match_metadata mm
 			LEFT JOIN tournament_group tg ON tg.id = mm.tournament_group_id
@@ -603,8 +575,8 @@ func GetMatchMetadata(id int) (*models.MatchMetadata, error) {
 		WHERE mm.match_id = ?
 		GROUP BY mm.match_id`, id).Scan(&m.ID, &m.MatchID, &m.OrderOfPlay, &m.MatchDisplayname, &m.Elimination,
 		&m.Trophy, &m.Promotion, &m.SemiFinal, &m.GrandFinal, &m.WinnerOutcomeMatchID, &m.IsWinnerOutcomeHome,
-		&m.LooserOutcomeMatchID, &m.IsLooserOutcomeHome, &m.WinnerOutcome, &m.LooserOutcome, &m.TournamentGroup.ID,
-		&m.TournamentGroup.Name, &playersStr)
+		&m.LooserOutcomeMatchID, &m.IsLooserOutcomeHome, &m.WinnerOutcome, &m.LooserOutcome, &m.LooserOutcomeStanding,
+		&m.TournamentGroup.ID, &m.TournamentGroup.Name, &playersStr)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
@@ -625,7 +597,7 @@ func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, e
 			mm.id, mm.match_id, mm.order_of_play, mm.match_displayname, mm.elimination,
 			mm.trophy, mm.promotion, mm.semi_final, mm.grand_final, mm.winner_outcome_match_id,
 			mm.is_winner_outcome_home, mm.looser_outcome_match_id, mm.is_looser_outcome_home,
-			mm.winner_outcome, mm.looser_outcome, tg.id, tg.name,
+			mm.winner_outcome, mm.looser_outcome, mm.looser_outcome_standing, tg.id, tg.name,
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players'
 		FROM match_metadata mm
 			JOIN matches m on m.id = mm.match_id
@@ -645,8 +617,8 @@ func GetMatchMetadataForTournament(tournamentID int) ([]*models.MatchMetadata, e
 		var playersStr string
 		err := rows.Scan(&m.ID, &m.MatchID, &m.OrderOfPlay, &m.MatchDisplayname, &m.Elimination,
 			&m.Trophy, &m.Promotion, &m.SemiFinal, &m.GrandFinal, &m.WinnerOutcomeMatchID, &m.IsWinnerOutcomeHome,
-			&m.LooserOutcomeMatchID, &m.IsLooserOutcomeHome, &m.WinnerOutcome, &m.LooserOutcome, &m.TournamentGroup.ID,
-			&m.TournamentGroup.Name, &playersStr)
+			&m.LooserOutcomeMatchID, &m.IsLooserOutcomeHome, &m.WinnerOutcome, &m.LooserOutcome, &m.LooserOutcomeStanding,
+			&m.TournamentGroup.ID, &m.TournamentGroup.Name, &playersStr)
 		if err != nil {
 			return nil, err
 		}
@@ -941,4 +913,70 @@ func GetBadgeMatchesToRecalculate() ([]int, error) {
 	}
 
 	return matches, nil
+}
+
+// AdvanceTournamentAfterMatch will advance the tournament after the given match finished
+func AdvanceTournamentAfterMatch(match *models.Match) error {
+	if !match.IsFinished {
+		return errors.New("cannot advance tournament for unfinished match")
+	}
+	metadata, err := GetMatchMetadata(match.ID)
+	if err != nil {
+		return err
+	}
+
+	winnerID := int(match.WinnerID.Int64)
+	looserID := getMatchLooser(match, winnerID)
+	if metadata.WinnerOutcomeMatchID.Valid {
+		winnerMatch, err := GetMatch(int(metadata.WinnerOutcomeMatchID.Int64))
+		if err != nil {
+			return err
+		}
+		idx := 0
+		if !metadata.IsWinnerOutcomeHome {
+			idx = 1
+		}
+		err = SwapPlayers(winnerMatch.ID, winnerID, winnerMatch.Players[idx])
+		if err != nil {
+			return err
+		}
+	}
+	if metadata.LooserOutcomeMatchID.Valid {
+		looserMatch, err := GetMatch(int(metadata.LooserOutcomeMatchID.Int64))
+		if err != nil {
+			return err
+		}
+		idx := 0
+		if !metadata.IsLooserOutcomeHome {
+			idx = 1
+		}
+		err = SwapPlayers(looserMatch.ID, looserID, looserMatch.Players[idx])
+		if err != nil {
+			return err
+		}
+	}
+
+	// If this is not a season match, we should add standings for the looser
+	if match.Tournament.IsSeason.Valid && !match.Tournament.IsSeason.Bool {
+		standing := metadata.GetLooserStanding()
+		if standing != -1 {
+			err = addTournamentStanding(match.TournamentID.Int64, looserID, standing)
+			if err != nil {
+				return err
+			}
+		}
+		// If it's the grand final, we should also mark the tournament as finished
+		if metadata.GrandFinal {
+			// Add standing for winner
+			err = addTournamentStanding(match.TournamentID.Int64, winnerID, 1)
+			if err != nil {
+				return err
+			}
+			err = FinishTournament(match.TournamentID.Int64)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

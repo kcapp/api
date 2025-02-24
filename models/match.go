@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/guregu/null"
@@ -288,29 +289,37 @@ type MatchTournament struct {
 	TournamentGroupID   null.Int    `json:"tournament_group_id"`
 	TournamentGroupName null.String `json:"tournament_group_name"`
 	OfficeID            null.Int    `json:"office_id"`
+	IsSeason            null.Bool   `json:"is_season"`
+	IsFinished          null.Bool   `json:"is_finished"`
 	IsPlayoffs          null.Bool   `json:"is_playoffs"`
 }
 
+const MetadataNamePrefixL16 = "Match"
+const MetadataNamePrefixQF = "Quarter Final"
+const MetadataNamePrefixSF = "Semi Final"
+const MetadataNameFinal = "Grand Final"
+
 // MatchMetadata struct used for storing metadata about matches
 type MatchMetadata struct {
-	ID                   int              `json:"id"`
-	MatchID              int              `json:"match_id"`
-	OrderOfPlay          int              `json:"order_of_play"`
-	TournamentGroup      *TournamentGroup `json:"tournament_group"`
-	HomePlayer           int              `json:"player_home"`
-	AwayPlayer           int              `json:"player_away"`
-	MatchDisplayname     string           `json:"match_displayname"`
-	Elimination          bool             `json:"elimination"`
-	Trophy               bool             `json:"trophy"`
-	Promotion            bool             `json:"promotion"`
-	SemiFinal            bool             `json:"semi_final"`
-	GrandFinal           bool             `json:"grand_final"`
-	WinnerOutcomeMatchID null.Int         `json:"winner_outcome_match_id"`
-	IsWinnerOutcomeHome  bool             `json:"is_winner_outcome_home"`
-	LooserOutcomeMatchID null.Int         `json:"looser_outcome_match_id"`
-	IsLooserOutcomeHome  bool             `json:"is_looser_outcome_home"`
-	WinnerOutcome        null.String      `json:"winner_outcome"`
-	LooserOutcome        null.String      `json:"looser_outcome"`
+	ID                    int              `json:"id"`
+	MatchID               int              `json:"match_id"`
+	OrderOfPlay           int              `json:"order_of_play"`
+	TournamentGroup       *TournamentGroup `json:"tournament_group"`
+	HomePlayer            int              `json:"player_home"`
+	AwayPlayer            int              `json:"player_away"`
+	MatchDisplayname      string           `json:"match_displayname"`
+	Elimination           bool             `json:"elimination"`
+	Trophy                bool             `json:"trophy"`
+	Promotion             bool             `json:"promotion"`
+	SemiFinal             bool             `json:"semi_final"`
+	GrandFinal            bool             `json:"grand_final"`
+	WinnerOutcomeMatchID  null.Int         `json:"winner_outcome_match_id"`
+	IsWinnerOutcomeHome   bool             `json:"is_winner_outcome_home"`
+	LooserOutcomeMatchID  null.Int         `json:"looser_outcome_match_id"`
+	IsLooserOutcomeHome   bool             `json:"is_looser_outcome_home"`
+	WinnerOutcome         null.String      `json:"winner_outcome"`
+	LooserOutcome         null.String      `json:"looser_outcome"`
+	LooserOutcomeStanding null.Int         `json:"looser_outcome_standing"`
 }
 
 // Target contains information about value and multipler required to hit for a given round
@@ -333,4 +342,22 @@ func (e *MatchConfigError) Error() string {
 // IsX01 returns true if this match is a X01 match
 func (m Match) IsX01() bool {
 	return m.MatchType.ID == X01
+}
+
+// GetLooserStanding returns the standing of the looser of the match
+func (mm MatchMetadata) GetLooserStanding() int {
+	if mm.LooserOutcomeStanding.Valid {
+		return int(mm.LooserOutcomeStanding.Int64)
+	}
+
+	if strings.HasPrefix(mm.MatchDisplayname, MetadataNamePrefixL16) {
+		return 16
+	} else if strings.HasPrefix(mm.MatchDisplayname, MetadataNamePrefixQF) {
+		return 8
+	} else if strings.HasPrefix(mm.MatchDisplayname, MetadataNamePrefixSF) {
+		return 4
+	} else if strings.HasPrefix(mm.MatchDisplayname, MetadataNameFinal) {
+		return 2
+	}
+	return -1
 }

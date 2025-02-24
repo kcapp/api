@@ -44,6 +44,7 @@ type Tournament struct {
 	Name                 string                `json:"name"`
 	ShortName            string                `json:"short_name"`
 	IsFinished           bool                  `json:"is_finished"`
+	IsSeason             bool                  `json:"is_season"`
 	IsPlayoffs           bool                  `json:"is_playoffs"`
 	PlayoffsTournamentID null.Int              `json:"playoffs_tournament_id,omitempty"`
 	PlayoffsTournament   *Tournament           `json:"playoffs,omitempty"`

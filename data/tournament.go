@@ -17,7 +17,7 @@ import (
 func GetTournaments() ([]*models.Tournament, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, preset_id, manual_admin, office_id, start_time, end_time
+			id, name, short_name, is_finished, is_season, is_playoffs, playoffs_tournament_id, preset_id, manual_admin, office_id, start_time, end_time
 		FROM tournament
 		WHERE is_playoffs = 0
 		ORDER BY id DESC`)
@@ -29,7 +29,7 @@ func GetTournaments() ([]*models.Tournament, error) {
 	tournaments := make([]*models.Tournament, 0)
 	for rows.Next() {
 		tournament := new(models.Tournament)
-		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
+		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsSeason, &tournament.IsPlayoffs,
 			&tournament.PlayoffsTournamentID, &tournament.PresetID, &tournament.ManualAdmin, &tournament.OfficeID, &tournament.StartTime,
 			&tournament.EndTime)
 		if err != nil {
@@ -96,9 +96,10 @@ func GetTournament(id int) (*models.Tournament, error) {
 	tournament := new(models.Tournament)
 	err := models.DB.QueryRow(`
 		SELECT
-			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, preset_id, manual_admin, office_id, start_time, end_time
-		FROM tournament t WHERE t.id = ?`, id).Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
-		&tournament.PlayoffsTournamentID, &tournament.PresetID, &tournament.ManualAdmin, &tournament.OfficeID, &tournament.StartTime, &tournament.EndTime)
+			id, name, short_name, is_finished, is_season, is_playoffs, playoffs_tournament_id, preset_id, manual_admin, office_id, start_time, end_time
+		FROM tournament t WHERE t.id = ?`, id).Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsSeason,
+		&tournament.IsPlayoffs, &tournament.PlayoffsTournamentID, &tournament.PresetID, &tournament.ManualAdmin, &tournament.OfficeID, &tournament.StartTime,
+		&tournament.EndTime)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +113,7 @@ func GetTournament(id int) (*models.Tournament, error) {
 	if tournament.IsFinished {
 		rows, err := models.DB.Query(`
 			SELECT
-				t.id, t.name, p.id, CONCAT(p.first_name, ' ', p.last_name), ts.rank, ts.elo
+				t.id, t.name, p.id, CONCAT(p.first_name, ' ', IFNULL(p.last_name, "")), ts.rank, ts.elo
 			FROM tournament_standings ts
 				JOIN player p ON p.id = ts.player_id
 				JOIN tournament t ON t.id = ts.tournament_id
@@ -177,7 +178,7 @@ func GetCurrentTournamentForOffice(officeID int) (*models.Tournament, error) {
 func GetTournamentsForOffice(officeID int) ([]*models.Tournament, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, office_id, start_time, end_time
+			id, name, short_name, is_finished, is_season, is_playoffs, playoffs_tournament_id, office_id, start_time, end_time
 		FROM tournament
 		WHERE office_id = ?
 		ORDER BY start_time DESC`, officeID)
@@ -189,8 +190,8 @@ func GetTournamentsForOffice(officeID int) ([]*models.Tournament, error) {
 	tournaments := make([]*models.Tournament, 0)
 	for rows.Next() {
 		tournament := new(models.Tournament)
-		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
-			&tournament.PlayoffsTournamentID, &tournament.OfficeID, &tournament.StartTime, &tournament.EndTime)
+		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsSeason,
+			&tournament.IsPlayoffs, &tournament.PlayoffsTournamentID, &tournament.OfficeID, &tournament.StartTime, &tournament.EndTime)
 		if err != nil {
 			return nil, err
 		}
@@ -530,7 +531,8 @@ func GetNextTournamentMatch(matchID int) (*models.Match, error) {
 			LEFT JOIN match_metadata mm ON mm.match_id = m.id
 		WHERE m.tournament_id = (SELECT tournament_id FROM matches WHERE id = ?)
 			AND ((order_of_play = (SELECT order_of_play FROM match_metadata mm WHERE match_id = ?) + 1)
-				OR created_at > (SELECT created_at FROM matches WHERE id = ?))
+				OR created_at >= (SELECT created_at FROM matches WHERE id = ?))
+			AND m.is_finished = 0
 		ORDER BY mm.order_of_play, m.created_at LIMIT 1`, matchID, matchID, matchID).Scan(&nextMatchID)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -1101,9 +1103,9 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 
 	tg := &models.TournamentGroup{ID: playoffsGroupID}
 	playoffsMatches := []*models.MatchMetadata{
-		{MatchID: gf.ID, OrderOfPlay: 15, TournamentGroup: tg, MatchDisplayname: "Grand Final", WinnerOutcomeMatchID: null.IntFromPtr(nil), IsWinnerOutcomeHome: false, GrandFinal: true, SemiFinal: false},
-		{MatchID: sf1.ID, OrderOfPlay: 13, TournamentGroup: tg, MatchDisplayname: "Semi Final 1", WinnerOutcomeMatchID: null.IntFrom(int64(gf.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: true},
-		{MatchID: sf2.ID, OrderOfPlay: 14, TournamentGroup: tg, MatchDisplayname: "Semi Final 2", WinnerOutcomeMatchID: null.IntFrom(int64(gf.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: true},
+		{MatchID: gf.ID, OrderOfPlay: 15, TournamentGroup: tg, MatchDisplayname: models.MetadataNameFinal, WinnerOutcomeMatchID: null.IntFromPtr(nil), IsWinnerOutcomeHome: false, GrandFinal: true, SemiFinal: false},
+		{MatchID: sf1.ID, OrderOfPlay: 13, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixSF + " 1", WinnerOutcomeMatchID: null.IntFrom(int64(gf.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: true},
+		{MatchID: sf2.ID, OrderOfPlay: 14, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixSF + " 2", WinnerOutcomeMatchID: null.IntFrom(int64(gf.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: true},
 	}
 	err = insertMetadata(playoffsMatches)
 	if err != nil {
@@ -1112,10 +1114,10 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 
 	if numPlayers > 4 {
 		playoffsMatches := []*models.MatchMetadata{
-			{MatchID: qf1.ID, OrderOfPlay: 9, TournamentGroup: tg, MatchDisplayname: "Quarter Final 1", WinnerOutcomeMatchID: null.IntFrom(int64(sf1.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: qf2.ID, OrderOfPlay: 10, TournamentGroup: tg, MatchDisplayname: "Quarter Final 2", WinnerOutcomeMatchID: null.IntFrom(int64(sf1.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
-			{MatchID: qf3.ID, OrderOfPlay: 11, TournamentGroup: tg, MatchDisplayname: "Quarter Final 3", WinnerOutcomeMatchID: null.IntFrom(int64(sf2.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: qf4.ID, OrderOfPlay: 12, TournamentGroup: tg, MatchDisplayname: "Quarter Final 4", WinnerOutcomeMatchID: null.IntFrom(int64(sf2.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: qf1.ID, OrderOfPlay: 9, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixQF + " 1", WinnerOutcomeMatchID: null.IntFrom(int64(sf1.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: qf2.ID, OrderOfPlay: 10, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixQF + " 2", WinnerOutcomeMatchID: null.IntFrom(int64(sf1.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: qf3.ID, OrderOfPlay: 11, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixQF + " 3", WinnerOutcomeMatchID: null.IntFrom(int64(sf2.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: qf4.ID, OrderOfPlay: 12, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixQF + " 4", WinnerOutcomeMatchID: null.IntFrom(int64(sf2.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
 		}
 		err = insertMetadata(playoffsMatches)
 		if err != nil {
@@ -1134,14 +1136,14 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 		m8 := matches[14]
 
 		playoffsMatches := []*models.MatchMetadata{
-			{MatchID: m1.ID, OrderOfPlay: 1, TournamentGroup: tg, MatchDisplayname: "Match 1", WinnerOutcomeMatchID: null.IntFrom(int64(qf1.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: m2.ID, OrderOfPlay: 2, TournamentGroup: tg, MatchDisplayname: "Match 2", WinnerOutcomeMatchID: null.IntFrom(int64(qf1.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
-			{MatchID: m3.ID, OrderOfPlay: 3, TournamentGroup: tg, MatchDisplayname: "Match 3", WinnerOutcomeMatchID: null.IntFrom(int64(qf2.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: m4.ID, OrderOfPlay: 4, TournamentGroup: tg, MatchDisplayname: "Match 4", WinnerOutcomeMatchID: null.IntFrom(int64(qf2.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
-			{MatchID: m5.ID, OrderOfPlay: 5, TournamentGroup: tg, MatchDisplayname: "Match 5", WinnerOutcomeMatchID: null.IntFrom(int64(qf3.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: m6.ID, OrderOfPlay: 6, TournamentGroup: tg, MatchDisplayname: "Match 6", WinnerOutcomeMatchID: null.IntFrom(int64(qf3.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
-			{MatchID: m7.ID, OrderOfPlay: 7, TournamentGroup: tg, MatchDisplayname: "Match 7", WinnerOutcomeMatchID: null.IntFrom(int64(qf4.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: m8.ID, OrderOfPlay: 8, TournamentGroup: tg, MatchDisplayname: "Match 8", WinnerOutcomeMatchID: null.IntFrom(int64(qf4.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: m1.ID, OrderOfPlay: 1, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 1", WinnerOutcomeMatchID: null.IntFrom(int64(qf1.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: m2.ID, OrderOfPlay: 2, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 2", WinnerOutcomeMatchID: null.IntFrom(int64(qf1.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: m3.ID, OrderOfPlay: 3, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 3", WinnerOutcomeMatchID: null.IntFrom(int64(qf2.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: m4.ID, OrderOfPlay: 4, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 4", WinnerOutcomeMatchID: null.IntFrom(int64(qf2.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: m5.ID, OrderOfPlay: 5, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 5", WinnerOutcomeMatchID: null.IntFrom(int64(qf3.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: m6.ID, OrderOfPlay: 6, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 6", WinnerOutcomeMatchID: null.IntFrom(int64(qf3.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: m7.ID, OrderOfPlay: 7, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 7", WinnerOutcomeMatchID: null.IntFrom(int64(qf4.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: m8.ID, OrderOfPlay: 8, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 8", WinnerOutcomeMatchID: null.IntFrom(int64(qf4.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
 		}
 		err = insertMetadata(playoffsMatches)
 		if err != nil {
@@ -1455,4 +1457,32 @@ func GetUndefeatedPlayers() (map[int]*models.Tournament, error) {
 		return nil, err
 	}
 	return undefeated, nil
+}
+
+// FinishTournament will finish a tournament
+func FinishTournament(tournamentID int64) error {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Finish the tournament
+	_, err = tx.Exec("UPDATE tournament SET is_finished = 1 WHERE id = ? OR playoffs_tournament_id = ?", tournamentID, tournamentID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	log.Printf("Finished tournament (%d)", tournamentID)
+	tx.Commit()
+	return nil
+}
+
+func addTournamentStanding(tournamentID int64, playerID int, standing int) error {
+	_, err := models.DB.Exec(`
+	INSERT INTO tournament_standings (tournament_id, player_id,`+"`rank`"+`, elo)
+	VALUES ((SELECT id FROM tournament WHERE playoffs_tournament_id = ?), ?, ?, (SELECT tournament_elo FROM player_elo WHERE player_id = ?))`,
+		tournamentID, playerID, standing, playerID)
+	log.Printf("Added tournament standing %d for player %d in tournament %d", standing, playerID, tournamentID)
+	return err
 }

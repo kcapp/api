@@ -3,6 +3,7 @@
 ## [2.9.0] - TBD
 #### Feature
 - Added method for updating venue of a match
+- Better automatic handling of tournaments matches
 
 #### Changes
 - Return tournament statistics for all legs, not just the best per player

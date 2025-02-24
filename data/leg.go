@@ -481,6 +481,7 @@ func FinishLeg(legID int, currentPlayer int, winnerID null.Int) error {
 	} else if playedLegs == (int(match.MatchMode.LegsRequired.Int64)-1) && match.MatchMode.TieBreakMatchTypeID.Valid {
 		isTieBreak = true
 	}
+	match.IsFinished = isFinished
 	tx.Commit()
 
 	if isFinished {
@@ -491,39 +492,9 @@ func FinishLeg(legID int, currentPlayer int, winnerID null.Int) error {
 		}
 
 		if match.TournamentID.Valid {
-			metadata, err := GetMatchMetadata(match.ID)
+			err = AdvanceTournamentAfterMatch(match)
 			if err != nil {
 				return err
-			}
-
-			if metadata.WinnerOutcomeMatchID.Valid {
-				winnerMatch, err := GetMatch(int(metadata.WinnerOutcomeMatchID.Int64))
-				if err != nil {
-					return err
-				}
-				idx := 0
-				if !metadata.IsWinnerOutcomeHome {
-					idx = 1
-				}
-				err = SwapPlayers(winnerMatch.ID, int(winnerID.ValueOrZero()), winnerMatch.Players[idx])
-				if err != nil {
-					return err
-				}
-			}
-			if metadata.LooserOutcomeMatchID.Valid {
-				looserID := getMatchLooser(match, int(winnerID.ValueOrZero()))
-				looserMatch, err := GetMatch(int(metadata.LooserOutcomeMatchID.Int64))
-				if err != nil {
-					return err
-				}
-				idx := 0
-				if !metadata.IsLooserOutcomeHome {
-					idx = 1
-				}
-				err = SwapPlayers(looserMatch.ID, looserID, looserMatch.Players[idx])
-				if err != nil {
-					return err
-				}
 			}
 		}
 
