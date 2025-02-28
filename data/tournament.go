@@ -150,7 +150,7 @@ func GetTournament(id int) (*models.Tournament, error) {
 // GetCurrentTournament will return the current active tournament
 func GetCurrentTournament() (*models.Tournament, error) {
 	var tournamentID int
-	err := models.DB.QueryRow("SELECT id FROM tournament t WHERE t.is_finished = 0 ORDER BY start_time LIMIT 1").Scan(&tournamentID)
+	err := models.DB.QueryRow("SELECT id FROM tournament t WHERE t.is_finished = 0 ORDER BY is_season DESC, start_time LIMIT 1").Scan(&tournamentID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -163,7 +163,7 @@ func GetCurrentTournament() (*models.Tournament, error) {
 // GetCurrentTournamentForOffice will return the current active tournament for the given office
 func GetCurrentTournamentForOffice(officeID int) (*models.Tournament, error) {
 	var tournamentID int
-	err := models.DB.QueryRow("SELECT id FROM tournament t WHERE t.office_id = ? AND t.is_finished = 0 ORDER BY start_time LIMIT 1",
+	err := models.DB.QueryRow("SELECT id FROM tournament t WHERE t.office_id = ? AND t.is_finished = 0 ORDER BY is_season DESC, start_time LIMIT 1",
 		officeID).Scan(&tournamentID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -396,8 +396,11 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			COUNT(DISTINCT won.id) * 2 + COUNT(DISTINCT draw.id) AS 'pts',
 			IFNULL(SUM(s.ppd_score) / SUM(s.darts_thrown), -1) AS 'ppd',
 			IFNULL(SUM(s.first_nine_ppd_score) / (9 * (COUNT(DISTINCT s.leg_id))), -1) AS 'first_nine_ppd',
+			IFNULL(SUM(s.darts_thrown), -1) AS 'darts_thrown',
 			IFNULL(SUM(s.ppd_score) / SUM(s.darts_thrown) * 3, -1) AS 'three_dart_avg',
+			IFNULL(SUM(s.ppd_score) * 3, -1) AS 'three_dart_avg_score',
 			IFNULL(SUM(s.first_nine_ppd_score) * 3 / (9 * (COUNT(DISTINCT s.leg_id))), -1) AS 'first_nine_three_dart_avg',
+			IFNULL(SUM(s.first_nine_ppd_score) * 3, -1) AS 'first_nine_three_dart_avg_score',
 			IFNULL(SUM(s.60s_plus), 0) AS '60s_plus',
 			IFNULL(SUM(s.100s_plus), 0) AS '100s_plus',
 			IFNULL(SUM(s.140s_plus), 0) AS '140s_plus',
@@ -438,9 +441,9 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.StartTime, &tournament.EndTime, &group.ID,
 			&group.Name, &group.Division, &stats.PlayerID, &stats.IsPromoted, &stats.IsRelegated, &stats.IsWinner, &stats.ManualOrder, &stats.Played, &stats.MatchesWon,
 			&stats.MatchesDraw, &stats.MatchesLost, &stats.LegsFor, &stats.LegsAgainst, &stats.LegsDifference, &stats.Points, &stats.PPD,
-			&stats.FirstNinePPD, &stats.ThreeDartAvg, &stats.FirstNineThreeDartAvg, &stats.Score60sPlus, &stats.Score100sPlus, &stats.Score140sPlus,
-			&stats.Score180s, &stats.Accuracy20, &stats.Accuracy19, &stats.AccuracyOverall, &stats.CheckoutAttempts, &stats.CheckoutPercentage,
-			&stats.DartsPerLeg)
+			&stats.FirstNinePPD, &stats.DartsThrown, &stats.ThreeDartAvg, &stats.ThreeDartAvgScore, &stats.FirstNineThreeDartAvg, &stats.FirstNineThreeDartAvgScore,
+			&stats.Score60sPlus, &stats.Score100sPlus, &stats.Score140sPlus, &stats.Score180s, &stats.Accuracy20, &stats.Accuracy19, &stats.AccuracyOverall,
+			&stats.CheckoutAttempts, &stats.CheckoutPercentage, &stats.DartsPerLeg)
 		if err != nil {
 			return nil, err
 		}
