@@ -163,6 +163,8 @@ func (dart Dart) String() string {
 		return fmt.Sprintf("T%d", dart.ValueRaw())
 	} else if dart.Multiplier == DOUBLE {
 		return fmt.Sprintf("D%d", dart.ValueRaw())
+	} else if dart.IsMiss() {
+		return "Miss"
 	}
 	return fmt.Sprintf("%d", dart.ValueRaw())
 }

@@ -12,6 +12,7 @@
 #### Fixed
 - Always return legs won for player Shootout statistics
 - Removed `bye` matches from player head2head statistics
+- Show Miss as "Miss" and not "0" on badge darts thrown
 
 ## [2.8.0] - 2024-12-11
 #### Feature
