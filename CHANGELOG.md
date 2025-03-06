@@ -8,6 +8,7 @@
 #### Changes
 - Return tournament statistics for all legs, not just the best per player
 - Add some additional properties for tournament overview
+- Make tournaments of other match types work correctly
 
 #### Fixed
 - Always return legs won for player Shootout statistics

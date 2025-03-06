@@ -425,10 +425,12 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			JOIN tournament t ON t.id = m.tournament_id
 			JOIN player2tournament p2t ON p2t.player_id = p.id AND p2t.tournament_id = t.id
 			JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
-		WHERE m.tournament_id = ? AND m.match_type_id = 1
+		WHERE m.tournament_id = ?
+			-- Only show statistics for matches of the same main match type of matches in the tournament
+			AND m.match_type_id = (SELECT match_type_id FROM matches WHERE tournament_id = ? LIMIT 1)
 			AND m.is_bye <> 1
 		GROUP BY p2l.player_id, tg.id
-		ORDER BY tg.division, pts DESC, manual_order, diff DESC, three_dart_avg DESC, is_relegated`, id)
+		ORDER BY tg.division, pts DESC, manual_order, diff DESC, three_dart_avg DESC, is_relegated`, id, id)
 	if err != nil {
 		return nil, err
 	}
@@ -944,7 +946,9 @@ func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsI
 			return nil, err
 		}
 		startingScore = legs[0].StartingScore
-		maxRounds = legs[0].Parameters.MaxRounds
+		if legs[0].Parameters != nil {
+			maxRounds = legs[0].Parameters.MaxRounds
+		}
 		break
 	}
 	matchType := regularSeasonMatch.MatchType
