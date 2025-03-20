@@ -17,7 +17,8 @@ func GetDefaultOptions() (*models.DefaultOptions, error) {
 		SELECT
 			mt.id, mt.name, mt.description,
 			mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required,
-			starting_score, max_rounds, ot.id, ot.name, ot.short_name
+			starting_score, max_rounds, ot.id, ot.name, ot.short_name,
+			leaderboard_last_legs_count, leaderboard_active_period_weeks
 		FROM match_default md
 		    LEFT JOIN match_type mt ON mt.id = md.match_type_id
     		LEFT JOIN match_mode mm ON mm.id = md.match_mode_id
@@ -25,7 +26,7 @@ func GetDefaultOptions() (*models.DefaultOptions, error) {
 		LIMIT 1`).
 		Scan(&opts.MatchType.ID, &opts.MatchType.Name, &opts.MatchType.Description, &opts.MatchMode.ID, &opts.MatchMode.Name,
 			&opts.MatchMode.ShortName, &opts.MatchMode.WinsRequired, &opts.MatchMode.LegsRequired, &opts.StartingScore, &opts.MaxRounds,
-			&opts.OutshotType.ID, &opts.OutshotType.Name, &opts.OutshotType.ShortName)
+			&opts.OutshotType.ID, &opts.OutshotType.Name, &opts.OutshotType.ShortName, &opts.LeaderboardLastLegsCount, &opts.LeaderboardActivePeriodWeeks)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return opts, nil

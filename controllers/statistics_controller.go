@@ -267,5 +267,17 @@ func GetDartStatistics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(statistics)
+}
 
+// GetPlayersLastXLegsStatistics will return statistics for the last X legs played by all players
+func GetPlayersLastXLegsStatistics(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+
+	global, err := data.GetPlayersLastXLegsStatistics()
+	if err != nil {
+		log.Println("Unable to get last x legs statistics", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(global)
 }

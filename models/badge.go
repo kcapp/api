@@ -38,10 +38,11 @@ type PlayerBadge struct {
 	LegID            null.Int               `json:"leg_id,omitempty"`
 	Value            null.Int               `json:"value,omitempty"`
 	MatchID          null.Int               `json:"match_id,omitempty"`
-	OpponentPlayerID null.Int               `json:"opponent_player_id,omitempty"`
+	OpponentPlayerID int                    `json:"opponent_player_id,omitempty"`
 	TournamentID     null.Int               `json:"tournament_id,omitempty"`
 	VisitID          null.Int               `json:"visit_id,omitempty"`
 	Darts            []*Dart                `json:"darts,omitempty"`
+	Data             null.String            `json:"data,omitempty"`
 	CreatedAt        time.Time              `json:"created_at"`
 	Statistics       *PlayerBadgeStatistics `json:"statistics,omitempty"`
 }
@@ -61,6 +62,7 @@ func (pb PlayerBadge) MarshalJSON() ([]byte, error) {
 		VisitID          null.Int               `json:"visit_id,omitempty"`
 		Darts            []*Dart                `json:"darts,omitempty"`
 		DartsString      string                 `json:"darts_string,omitempty"`
+		Data             null.String            `json:"data,omitempty"`
 		CreatedAt        time.Time              `json:"created_at"`
 		Statistics       *PlayerBadgeStatistics `json:"statistics,omitempty"`
 	}
@@ -75,6 +77,12 @@ func (pb PlayerBadge) MarshalJSON() ([]byte, error) {
 		}
 	}
 
+	var opponentPlayerID null.Int
+	if pb.OpponentPlayerID != 0 {
+		// 0 means NULL for unique constraint, so make it null here in the API
+		opponentPlayerID = null.IntFrom(int64(pb.OpponentPlayerID))
+	}
+
 	return json.Marshal(playerBadgeJSON{
 		Badge:            pb.Badge,
 		PlayerID:         pb.PlayerID,
@@ -82,11 +90,12 @@ func (pb PlayerBadge) MarshalJSON() ([]byte, error) {
 		LegID:            pb.LegID,
 		Value:            pb.Value,
 		MatchID:          pb.MatchID,
-		OpponentPlayerID: pb.OpponentPlayerID,
+		OpponentPlayerID: opponentPlayerID,
 		TournamentID:     pb.TournamentID,
 		VisitID:          pb.VisitID,
 		Darts:            pb.Darts,
 		DartsString:      dartsString,
+		Data:             pb.Data,
 		CreatedAt:        pb.CreatedAt,
 		Statistics:       pb.Statistics,
 	})
@@ -194,6 +203,83 @@ func (b BadgeVersatilePlayer) GetID() int {
 
 func (b BadgeVersatilePlayer) Levels() []int {
 	return []int{5, 10, 15, 20}
+}
+
+var LeaderboardBadges = []LeaderboardBadge{
+	BadgeKingslayer{ID: 48},
+}
+
+type LeaderboardBadge interface {
+	GetID() int
+	// Validate returns bool, player.ID
+	Validate(match *Match, matchStatistics []*StatisticsX01, leaderboard []*StatisticsX01) (bool, *int, *int)
+}
+
+type BadgeKingslayer struct{ ID int }
+
+func (b BadgeKingslayer) GetID() int {
+	return b.ID
+}
+func (b BadgeKingslayer) Validate(match *Match, matchStatistics []*StatisticsX01, leaderboard []*StatisticsX01) (bool, *int, *int) {
+	if !match.IsX01() {
+		return false, nil, nil
+	}
+
+	// Get the current king in the correct office
+	var king *int
+	var kingOfKings *int
+	if len(leaderboard) > 0 {
+		// One king to rule them all...
+		kingOfKings = &leaderboard[0].PlayerID
+		king = kingOfKings
+	}
+	if match.OfficeID.Valid {
+		// Get the local king
+		for _, stat := range leaderboard {
+			if stat.OfficeID.Int64 == match.OfficeID.Int64 {
+				king = &stat.PlayerID
+				break
+			}
+		}
+	}
+
+	if king == nil {
+		// The king is in a different office
+		return false, nil, nil
+	}
+	if !match.MatchMode.IsChallenge {
+		// No usurpers in friendly skirmishes
+		return false, nil, nil
+	}
+
+	if len(match.Players) != 2 {
+		// There can be only one
+		return false, nil, nil
+	}
+	if !containsInt(match.Players, *king) && !containsInt(match.Players, *kingOfKings) {
+		// This was not an attempt to slay the king
+		return false, nil, nil
+	}
+	if containsInt(match.Players, *kingOfKings) {
+		// It's the one true king
+		king = kingOfKings
+	}
+
+	if !match.WinnerID.Valid || match.WinnerID.Int64 == int64(*king) {
+		// If you come for the king, you best not miss...
+		return false, nil, nil
+	}
+
+	kingStatistics, _ := findPlayerX01Statistics(matchStatistics, *king)
+	slayerStatistics, _ := findPlayerX01Statistics(matchStatistics, int(match.WinnerID.Int64))
+	if slayerStatistics.ThreeDartAvg < kingStatistics.ThreeDartAvg {
+		// You must best the king, not just wound him.
+		return false, nil, nil
+	}
+
+	// The king is dead, long live the king!
+	kingslayer := int(match.WinnerID.Int64)
+	return true, &kingslayer, king
 }
 
 var MatchBadges = []MatchBadge{
@@ -987,4 +1073,14 @@ func getVisitsForPlayer(visits []*Visit, playerID int) []*Visit {
 		}
 	}
 	return playerVisits
+}
+
+// findPlayerX01Statistics takes a slice and returns the statistics for the given playerID
+func findPlayerX01Statistics(stats []*StatisticsX01, playerID int) (*StatisticsX01, bool) {
+	for _, stat := range stats {
+		if stat.PlayerID == playerID {
+			return stat, true
+		}
+	}
+	return nil, false
 }

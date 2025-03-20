@@ -781,11 +781,11 @@ func GetLegsOfType(matchType int, playerID int, start int, limit int, loadVisits
 			JOIN matches m on m.id = l.match_id
 			JOIN player2leg p2l ON p2l.leg_id = l.id
 		WHERE l.is_finished AND m.is_abandoned = 0 AND m.is_bye = 0 AND 
-			l.has_scores = 1 AND (m.match_type_id = ? OR l.leg_type_id = ?)
+			l.has_scores = 1 AND IFNULL(l.leg_type_id, m.match_type_id) = ?
 		GROUP BY l.id
 		HAVING FIND_IN_SET(?, players) > 0
 		ORDER BY l.id DESC
-		LIMIT ?, ?`, matchType, matchType, playerID, start, limit)
+		LIMIT ?, ?`, matchType, playerID, start, limit)
 	if err != nil {
 		return nil, err
 	}

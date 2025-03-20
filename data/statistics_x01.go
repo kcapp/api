@@ -493,9 +493,9 @@ func GetX01HistoryForPlayer(id int, start int, limit int, matchType int) ([]*mod
 			LEFT JOIN matches m ON m.id = l.match_id
 		WHERE s.player_id = ?
 			AND l.is_finished = 1 AND m.is_abandoned = 0
-			AND (m.match_type_id = ? OR l.leg_type_id = ?)
+			AND IFNULL(l.leg_type_id, m.match_type_id) = ?
 		ORDER BY l.id DESC
-		LIMIT ?`, id, matchType, matchType, limit)
+		LIMIT ?`, id, matchType, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -1012,4 +1012,26 @@ func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.PlayerBadg
 		stats.Shanghais = shanghai[playerID]
 	}
 	return statistics, nil
+}
+
+// GetPlayersLastXLegsStatistics will return statistics for the last X legs for all players
+func GetPlayersLastXLegsStatistics() ([]*models.StatisticsX01, error) {
+	rows, err := models.DB.Query(`CALL get_player_last_x_legs_statistics((SELECT leaderboard_last_legs_count FROM match_default LIMIT 1))`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	stats := make([]*models.StatisticsX01, 0)
+	for rows.Next() {
+		s := new(models.StatisticsX01)
+		err := rows.Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon, &s.OfficeID, &s.PPD,
+			&s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus, &s.Score100sPlus, &s.Score140sPlus,
+			&s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage, &s.Checkout, &s.LastPlayedLeg)
+		if err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	return stats, nil
 }

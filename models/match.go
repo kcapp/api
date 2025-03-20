@@ -280,6 +280,8 @@ type MatchMode struct {
 	WinsRequired        int      `json:"wins_required"`
 	LegsRequired        null.Int `json:"legs_required"`
 	TieBreakMatchTypeID null.Int `json:"tiebreak_match_type_id,omitempty"`
+	IsDrawPossible      bool     `json:"is_draw_possible"`
+	IsChallenge         bool     `json:"is_challenge"`
 }
 
 // MatchTournament struct for storing tournament information

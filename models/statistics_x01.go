@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/guregu/null"
 )
 
@@ -57,6 +59,7 @@ type StatisticsX01 struct {
 	Best701               *BestStatistic      `json:"best_701,omitempty"`
 	HighestCheckout       *BestStatistic      `json:"highest_checkout,omitempty"`
 	StartingScore         null.Int            `json:"-"`
+	LastPlayedLeg         time.Time           `json:"last_played_leg,omitempty"`
 }
 
 // GlobalStatistics struct used for storing global statistics

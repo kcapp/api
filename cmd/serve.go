@@ -102,6 +102,7 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/statistics/office/{from}/{to}", controllers.GetOfficeStatistics).Methods("GET")
 		router.HandleFunc("/statistics/office/{office_id}/{from}/{to}", controllers.GetOfficeStatistics).Methods("GET")
 		router.HandleFunc("/statistics/{dart}/hits", controllers.GetDartStatistics).Methods("GET")
+		router.HandleFunc("/statistics/x01/player/{legs}", controllers.GetPlayersLastXLegsStatistics).Methods("GET")
 		router.HandleFunc("/statistics/{match_type}/{from}/{to}", controllers.GetStatistics).Methods("GET")
 
 		router.HandleFunc("/owe", controllers.GetOwes).Methods("GET")
