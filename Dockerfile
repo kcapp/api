@@ -21,7 +21,10 @@ COPY . .
 
 # Install dependencies and build executable
 RUN go get -d -v
-RUN CGO_ENABLED=0 go build -o $GOPATH/bin/api -a -ldflags '-extldflags "-static"' .
+ARG VERSION=dev
+ARG GIT_COMMIT=unknown
+RUN CGO_ENABLED=0 go build -o $GOPATH/bin/api \
+  -ldflags="-X 'github.com/kcapp/api/models.Version=${VERSION}' -X 'github.com/kcapp/api/models.GitCommit=${GIT_COMMIT}' -extldflags '-static'"
 
 # Separate stage for cloning migrations (non-cacheable)
 FROM alpine AS migrations

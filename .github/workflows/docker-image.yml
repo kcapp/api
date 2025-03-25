@@ -17,6 +17,15 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Set Version Variables
+      run: |
+        if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+        else
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          echo "VERSION=${BRANCH_NAME}" >> $GITHUB_ENV
+        fi
+        echo "GIT_COMMIT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
     - name: Docker Setup QEMU
       uses: docker/setup-qemu-action@v3
       with:
@@ -24,10 +33,12 @@ jobs:
     - name: Docker Setup Buildx
       uses: docker/setup-buildx-action@v3
     - name: Build & Push Docker image (Latest)
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
+      if:   github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
       run: |
         docker buildx build . \
           --file Dockerfile \
+          --build-arg VERSION=${{ env.VERSION }} \
+          --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
           --cache-from=type=registry,ref=kcapp/api:cache \
           --cache-to=type=registry,ref=kcapp/api:cache,mode=max \
           --build-arg force_migrations_update=$(date +%s) \
@@ -39,6 +50,8 @@ jobs:
       run: |
         docker buildx build . \
           --file Dockerfile \
+          --build-arg VERSION=${{ env.VERSION }} \
+          --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
           --cache-from=type=registry,ref=kcapp/api:cache \
           --cache-to=type=registry,ref=kcapp/api:cache,mode=max \
           -t kcapp/api:${{ env.RELEASE_VERSION }} \

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -147,6 +148,19 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/badge/statistics", controllers.GetBadgesStatistics).Methods("GET")
 		router.HandleFunc("/badge/{id}", controllers.GetBadge).Methods("GET")
 		router.HandleFunc("/badge/{id}/statistics", controllers.GetBadgeStatistics).Methods("GET")
+
+		router.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+			versionInfo := struct {
+				Version   string `json:"version"`
+				GitCommit string `json:"git_commit"`
+			}{
+				Version:   models.Version,
+				GitCommit: models.GitCommit,
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(versionInfo)
+		}).Methods("GET")
 
 		port := viper.GetInt("api.port")
 		log.Printf("Listening on port %d", port)
