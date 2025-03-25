@@ -10,6 +10,7 @@ import (
 	controllers_v2 "github.com/kcapp/api/controllers/v2"
 	"github.com/kcapp/api/models"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // serveCmd represents the serve command
@@ -17,12 +18,7 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the API",
 	Run: func(cmd *cobra.Command, args []string) {
-		configFileParam, _ := cmd.Flags().GetString("config")
-		config, err := models.GetConfig(configFileParam)
-		if err != nil {
-			panic(err)
-		}
-		models.InitDB(config.GetMysqlConnectionString())
+		models.InitDB(models.GetMysqlConnectionString())
 
 		router := mux.NewRouter()
 		router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -152,8 +148,9 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/badge/{id}", controllers.GetBadge).Methods("GET")
 		router.HandleFunc("/badge/{id}/statistics", controllers.GetBadgeStatistics).Methods("GET")
 
-		log.Printf("Listening on port %d", config.APIConfig.Port)
-		log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.APIConfig.Port), router))
+		port := viper.GetInt("api.port")
+		log.Printf("Listening on port %d", port)
+		log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", port), router))
 	},
 }
 

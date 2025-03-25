@@ -6,3 +6,4 @@ db:
   schema: kcapp
 api:
   port: 8001
+test: abcd1234

@@ -15,25 +15,17 @@ var recalculateEloCmd = &cobra.Command{
 	This will reset the elo for all players, and regenerate the elo changelog
 	Elo will be recalculated based on 'updated_at' timestamp of each match`,
 	Run: func(cmd *cobra.Command, args []string) {
-		configFileParam, err := cmd.Flags().GetString("config")
-		if err != nil {
-			panic(err)
-		}
-		config, err := models.GetConfig(configFileParam)
-		if err != nil {
-			panic(err)
-		}
-		models.InitDB(config.GetMysqlConnectionString())
+		models.InitDB(models.GetMysqlConnectionString())
 
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		tournament, _ := cmd.Flags().GetInt("tournament")
 		if tournament != 0 {
-			err = data.CalculateEloForTournament(tournament)
+			err := data.CalculateEloForTournament(tournament)
 			if err != nil {
 				panic(err)
 			}
 		} else {
-			err = data.RecalculateElo(dryRun)
+			err := data.RecalculateElo(dryRun)
 			if err != nil {
 				panic(err)
 			}
