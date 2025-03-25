@@ -30,7 +30,7 @@ jobs:
           --file Dockerfile \
           --cache-from=type=registry,ref=kcapp/api:cache \
           --cache-to=type=registry,ref=kcapp/api:cache,mode=max \
-          --build-arg FORCE_MIGRATIONS_UPDATE=$(date +%s) \
+          --build-arg force_migrations_update=$(date +%s) \
           -t kcapp/api:latest \
           --platform=linux/arm,linux/arm64,linux/amd64 \
           --push

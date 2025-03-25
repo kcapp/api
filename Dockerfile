@@ -1,5 +1,5 @@
 # Create our build image
-FROM golang:1.23-alpine AS BUILD_IMAGE
+FROM golang:1.23-alpine AS build_image
 
 # Add git, required to install dependencies
 RUN apk update && apk add --no-cache git gcc
@@ -24,9 +24,13 @@ RUN go get -d -v
 RUN CGO_ENABLED=0 go build -o $GOPATH/bin/api -a -ldflags '-extldflags "-static"' .
 
 # Separate stage for cloning migrations (non-cacheable)
-FROM alpine AS MIGRATIONS
+FROM alpine AS migrations
 RUN apk add --no-cache git
+
 RUN git clone https://github.com/kcapp/database /usr/local/kcapp/database
+RUN mkdir -p /usr/local/scripts
+
+# Copy and set permission
 RUN cp /usr/local/kcapp/database/run_migrations.sh /usr/local/scripts/run_migrations.sh
 RUN chmod +x /usr/local/scripts/run_migrations.sh
 
@@ -38,15 +42,15 @@ RUN apk add --no-cache bash
 COPY config/config.docker.yaml config/config.yaml
 
 # Add binaries and scripts
-COPY --from=BUILD_IMAGE /usr/local/scripts/* ./
-COPY --from=BUILD_IMAGE /go/bin/goose /go/bin/goose
-COPY --from=BUILD_IMAGE /go/bin/api /go/bin/api
+COPY --from=build_image /usr/local/scripts/* ./
+COPY --from=build_image /go/bin/goose /go/bin/goose
+COPY --from=build_image /go/bin/api /go/bin/api
 
 # Force a fresh migration copy by using `MIGRATIONS` stage, avoiding cache
-ARG FORCE_MIGRATIONS_UPDATE
+ARG force_migrations_update
 RUN --mount=type=cache,target=/var/cache git clone https://github.com/kcapp/database /usr/local/kcapp/database
-COPY --from=MIGRATIONS /usr/local/kcapp/database/migrations /usr/local/kcapp/database/migrations
-COPY --from=MIGRATIONS /usr/local/scripts/run_migrations.sh /usr/local/scripts/run_migrations.sh
+COPY --from=migrations /usr/local/kcapp/database/migrations /usr/local/kcapp/database/migrations
+COPY --from=migrations /usr/local/scripts/run_migrations.sh /usr/local/scripts/run_migrations.sh
 
 # Add go binaries to path
 ENV PATH="/go/bin:${PATH}"
