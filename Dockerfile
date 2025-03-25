@@ -36,7 +36,7 @@ RUN chmod +x /usr/local/scripts/run_migrations.sh
 
 # Create our actual image
 FROM alpine
-RUN apk add --no-cache bash
+RUN apk add --no-cache bash git
 
 # Add configuration file
 COPY config/config.docker.yaml config/config.yaml
