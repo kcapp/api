@@ -25,7 +25,6 @@ RUN CGO_ENABLED=0 go build -o $GOPATH/bin/api -a -ldflags '-extldflags "-static"
 
 # Separate stage for cloning migrations (non-cacheable)
 FROM alpine AS MIGRATIONS
-
 RUN apk add --no-cache git
 RUN git clone https://github.com/kcapp/database /usr/local/kcapp/database
 RUN cp /usr/local/kcapp/database/run_migrations.sh /usr/local/scripts/run_migrations.sh
@@ -33,7 +32,6 @@ RUN chmod +x /usr/local/scripts/run_migrations.sh
 
 # Create our actual image
 FROM alpine
-
 RUN apk add --no-cache bash
 
 # Add configuration file
