@@ -53,6 +53,7 @@ COPY --from=build_image /go/bin/api /go/bin/api
 ARG force_migrations_update
 RUN --mount=type=cache,target=/var/cache git clone https://github.com/kcapp/database /usr/local/kcapp/database
 COPY --from=migrations /usr/local/kcapp/database/migrations /usr/local/kcapp/database/migrations
+COPY --from=migrations /usr/local/scripts/run_migrations.sh ./run_migrations.sh
 COPY --from=migrations /usr/local/scripts/run_migrations.sh /usr/local/scripts/run_migrations.sh
 
 # Add go binaries to path
