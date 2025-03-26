@@ -750,7 +750,7 @@ func GetHeadToHeadMatches(player1 int, player2 int) ([]*models.Match, error) {
 		SELECT
 			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id, m.winner_id, m.created_at, m.updated_at,
 			m.owe_type_id, mt.id, mt.name, mt.description,
-			mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required, mm.is_draw_possible, mm.is_challenge, 
+			mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required, mm.is_draw_possible, mm.is_challenge
 		FROM matches m
 			JOIN match_type mt ON mt.id = m.match_type_id
 			JOIN match_mode mm ON mm.id = m.match_mode_id
@@ -794,7 +794,7 @@ func GetPlayerLastMatches(playerID int, limit int) ([]*models.Match, error) {
 		SELECT
 			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id, m.winner_id, m.created_at, m.updated_at,
 			m.owe_type_id, mt.id, mt.name, mt.description,
-			mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required, mm.is_draw_possible, mm.is_challenge, 
+			mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required, mm.is_draw_possible, mm.is_challenge
 		FROM matches m
 			JOIN match_type mt ON mt.id = m.match_type_id
 			JOIN match_mode mm ON mm.id = m.match_mode_id
