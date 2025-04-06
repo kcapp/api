@@ -11,6 +11,7 @@ var recalculateBadgeCmd = &cobra.Command{
 	Short: "Recalculate badge",
 	Long:  `Recalculate badges earned by each player`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		SetupConfig(cmd)
 		models.InitDB(models.GetMysqlConnectionString())
 	},
 }

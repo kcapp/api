@@ -62,6 +62,18 @@ type StatisticsX01 struct {
 	LastPlayedLeg         time.Time           `json:"last_played_leg,omitempty"`
 }
 
+// PlayerX01Progression struct used for storing player statistics in a bucket
+type PlayerX01Progression struct {
+	PlayerID     int            `json:"player_id"`
+	Bucket       int            `json:"bucket"`
+	FirstLegID   int            `json:"first_leg_id"`
+	LastLegID    int            `json:"last_leg_id"`
+	LegsInBucket int            `json:"legs_in_bucket"`
+	StartDate    time.Time      `json:"start_date"`
+	EndDate      time.Time      `json:"end_date"`
+	Statistics   *StatisticsX01 `json:"statistics"`
+}
+
 // GlobalStatistics struct used for storing global statistics
 type GlobalStatistics struct {
 	FishNChips     int `json:"fish_n_chips"`

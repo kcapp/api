@@ -642,14 +642,51 @@ func UpdatePlayer(w http.ResponseWriter, r *http.Request) {
 func GetPlayerProgression(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 	params := mux.Vars(r)
-	id, err := strconv.Atoi(params["id"])
+	playerID, err := strconv.Atoi(params["id"])
 	if err != nil {
 		log.Println("Invalid id parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	stats, err := data.GetPlayerProgression(id)
+	// Get query parameters
+	bucketSizeStr := r.URL.Query().Get("bucket_size")
+	startingScoreStr := r.URL.Query().Get("starting_score")
+	oneVOneOnlyStr := r.URL.Query().Get("1v1_only")
+	officialOnlyStr := r.URL.Query().Get("official_only")
+
+	// Set default values
+	bucketSize := 50
+	var startingScore *int
+	oneVOneOnly := false
+	officialOnly := false
+
+	if bucketSizeStr != "" {
+		var err error
+		bucketSize, err = strconv.Atoi(bucketSizeStr)
+		if err != nil {
+			http.Error(w, "Invalid bucket_size", http.StatusBadRequest)
+			return
+		}
+	}
+
+	if startingScoreStr != "" {
+		var score int
+		score, err := strconv.Atoi(startingScoreStr)
+		if err == nil {
+			startingScore = &score
+		}
+	}
+
+	if oneVOneOnlyStr != "" {
+		oneVOneOnly = oneVOneOnlyStr == "true"
+	}
+
+	if officialOnlyStr != "" {
+		officialOnly = officialOnlyStr == "true"
+	}
+
+	stats, err := data.GetPlayerProgression(playerID, bucketSize, startingScore, oneVOneOnly, officialOnly)
 	if err != nil {
 		log.Println("Unable to get player progression", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

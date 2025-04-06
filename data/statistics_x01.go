@@ -363,54 +363,33 @@ func GetPlayersX01PreviousStatistics(ids []int, startingScores ...int) ([]*model
 }
 
 // GetPlayerProgression will get progression of statistics over time for the given player
-func GetPlayerProgression(id int) (map[string]*models.StatisticsX01, error) {
-	rows, err := models.DB.Query(`
-		SELECT
-			s.player_id AS 'player_id',
-			SUM(s.ppd_score) / SUM(s.darts_thrown) AS 'ppd',
-			SUM(s.first_nine_ppd) / COUNT(s.player_id) AS 'first_nine_ppd',
-			(SUM(s.ppd_score) / SUM(s.darts_thrown)) * 3 AS 'three_dart_avg',
-			SUM(s.first_nine_ppd) / COUNT(s.player_id) * 3 AS 'first_nine_three_dart_avg',
-			SUM(s.60s_plus) AS '60s_plus',
-			SUM(s.100s_plus) AS '100s_plus',
-			SUM(s.140s_plus) AS '140s_plus',
-			SUM(s.180s) AS '180s',
-			SUM(s.accuracy_20) / COUNT(s.accuracy_20) AS 'accuracy_20s',
-			SUM(s.accuracy_19) / COUNT(s.accuracy_19) AS 'accuracy_19s',
-			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
-			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage',
-			MAX(s.checkout) AS 'checkout',
-			DATE(m.updated_at) AS 'date'
-		FROM statistics_x01 s
-			JOIN leg l ON l.id = s.leg_id
-			JOIN matches m ON m.id = l.match_id
-		WHERE s.player_id = ?
-			AND m.match_type_id = 1
-			AND m.is_finished = 1 AND m.is_abandoned = 0
-		GROUP BY YEAR(m.updated_at), WEEK(m.updated_at)
-		ORDER BY date DESC`, id)
+func GetPlayerProgression(playerID int, bucketSize int, startingScore *int, oneVOneOnly bool, officialOnly bool) ([]*models.PlayerX01Progression, error) {
+	rows, err := models.DB.Query(`CALL get_player_x01_statistics_per_leg_bucket(?, ?, ?, ?, ?)`,
+		playerID, bucketSize, &startingScore, oneVOneOnly, officialOnly)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	statisticsMap := make(map[string]*models.StatisticsX01)
+	progression := make([]*models.PlayerX01Progression, 0)
 	for rows.Next() {
-		var date string
-		s := new(models.StatisticsX01)
-		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus,
-			&s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutPercentage,
-			&s.Checkout, &date)
+		p := new(models.PlayerX01Progression)
+		p.Statistics = new(models.StatisticsX01)
+		err := rows.Scan(&p.PlayerID, &p.Bucket, &p.FirstLegID, &p.LastLegID, &p.LegsInBucket, &p.StartDate, &p.EndDate,
+			&p.Statistics.PPD, &p.Statistics.FirstNinePPD,
+			&p.Statistics.ThreeDartAvg, &p.Statistics.FirstNineThreeDartAvg, &p.Statistics.Score60sPlus,
+			&p.Statistics.Score100sPlus, &p.Statistics.Score140sPlus, &p.Statistics.Score180s, &p.Statistics.Accuracy20,
+			&p.Statistics.Accuracy19, &p.Statistics.AccuracyOverall, &p.Statistics.CheckoutPercentage, &p.Statistics.Checkout)
 		if err != nil {
 			return nil, err
 		}
-		statisticsMap[date] = s
+		progression = append(progression, p)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return statisticsMap, nil
+	return progression, nil
 }
 
 // GetX01StatisticsForPlayer will return X01 statistics for the given player
@@ -1016,7 +995,7 @@ func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.PlayerBadg
 
 // GetPlayersLastXLegsStatistics will return statistics for the last X legs for all players
 func GetPlayersLastXLegsStatistics() ([]*models.StatisticsX01, error) {
-	rows, err := models.DB.Query(`CALL get_player_last_x_legs_statistics((SELECT leaderboard_last_legs_count FROM match_default LIMIT 1))`)
+	rows, err := models.DB.Query(`CALL get_players_last_x_legs_statistics(0, (SELECT leaderboard_last_legs_count FROM match_default LIMIT 1), (SELECT leaderboard_active_period_weeks FROM match_default LIMIT 1))`)
 	if err != nil {
 		return nil, err
 	}

@@ -346,6 +346,18 @@ func (m Match) IsX01() bool {
 	return m.MatchType.ID == X01
 }
 
+// GetLooser will return the looser player ID
+func (m Match) GetLooser() *int {
+	if m.WinnerID.Valid {
+		for _, player := range m.Players {
+			if player != int(m.WinnerID.Int64) {
+				return &player
+			}
+		}
+	}
+	return nil
+}
+
 // GetLooserStanding returns the standing of the looser of the match
 func (mm MatchMetadata) GetLooserStanding() int {
 	if mm.LooserOutcomeStanding.Valid {

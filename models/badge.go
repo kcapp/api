@@ -207,11 +207,12 @@ func (b BadgeVersatilePlayer) Levels() []int {
 
 var LeaderboardBadges = []LeaderboardBadge{
 	BadgeKingslayer{ID: 48},
+	BadgeStillReigning{ID: 49},
 }
 
 type LeaderboardBadge interface {
 	GetID() int
-	// Validate returns bool, player.ID
+	// Validate returns bool, winner.playerID, looser.playerID
 	Validate(match *Match, matchStatistics []*StatisticsX01, leaderboard []*StatisticsX01) (bool, *int, *int)
 }
 
@@ -280,6 +281,43 @@ func (b BadgeKingslayer) Validate(match *Match, matchStatistics []*StatisticsX01
 	// The king is dead, long live the king!
 	kingslayer := int(match.WinnerID.Int64)
 	return true, &kingslayer, king
+}
+
+type BadgeStillReigning struct{ ID int }
+
+func (b BadgeStillReigning) GetID() int {
+	return b.ID
+}
+func (b BadgeStillReigning) Validate(match *Match, matchStatistics []*StatisticsX01, leaderboard []*StatisticsX01) (bool, *int, *int) {
+	if !match.IsX01() || !match.MatchMode.IsChallenge {
+		return false, nil, nil
+	}
+	if len(match.Players) != 2 {
+		return false, nil, nil
+	}
+	if len(leaderboard) == 0 {
+		return false, nil, nil
+	}
+
+	// Get the current king in the correct office
+	var king *int
+	var kingOfKings *int
+	if len(leaderboard) > 0 {
+		kingOfKings = &leaderboard[0].PlayerID
+		king = kingOfKings
+	}
+	if match.OfficeID.Valid {
+		for _, stat := range leaderboard {
+			if stat.OfficeID.Int64 == match.OfficeID.Int64 {
+				king = &stat.PlayerID
+				break
+			}
+		}
+	}
+	if match.WinnerID.Int64 == int64(*king) || match.WinnerID.Int64 == int64(*kingOfKings) {
+		return true, king, match.GetLooser()
+	}
+	return false, nil, nil
 }
 
 var MatchBadges = []MatchBadge{
