@@ -177,8 +177,8 @@ func GetCricketStatisticsForPlayer(id int) (*models.StatisticsCricket, error) {
 }
 
 // GetCricketHistoryForPlayer will return history of Cricket statistics for the given player
-func GetCricketHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.CRICKET, false)
+func GetCricketHistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.CRICKET, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}

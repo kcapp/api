@@ -2,59 +2,18 @@ package models
 
 import (
 	"fmt"
-	"io/ioutil"
 
-	yaml "gopkg.in/yaml.v2"
+	"github.com/spf13/viper"
 )
 
-// DBConfig stuct config
-type DBConfig struct {
-	Address  string `yaml:"address"`
-	Port     int    `yaml:"port"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	Schema   string `yaml:"schema"`
-}
-
-// APIConfig struct config
-type APIConfig struct {
-	Port int `yaml:"port"`
-}
-
-// Config type
-type Config struct {
-	DBConfig  DBConfig  `yaml:"db"`
-	APIConfig APIConfig `yaml:"api"`
-}
-
-// GetConfig loads configuration from yaml file
-func GetConfig(configFileParam string) (*Config, error) {
-	// Default location
-	configFilePath := "config/config.yaml"
-	if len(configFileParam) > 0 {
-		configFilePath = configFileParam
-	}
-	yamlFile, err := ioutil.ReadFile(configFilePath)
-	if err != nil {
-		return nil, err
-	}
-	config := new(Config)
-	err = yaml.Unmarshal(yamlFile, config)
-	if err != nil {
-		return nil, err
-	}
-
-	return config, nil
-}
-
 // GetMysqlConnectionString returns mysql connection string
-func (config *Config) GetMysqlConnectionString() string {
+func GetMysqlConnectionString() string {
 	// Need to add ?parseTime=true here to support time.Time in queries
 	return fmt.Sprintf(
 		"%s:%s@(%s:%d)/%s?parseTime=true",
-		config.DBConfig.Username,
-		config.DBConfig.Password,
-		config.DBConfig.Address,
-		config.DBConfig.Port,
-		config.DBConfig.Schema)
+		viper.GetString("db.username"),
+		viper.GetString("db.password"),
+		viper.GetString("db.address"),
+		viper.GetInt("db.port"),
+		viper.GetString("db.schema"))
 }

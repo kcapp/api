@@ -15,15 +15,7 @@ var recalculateStatisticsCmd = &cobra.Command{
 	Short: "Recalculate statistics",
 	Long:  `Recalculate statistics for the given match type`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		configFileParam, err := cmd.Flags().GetString("config")
-		if err != nil {
-			panic(err)
-		}
-		config, err := models.GetConfig(configFileParam)
-		if err != nil {
-			panic(err)
-		}
-		models.InitDB(config.GetMysqlConnectionString())
+		models.InitDB(models.GetMysqlConnectionString())
 
 		since, _ = cmd.Flags().GetString("since")
 		dryRun, _ = cmd.Flags().GetBool("dry-run")

@@ -63,7 +63,7 @@ func GetScamStatisticsForLeg(id int) ([]*models.StatisticsScam, error) {
 				s.score,
 				s.mpr,
 				s.ppd,
-				s.ppd / 3 as 'three_dart_avg'
+				s.ppd * 3 as 'three_dart_avg'
 			FROM statistics_scam s
 				JOIN player p ON p.id = s.player_id
 				JOIN leg l ON l.id = s.leg_id
@@ -159,8 +159,8 @@ func GetScamStatisticsForPlayer(id int) (*models.StatisticsScam, error) {
 }
 
 // GetScamHistoryForPlayer will return history of Scam statistics for the given player
-func GetScamHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.SCAM, false)
+func GetScamHistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.SCAM, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}

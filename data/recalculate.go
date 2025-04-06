@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
@@ -66,6 +67,8 @@ func RecalculateStatistics(matchType int, legID int, since string, dryRun bool) 
 		queries, err = RecalculateKnockoutStatistics(legs)
 	case models.SCAM:
 		queries, err = ReCalculateScamStatistics(legs)
+	case models.ONESEVENTY:
+		queries, err = ReCalculate170Statistics(legs)
 	default:
 		return fmt.Errorf("cannot recalculate statistics for type %d", matchType)
 	}
@@ -258,22 +261,77 @@ func RecalculateLegBadges() error {
 	return nil
 }
 
+func RecalculateMatchBadges() error {
+	ids, err := GetBadgeMatchesToRecalculate()
+	if err != nil {
+		return err
+	}
+
+	for _, matchID := range ids {
+		log.Printf("Checking match %d for badges", matchID)
+		match, err := GetMatch(matchID)
+		if err != nil {
+			return err
+		}
+
+		// Calculate badges
+		err = CheckMatchForBadges(match)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func RecalculateGlobalBadges() error {
 	players, err := GetPlayers()
+	if err != nil {
+		return err
+	}
+
+	matchTypes, err := GetPlayersMatchTypes()
 	if err != nil {
 		return err
 	}
 	for _, player := range players {
 		if player.IsSupporter {
 			// Add supporter badge
-			err = AddBadge(player.ID, new(models.BadgeKcappSupporter))
+			err = AddGlobalBadge(player.ID, new(models.BadgeKcappSupporter))
 			if err != nil {
 				return err
 			}
 		}
 		if player.VocalName.Valid && strings.HasSuffix(player.VocalName.String, ".wav") {
 			// Add vocal name badge
-			err = AddBadge(player.ID, new(models.BadgeSayMyName))
+			err = AddGlobalBadge(player.ID, new(models.BadgeSayMyName))
+			if err != nil {
+				return err
+			}
+		}
+
+		// Bye for Now
+		if !player.IsActive {
+			err = AddGlobalBadge(player.ID, new(models.BadgeByeForNow))
+			if err != nil {
+				return err
+			}
+		}
+
+		// Old Timer
+		threeYearsAgo := time.Now().AddDate(-3, 0, 0)
+		if player.CreatedAt.Before(threeYearsAgo) {
+			err = AddGlobalBadgeWithTime(player.ID, new(models.BadgeOldTimer), player.CreatedAt.AddDate(3, 0, 0))
+			if err != nil {
+				return err
+			}
+		}
+
+		// Versatile Player
+		types := matchTypes[player.ID]
+		if types >= 5 {
+			b := new(models.BadgeVersatilePlayer)
+			err = AddGlobalLevelBadge(player.ID, models.GetLevel(types, b.Levels()), b)
 			if err != nil {
 				return err
 			}

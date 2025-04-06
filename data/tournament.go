@@ -2,8 +2,10 @@ package data
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"math"
+	"sort"
 	"time"
 
 	"github.com/guregu/null"
@@ -15,7 +17,7 @@ import (
 func GetTournaments() ([]*models.Tournament, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, preset_id, manual_admin, office_id, start_time, end_time
+			id, name, short_name, is_finished, is_season, is_playoffs, playoffs_tournament_id, preset_id, manual_admin, office_id, start_time, end_time
 		FROM tournament
 		WHERE is_playoffs = 0
 		ORDER BY id DESC`)
@@ -27,7 +29,7 @@ func GetTournaments() ([]*models.Tournament, error) {
 	tournaments := make([]*models.Tournament, 0)
 	for rows.Next() {
 		tournament := new(models.Tournament)
-		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
+		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsSeason, &tournament.IsPlayoffs,
 			&tournament.PlayoffsTournamentID, &tournament.PresetID, &tournament.ManualAdmin, &tournament.OfficeID, &tournament.StartTime,
 			&tournament.EndTime)
 		if err != nil {
@@ -67,7 +69,7 @@ func AddTournamentGroup(group models.TournamentGroup) error {
 
 // GetTournamentGroups will return all tournament groups
 func GetTournamentGroups() (map[int]*models.TournamentGroup, error) {
-	rows, err := models.DB.Query("SELECT id, name, division FROM tournament_group")
+	rows, err := models.DB.Query("SELECT id, name, is_generated, is_playoffs, division FROM tournament_group")
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +78,7 @@ func GetTournamentGroups() (map[int]*models.TournamentGroup, error) {
 	groups := make(map[int]*models.TournamentGroup)
 	for rows.Next() {
 		group := new(models.TournamentGroup)
-		err := rows.Scan(&group.ID, &group.Name, &group.Division)
+		err := rows.Scan(&group.ID, &group.Name, &group.IsGenerated, &group.IsPlayoffs, &group.Division)
 		if err != nil {
 			return nil, err
 		}
@@ -94,9 +96,10 @@ func GetTournament(id int) (*models.Tournament, error) {
 	tournament := new(models.Tournament)
 	err := models.DB.QueryRow(`
 		SELECT
-			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, preset_id, manual_admin, office_id, start_time, end_time
-		FROM tournament t WHERE t.id = ?`, id).Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
-		&tournament.PlayoffsTournamentID, &tournament.PresetID, &tournament.ManualAdmin, &tournament.OfficeID, &tournament.StartTime, &tournament.EndTime)
+			id, name, short_name, is_finished, is_season, is_playoffs, playoffs_tournament_id, preset_id, manual_admin, office_id, start_time, end_time
+		FROM tournament t WHERE t.id = ?`, id).Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsSeason,
+		&tournament.IsPlayoffs, &tournament.PlayoffsTournamentID, &tournament.PresetID, &tournament.ManualAdmin, &tournament.OfficeID, &tournament.StartTime,
+		&tournament.EndTime)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +113,7 @@ func GetTournament(id int) (*models.Tournament, error) {
 	if tournament.IsFinished {
 		rows, err := models.DB.Query(`
 			SELECT
-				t.id, t.name, p.id, CONCAT(p.first_name, ' ', p.last_name), ts.rank, ts.elo
+				t.id, t.name, p.id, CONCAT(p.first_name, ' ', IFNULL(p.last_name, "")), ts.rank, ts.elo
 			FROM tournament_standings ts
 				JOIN player p ON p.id = ts.player_id
 				JOIN tournament t ON t.id = ts.tournament_id
@@ -147,7 +150,7 @@ func GetTournament(id int) (*models.Tournament, error) {
 // GetCurrentTournament will return the current active tournament
 func GetCurrentTournament() (*models.Tournament, error) {
 	var tournamentID int
-	err := models.DB.QueryRow("SELECT id FROM tournament t WHERE t.is_finished = 0 ORDER BY start_time LIMIT 1").Scan(&tournamentID)
+	err := models.DB.QueryRow("SELECT id FROM tournament t WHERE t.is_finished = 0 ORDER BY is_season DESC, start_time LIMIT 1").Scan(&tournamentID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -160,7 +163,7 @@ func GetCurrentTournament() (*models.Tournament, error) {
 // GetCurrentTournamentForOffice will return the current active tournament for the given office
 func GetCurrentTournamentForOffice(officeID int) (*models.Tournament, error) {
 	var tournamentID int
-	err := models.DB.QueryRow("SELECT id FROM tournament t WHERE t.office_id = ? AND t.is_finished = 0 ORDER BY start_time LIMIT 1",
+	err := models.DB.QueryRow("SELECT id FROM tournament t WHERE t.office_id = ? AND t.is_finished = 0 ORDER BY is_season DESC, start_time LIMIT 1",
 		officeID).Scan(&tournamentID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -175,7 +178,7 @@ func GetCurrentTournamentForOffice(officeID int) (*models.Tournament, error) {
 func GetTournamentsForOffice(officeID int) ([]*models.Tournament, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			id, name, short_name, is_finished, is_playoffs, playoffs_tournament_id, office_id, start_time, end_time
+			id, name, short_name, is_finished, is_season, is_playoffs, playoffs_tournament_id, office_id, start_time, end_time
 		FROM tournament
 		WHERE office_id = ?
 		ORDER BY start_time DESC`, officeID)
@@ -187,8 +190,8 @@ func GetTournamentsForOffice(officeID int) ([]*models.Tournament, error) {
 	tournaments := make([]*models.Tournament, 0)
 	for rows.Next() {
 		tournament := new(models.Tournament)
-		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsPlayoffs,
-			&tournament.PlayoffsTournamentID, &tournament.OfficeID, &tournament.StartTime, &tournament.EndTime)
+		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.IsFinished, &tournament.IsSeason,
+			&tournament.IsPlayoffs, &tournament.PlayoffsTournamentID, &tournament.OfficeID, &tournament.StartTime, &tournament.EndTime)
 		if err != nil {
 			return nil, err
 		}
@@ -306,7 +309,7 @@ func GetTournamentProbabilities(id int) ([]*models.Probability, error) {
 			m.id, m.created_at, m.updated_at, IF(TIMEDIFF(MAX(l.updated_at), NOW() - INTERVAL 15 MINUTE) > 0, 1, 0) AS 'is_started',
 			m.is_finished, m.is_abandoned, m.is_walkover, m.winner_id,
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
-			GROUP_CONCAT(DISTINCT pe.current_elo ORDER BY p2l.order) AS 'elos',
+			GROUP_CONCAT(DISTINCT if(pe.tournament_elo_matches<6, pe.current_elo, pe.tournament_elo) ORDER BY p2l.order) AS 'elos',
 			(MAX(p.is_placeholder) - 1) * -1 AS 'is_players_decided',
 			mm.is_draw_possible
 		FROM matches m
@@ -393,17 +396,21 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			COUNT(DISTINCT won.id) * 2 + COUNT(DISTINCT draw.id) AS 'pts',
 			IFNULL(SUM(s.ppd_score) / SUM(s.darts_thrown), -1) AS 'ppd',
 			IFNULL(SUM(s.first_nine_ppd_score) / (9 * (COUNT(DISTINCT s.leg_id))), -1) AS 'first_nine_ppd',
+			IFNULL(SUM(s.darts_thrown), -1) AS 'darts_thrown',
 			IFNULL(SUM(s.ppd_score) / SUM(s.darts_thrown) * 3, -1) AS 'three_dart_avg',
+			IFNULL(SUM(s.ppd_score) * 3, -1) AS 'three_dart_avg_score',
 			IFNULL(SUM(s.first_nine_ppd_score) * 3 / (9 * (COUNT(DISTINCT s.leg_id))), -1) AS 'first_nine_three_dart_avg',
-			IFNULL(SUM(60s_plus), 0) AS '60s_plus',
-			IFNULL(SUM(100s_plus), 0) AS '100s_plus',
-			IFNULL(SUM(140s_plus), 0) AS '140s_plus',
-			IFNULL(SUM(180s), 0) AS '180s',
-			IFNULL(SUM(accuracy_20) / COUNT(accuracy_20), -1) AS 'accuracy_20s',
-			IFNULL(SUM(accuracy_19) / COUNT(accuracy_19), -1) AS 'accuracy_19s',
-			IFNULL(SUM(overall_accuracy) / COUNT(overall_accuracy), -1) AS 'accuracy_overall',
+			IFNULL(SUM(s.first_nine_ppd_score) * 3, -1) AS 'first_nine_three_dart_avg_score',
+			IFNULL(SUM(s.60s_plus), 0) AS '60s_plus',
+			IFNULL(SUM(s.100s_plus), 0) AS '100s_plus',
+			IFNULL(SUM(s.140s_plus), 0) AS '140s_plus',
+			IFNULL(SUM(s.180s), 0) AS '180s',
+			IFNULL(SUM(s.accuracy_20) / COUNT(s.accuracy_20), -1) AS 'accuracy_20s',
+			IFNULL(SUM(s.accuracy_19) / COUNT(s.accuracy_19), -1) AS 'accuracy_19s',
+			IFNULL(SUM(s.overall_accuracy) / COUNT(s.overall_accuracy), -1) AS 'accuracy_overall',
 			IFNULL(SUM(s.checkout_attempts), -1) AS 'checkout_attempts',
-			IFNULL(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100, -1) AS 'checkout_percentage'
+			IFNULL(COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100, -1) AS 'checkout_percentage',
+			IFNULL((SUM(s_won.darts_thrown)/(COUNT(DISTINCT s_won.id))), -1) AS 'darts_per_leg'
 		FROM player2leg p2l
 			JOIN matches m ON m.id = p2l.match_id
 			JOIN player p ON p.id = p2l.player_id
@@ -413,14 +420,17 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 			LEFT JOIN matches draw ON draw.id = p2l.match_id AND draw.is_finished AND draw.winner_id IS NULL
 			LEFT JOIN leg legs_for ON legs_for.id = p2l.leg_id AND legs_for.winner_id = p.id
 			LEFT JOIN leg legs_against ON legs_against.id = p2l.leg_id AND legs_against.winner_id <> p.id
+			LEFT JOIN statistics_x01 s_won on s_won.leg_id = legs_for.id AND s.player_id = p.id and s_won.checkout is not null
 			LEFT JOIN matches finished ON m.id = finished.id AND finished.is_finished = 1
 			JOIN tournament t ON t.id = m.tournament_id
 			JOIN player2tournament p2t ON p2t.player_id = p.id AND p2t.tournament_id = t.id
 			JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
-		WHERE m.tournament_id = ? AND m.match_type_id = 1
+		WHERE m.tournament_id = ?
+			-- Only show statistics for matches of the same main match type of matches in the tournament
+			AND m.match_type_id = (SELECT match_type_id FROM matches WHERE tournament_id = ? LIMIT 1)
 			AND m.is_bye <> 1
 		GROUP BY p2l.player_id, tg.id
-		ORDER BY tg.division, pts DESC, diff DESC, is_relegated, manual_order`, id)
+		ORDER BY tg.division, pts DESC, manual_order, diff DESC, three_dart_avg DESC, is_relegated`, id, id)
 	if err != nil {
 		return nil, err
 	}
@@ -433,8 +443,9 @@ func GetTournamentOverview(id int) (map[int][]*models.TournamentOverview, error)
 		err := rows.Scan(&tournament.ID, &tournament.Name, &tournament.ShortName, &tournament.StartTime, &tournament.EndTime, &group.ID,
 			&group.Name, &group.Division, &stats.PlayerID, &stats.IsPromoted, &stats.IsRelegated, &stats.IsWinner, &stats.ManualOrder, &stats.Played, &stats.MatchesWon,
 			&stats.MatchesDraw, &stats.MatchesLost, &stats.LegsFor, &stats.LegsAgainst, &stats.LegsDifference, &stats.Points, &stats.PPD,
-			&stats.FirstNinePPD, &stats.ThreeDartAvg, &stats.FirstNineThreeDartAvg, &stats.Score60sPlus, &stats.Score100sPlus, &stats.Score140sPlus,
-			&stats.Score180s, &stats.Accuracy20, &stats.Accuracy19, &stats.AccuracyOverall, &stats.CheckoutAttempts, &stats.CheckoutPercentage)
+			&stats.FirstNinePPD, &stats.DartsThrown, &stats.ThreeDartAvg, &stats.ThreeDartAvgScore, &stats.FirstNineThreeDartAvg, &stats.FirstNineThreeDartAvgScore,
+			&stats.Score60sPlus, &stats.Score100sPlus, &stats.Score140sPlus, &stats.Score180s, &stats.Accuracy20, &stats.Accuracy19, &stats.AccuracyOverall,
+			&stats.CheckoutAttempts, &stats.CheckoutPercentage, &stats.DartsPerLeg)
 		if err != nil {
 			return nil, err
 		}
@@ -478,6 +489,37 @@ func GetTournamentStatistics(tournamentID int) (*models.TournamentStatistics, er
 			statistics.Best701DartsThrown = append(statistics.Best701DartsThrown, val.Best701)
 		}
 	}
+	if statistics.Best301DartsThrown != nil {
+		sort.Slice(statistics.Best301DartsThrown, func(i, j int) bool {
+			val1 := statistics.Best301DartsThrown[i]
+			val2 := statistics.Best301DartsThrown[j]
+			if val1.Value == val2.Value {
+				return val1.LegID < val2.LegID
+			}
+			return val1.Value < val2.Value
+		})
+	}
+	if statistics.Best501DartsThrown != nil {
+		sort.Slice(statistics.Best501DartsThrown, func(i, j int) bool {
+			val1 := statistics.Best501DartsThrown[i]
+			val2 := statistics.Best501DartsThrown[j]
+			if val1.Value == val2.Value {
+				return val1.LegID < val2.LegID
+			}
+			return val1.Value < val2.Value
+		})
+	}
+	if statistics.Best301DartsThrown != nil {
+		sort.Slice(statistics.Best701DartsThrown, func(i, j int) bool {
+			val1 := statistics.Best701DartsThrown[i]
+			val2 := statistics.Best701DartsThrown[j]
+			if val1.Value == val2.Value {
+				return val1.LegID < val2.LegID
+			}
+			return val1.Value < val2.Value
+		})
+	}
+
 	generalStatistics, err := getTournamentGeneralStatistics(tournamentID)
 	if err != nil {
 		return nil, err
@@ -494,7 +536,8 @@ func GetNextTournamentMatch(matchID int) (*models.Match, error) {
 			LEFT JOIN match_metadata mm ON mm.match_id = m.id
 		WHERE m.tournament_id = (SELECT tournament_id FROM matches WHERE id = ?)
 			AND ((order_of_play = (SELECT order_of_play FROM match_metadata mm WHERE match_id = ?) + 1)
-				OR created_at > (SELECT created_at FROM matches WHERE id = ?))
+				OR created_at >= (SELECT created_at FROM matches WHERE id = ?))
+			AND m.is_finished = 0
 		ORDER BY mm.order_of_play, m.created_at LIMIT 1`, matchID, matchID, matchID).Scan(&nextMatchID)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -508,20 +551,26 @@ func GetNextTournamentMatch(matchID int) (*models.Match, error) {
 // GetTournamentStandings will return elo standings for all players
 func GetTournamentStandings() ([]*models.TournamentStanding, error) {
 	rows, err := models.DB.Query(`
-		SELECT player_id, first_name, tournament_elo, tournament_elo_matches, current_elo, current_elo_matches,
-			@curRank := @curRank + 1 AS "rank" FROM (
-				SELECT
-					pe.player_id,
-					p.first_name,
-					pe.tournament_elo,
-					pe.tournament_elo_matches,
-					pe.current_elo,
-					pe.current_elo_matches
-				FROM player_elo pe
-				JOIN player p ON p.id = pe.player_id
-				WHERE pe.current_elo_matches > 5 AND p.active = 1
-				ORDER BY tournament_elo DESC
-		) elo, (SELECT @curRank := 0) r`)
+		SELECT
+			player_id,
+			first_name,
+			tournament_elo,
+			tournament_elo_matches,
+			current_elo,
+			current_elo_matches,
+			RANK() OVER (ORDER BY tournament_elo DESC) AS "rank"
+		FROM (
+			SELECT
+				pe.player_id,
+				p.first_name,
+				pe.tournament_elo,
+				pe.tournament_elo_matches,
+				pe.current_elo,
+				pe.current_elo_matches
+			FROM player_elo pe
+			JOIN player p ON p.id = pe.player_id
+			WHERE pe.current_elo_matches > 5 AND p.active = 1
+		) elo;`)
 	if err != nil {
 		return nil, err
 	}
@@ -564,8 +613,8 @@ func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic
 				AND s.id IN (SELECT MAX(s.id) FROM score s JOIN leg l ON l.id = s.leg_id JOIN matches m on l.match_id = m.id WHERE m.tournament_id = ? AND l.winner_id = s.player_id GROUP BY leg_id)
 				AND IFNULL(l.leg_type_id, m.match_type_id) = 1 -- X01
 			GROUP BY s.player_id, s.id
-			ORDER BY checkout DESC) checkouts
-			GROUP BY player_id
+			ORDER BY checkout DESC, l.end_time) checkouts
+			GROUP BY leg_id
 		ORDER BY checkout DESC`, tournamentID, tournamentID)
 	if err != nil {
 		return nil, err
@@ -602,7 +651,8 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
-		WHERE s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))`, tournamentID)
+		WHERE s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))
+		ORDER BY l.end_time`, tournamentID)
 	if err != nil {
 		return nil, err
 	}
@@ -621,14 +671,9 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 		return nil, err
 	}
 
-	bestStatistics := make(map[int]*models.StatisticsX01)
+	bestStatistics := make([]*models.StatisticsX01, 0)
 	for _, stat := range stats {
-		best := bestStatistics[stat.PlayerID]
-		if best == nil {
-			best = new(models.StatisticsX01)
-			best.PlayerID = stat.PlayerID
-			bestStatistics[stat.PlayerID] = best
-		}
+		best := new(models.StatisticsX01)
 
 		if stat.PlayerID == stat.WinnerID {
 			if stat.StartingScore.Int64 == 301 {
@@ -661,7 +706,9 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 					best.Best701.PlayerID = stat.PlayerID
 				}
 			}
+			bestStatistics = append(bestStatistics, best)
 		}
+
 		if best.BestThreeDartAvg == nil {
 			best.BestThreeDartAvg = new(models.BestStatisticFloat)
 		}
@@ -681,10 +728,7 @@ func getTournamentBestStatistics(tournamentID int) ([]*models.StatisticsX01, err
 	}
 
 	s := make([]*models.StatisticsX01, 0)
-	for _, val := range bestStatistics {
-		s = append(s, val)
-	}
-
+	s = append(s, bestStatistics...)
 	return s, nil
 }
 
@@ -793,19 +837,13 @@ func NewTournament(tournament models.Tournament) (*models.Tournament, error) {
 }
 
 // GenerateTournament generates a new tournament
-func GenerateTournament(input models.Tournament) (*models.Tournament, error) {
-	preset, err := GetTournamentPreset(int(input.PresetID.Int64))
-	if err != nil {
-		return nil, err
-	}
-
+func GenerateTournament(input models.GenerateTournamentInput) (*models.Tournament, error) {
 	officeID := input.OfficeID
 	tournament, err := NewTournament(models.Tournament{
 		Name:        input.Name,
 		ShortName:   input.ShortName,
-		IsPlayoffs:  false,
+		IsPlayoffs:  input.IsPlayoffs,
 		OfficeID:    officeID,
-		PresetID:    input.PresetID,
 		ManualAdmin: input.ManualAdmin,
 		Players:     input.Players,
 		StartTime:   null.TimeFrom(time.Now()),
@@ -815,6 +853,9 @@ func GenerateTournament(input models.Tournament) (*models.Tournament, error) {
 		return nil, err
 	}
 
+	matchType := models.MatchType{ID: input.MatchTypeID}
+	matchMode := models.MatchMode{ID: input.MatchModeID}
+
 	players := input.Players
 	for i := 0; i < len(players); i++ {
 		for j := i + 1; j < len(players); j++ {
@@ -823,17 +864,29 @@ func GenerateTournament(input models.Tournament) (*models.Tournament, error) {
 				continue
 			}
 
+			venue := null.Int{}
+			if value, ok := input.Venues[players[i].TournamentGroupID]; ok {
+				venue = null.IntFrom(int64(value))
+			}
 			match, err := NewMatch(models.Match{
-				MatchType: preset.MatchType,
-				MatchMode: preset.MatchMode,
-				//VenueID:      1,
+				MatchType:    &matchType,
+				MatchMode:    &matchMode,
+				VenueID:      venue,
 				OfficeID:     null.IntFrom(int64(officeID)),
 				IsPractice:   false,
 				TournamentID: null.IntFrom(int64(tournament.ID)),
 				Players:      []int{players[i].PlayerID, players[j].PlayerID},
 				Legs: []*models.Leg{{
-					StartingScore: preset.StartingScore,
-					Parameters:    &models.LegParameters{OutshotType: &models.OutshotType{ID: models.OUTSHOTDOUBLE}}}},
+					StartingScore: input.StartingScore,
+					Parameters: &models.LegParameters{
+						OutshotType: &models.OutshotType{ID: models.OUTSHOTDOUBLE},
+						MaxRounds: func() null.Int {
+							if input.MaxRounds != -1 {
+								return null.IntFrom(int64(input.MaxRounds))
+							}
+							return null.Int{}
+						}(),
+					}}},
 			})
 			if err != nil {
 				return nil, err
@@ -845,7 +898,7 @@ func GenerateTournament(input models.Tournament) (*models.Tournament, error) {
 }
 
 // GeneratePlayoffsTournament generates playoffs matches for the given tournament
-func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
+func GeneratePlayoffsTournament(tournamentID int, input models.GeneratePlayoffsInput) (*models.Tournament, error) {
 	tournament, err := GetTournament(tournamentID)
 	if err != nil {
 		return nil, err
@@ -868,13 +921,55 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 		group2 = overview[keys[1]]
 	}
 
-	preset := tournament.Preset
-	playoffsGroupID := preset.PlayoffsTournamentGroup.ID
-	mt := preset.MatchType
-	walkoverPlayerID := preset.PlayerIDWalkover
-	placeholderHomeID := preset.PlayerIDPlaceholderHome
-	placeholderAwayID := preset.PlayerIDPlaceholderAway
-	startingScore := preset.StartingScore
+	// Get the playoff tournament group
+	groups, err := GetTournamentGroups()
+	if err != nil {
+		return nil, err
+	}
+	var playoffsGroup *models.TournamentGroup
+	for _, group := range groups {
+		if group.IsPlayoffs {
+			playoffsGroup = group
+			break
+		}
+	}
+	playoffsGroupID := playoffsGroup.ID
+
+	// Get type and starting score from the regular season matches
+	regularSeasonMatches, err := GetTournamentMatches(tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	var regularSeasonMatch models.Match
+	var startingScore int
+	maxRounds := null.Int{}
+	venueID := null.Int{}
+	for _, value := range regularSeasonMatches {
+		regularSeasonMatch = *value[0]
+		venueID = regularSeasonMatch.VenueID
+		legs, err := GetLegsForMatch(regularSeasonMatch.ID)
+		if err != nil {
+			return nil, err
+		}
+		startingScore = legs[0].StartingScore
+		if legs[0].Parameters != nil {
+			maxRounds = legs[0].Parameters.MaxRounds
+		}
+		break
+	}
+	matchType := regularSeasonMatch.MatchType
+
+	// Get placeholder players
+	placeholders, err := GetPlaceholderPlayers()
+	if err != nil {
+		return nil, err
+	}
+	if len(placeholders) < 3 {
+		return nil, errors.New("missing 3 placeholder players from database")
+	}
+	placeholderHomeID := placeholders[0].ID
+	placeholderAwayID := placeholders[1].ID
+	walkoverPlayerID := placeholders[2].ID
 
 	players := make([]*models.Player2Tournament, 0)
 	for _, groupPlayer := range append(group1, group2...) {
@@ -888,13 +983,11 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 		&models.Player2Tournament{PlayerID: placeholderAwayID, TournamentGroupID: playoffsGroupID})
 
 	playoffs, err := NewTournament(models.Tournament{
-		Name: tournament.Name + " Playoffs",
-		//ShortName:  tournament.ShortName + "P",
+		Name:        tournament.Name + " Playoffs",
 		ShortName:   tournament.ShortName,
 		IsPlayoffs:  true,
 		OfficeID:    tournament.OfficeID,
 		Players:     players,
-		PresetID:    tournament.PresetID,
 		StartTime:   null.TimeFrom(time.Now()),
 		EndTime:     null.TimeFrom(time.Now()),
 		ManualAdmin: tournament.ManualAdmin,
@@ -910,8 +1003,8 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 
 	matches := make([]*models.Match, 0)
 	// Create Grand Final
-	match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, models.X01,
-		tournament.OfficeID, mt, preset.MatchModeGrandFinal)
+	match, err := createTournamentMatch(playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, venueID,
+		tournament.OfficeID, matchType, input.MatchModeGFID, maxRounds)
 	if err != nil {
 		return nil, err
 	}
@@ -919,8 +1012,8 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 
 	// Create Semi Final Matches
 	if numPlayers > 4 {
-		semis, err := createTournamentMatches(2, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, models.X01,
-			tournament.OfficeID, mt, preset.MatchModeSemiFinal)
+		semis, err := createTournamentMatches(2, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, venueID,
+			tournament.OfficeID, matchType, input.MatchModeSFID, maxRounds)
 		if err != nil {
 			return nil, err
 		}
@@ -945,8 +1038,8 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 				// Walkover, so use placeholder
 				away = walkoverPlayerID
 			}
-			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, models.X01,
-				tournament.OfficeID, mt, preset.MatchModeSemiFinal)
+			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, venueID,
+				tournament.OfficeID, matchType, input.MatchModeSFID, maxRounds)
 			if err != nil {
 				return nil, err
 			}
@@ -956,8 +1049,8 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 
 	// Create Quarter Final Matches
 	if numPlayers > 8 {
-		quarters, err := createTournamentMatches(4, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, models.X01,
-			tournament.OfficeID, mt, preset.MatchModeQuarterFinal)
+		quarters, err := createTournamentMatches(4, playoffs.ID, []int{placeholderHomeID, placeholderAwayID}, startingScore, venueID,
+			tournament.OfficeID, matchType, input.MatchModeQFID, maxRounds)
 		if err != nil {
 			return nil, err
 		}
@@ -976,8 +1069,8 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 				// Walkover, so use placeholder
 				away = walkoverPlayerID
 			}
-			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, models.X01,
-				tournament.OfficeID, mt, preset.MatchModeLast16)
+			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, venueID,
+				tournament.OfficeID, matchType, input.MatchModeLast16ID, maxRounds)
 			if err != nil {
 				return nil, err
 			}
@@ -1003,8 +1096,8 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 				// Walkover, so use placeholder
 				away = walkoverPlayerID
 			}
-			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, models.X01,
-				tournament.OfficeID, mt, preset.MatchModeQuarterFinal)
+			match, err := createTournamentMatch(playoffs.ID, []int{home, away}, startingScore, venueID,
+				tournament.OfficeID, matchType, input.MatchModeQFID, maxRounds)
 			if err != nil {
 				return nil, err
 			}
@@ -1023,9 +1116,9 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 
 	tg := &models.TournamentGroup{ID: playoffsGroupID}
 	playoffsMatches := []*models.MatchMetadata{
-		{MatchID: gf.ID, OrderOfPlay: 15, TournamentGroup: tg, MatchDisplayname: "Grand Final", WinnerOutcomeMatchID: null.IntFromPtr(nil), IsWinnerOutcomeHome: false, GrandFinal: true, SemiFinal: false},
-		{MatchID: sf1.ID, OrderOfPlay: 14, TournamentGroup: tg, MatchDisplayname: "Semi Final 1", WinnerOutcomeMatchID: null.IntFrom(int64(gf.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: true},
-		{MatchID: sf2.ID, OrderOfPlay: 13, TournamentGroup: tg, MatchDisplayname: "Semi Final 2", WinnerOutcomeMatchID: null.IntFrom(int64(gf.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: true},
+		{MatchID: gf.ID, OrderOfPlay: 15, TournamentGroup: tg, MatchDisplayname: models.MetadataNameFinal, WinnerOutcomeMatchID: null.IntFromPtr(nil), IsWinnerOutcomeHome: false, GrandFinal: true, SemiFinal: false},
+		{MatchID: sf1.ID, OrderOfPlay: 13, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixSF + " 1", WinnerOutcomeMatchID: null.IntFrom(int64(gf.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: true},
+		{MatchID: sf2.ID, OrderOfPlay: 14, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixSF + " 2", WinnerOutcomeMatchID: null.IntFrom(int64(gf.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: true},
 	}
 	err = insertMetadata(playoffsMatches)
 	if err != nil {
@@ -1034,10 +1127,10 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 
 	if numPlayers > 4 {
 		playoffsMatches := []*models.MatchMetadata{
-			{MatchID: qf1.ID, OrderOfPlay: 12, TournamentGroup: tg, MatchDisplayname: "Quarter Final 1", WinnerOutcomeMatchID: null.IntFrom(int64(sf1.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: qf2.ID, OrderOfPlay: 11, TournamentGroup: tg, MatchDisplayname: "Quarter Final 2", WinnerOutcomeMatchID: null.IntFrom(int64(sf1.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
-			{MatchID: qf3.ID, OrderOfPlay: 10, TournamentGroup: tg, MatchDisplayname: "Quarter Final 3", WinnerOutcomeMatchID: null.IntFrom(int64(sf2.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: qf4.ID, OrderOfPlay: 9, TournamentGroup: tg, MatchDisplayname: "Quarter Final 4", WinnerOutcomeMatchID: null.IntFrom(int64(sf2.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: qf1.ID, OrderOfPlay: 9, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixQF + " 1", WinnerOutcomeMatchID: null.IntFrom(int64(sf1.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: qf2.ID, OrderOfPlay: 10, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixQF + " 2", WinnerOutcomeMatchID: null.IntFrom(int64(sf1.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: qf3.ID, OrderOfPlay: 11, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixQF + " 3", WinnerOutcomeMatchID: null.IntFrom(int64(sf2.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: qf4.ID, OrderOfPlay: 12, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixQF + " 4", WinnerOutcomeMatchID: null.IntFrom(int64(sf2.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
 		}
 		err = insertMetadata(playoffsMatches)
 		if err != nil {
@@ -1056,14 +1149,14 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 		m8 := matches[14]
 
 		playoffsMatches := []*models.MatchMetadata{
-			{MatchID: m1.ID, OrderOfPlay: 1, TournamentGroup: tg, MatchDisplayname: "Match 1", WinnerOutcomeMatchID: null.IntFrom(int64(qf1.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: m2.ID, OrderOfPlay: 2, TournamentGroup: tg, MatchDisplayname: "Match 2", WinnerOutcomeMatchID: null.IntFrom(int64(qf1.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
-			{MatchID: m3.ID, OrderOfPlay: 3, TournamentGroup: tg, MatchDisplayname: "Match 3", WinnerOutcomeMatchID: null.IntFrom(int64(qf2.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: m4.ID, OrderOfPlay: 4, TournamentGroup: tg, MatchDisplayname: "Match 4", WinnerOutcomeMatchID: null.IntFrom(int64(qf2.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
-			{MatchID: m5.ID, OrderOfPlay: 5, TournamentGroup: tg, MatchDisplayname: "Match 5", WinnerOutcomeMatchID: null.IntFrom(int64(qf3.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: m6.ID, OrderOfPlay: 6, TournamentGroup: tg, MatchDisplayname: "Match 6", WinnerOutcomeMatchID: null.IntFrom(int64(qf3.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
-			{MatchID: m7.ID, OrderOfPlay: 7, TournamentGroup: tg, MatchDisplayname: "Match 7", WinnerOutcomeMatchID: null.IntFrom(int64(qf4.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
-			{MatchID: m8.ID, OrderOfPlay: 8, TournamentGroup: tg, MatchDisplayname: "Match 8", WinnerOutcomeMatchID: null.IntFrom(int64(qf4.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: m1.ID, OrderOfPlay: 1, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 1", WinnerOutcomeMatchID: null.IntFrom(int64(qf1.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: m2.ID, OrderOfPlay: 2, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 2", WinnerOutcomeMatchID: null.IntFrom(int64(qf1.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: m3.ID, OrderOfPlay: 3, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 3", WinnerOutcomeMatchID: null.IntFrom(int64(qf2.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: m4.ID, OrderOfPlay: 4, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 4", WinnerOutcomeMatchID: null.IntFrom(int64(qf2.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: m5.ID, OrderOfPlay: 5, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 5", WinnerOutcomeMatchID: null.IntFrom(int64(qf3.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: m6.ID, OrderOfPlay: 6, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 6", WinnerOutcomeMatchID: null.IntFrom(int64(qf3.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
+			{MatchID: m7.ID, OrderOfPlay: 7, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 7", WinnerOutcomeMatchID: null.IntFrom(int64(qf4.ID)), IsWinnerOutcomeHome: true, GrandFinal: false, SemiFinal: false},
+			{MatchID: m8.ID, OrderOfPlay: 8, TournamentGroup: tg, MatchDisplayname: models.MetadataNamePrefixL16 + " 8", WinnerOutcomeMatchID: null.IntFrom(int64(qf4.ID)), IsWinnerOutcomeHome: false, GrandFinal: false, SemiFinal: false},
 		}
 		err = insertMetadata(playoffsMatches)
 		if err != nil {
@@ -1091,10 +1184,10 @@ func GeneratePlayoffsTournament(tournamentID int) (*models.Tournament, error) {
 	return GetTournament(playoffs.ID)
 }
 
-func createTournamentMatches(num int, tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchMode *models.MatchMode) ([]*models.Match, error) {
+func createTournamentMatches(num int, tournamentID int, players []int, startingScore int, venueID null.Int, officeID int, matchType *models.MatchType, matchModeID int, maxRounds null.Int) ([]*models.Match, error) {
 	matches := make([]*models.Match, 0)
 	for i := 0; i < num; i++ {
-		match, err := createTournamentMatch(tournamentID, players, startingScore, venueID, officeID, matchType, matchMode)
+		match, err := createTournamentMatch(tournamentID, players, startingScore, venueID, officeID, matchType, matchModeID, maxRounds)
 		if err != nil {
 			return nil, err
 		}
@@ -1103,18 +1196,21 @@ func createTournamentMatches(num int, tournamentID int, players []int, startingS
 	return matches, nil
 }
 
-func createTournamentMatch(tournamentID int, players []int, startingScore int, venueID int, officeID int, matchType *models.MatchType, matchMode *models.MatchMode) (*models.Match, error) {
+func createTournamentMatch(tournamentID int, players []int, startingScore int, venueID null.Int, officeID int, matchType *models.MatchType, matchModeID int, maxRounds null.Int) (*models.Match, error) {
 	match, err := NewMatch(models.Match{
-		MatchType: matchType,
-		MatchMode: matchMode,
-		//VenueID:      null.IntFrom(int64(venueID)),
+		MatchType:    matchType,
+		MatchMode:    &models.MatchMode{ID: matchModeID},
+		VenueID:      venueID,
 		OfficeID:     null.IntFrom(int64(officeID)),
 		IsPractice:   false,
 		TournamentID: null.IntFrom(int64(tournamentID)),
 		Players:      players,
 		Legs: []*models.Leg{{
 			StartingScore: startingScore,
-			Parameters:    &models.LegParameters{OutshotType: &models.OutshotType{ID: models.OUTSHOTDOUBLE}}}},
+			Parameters: &models.LegParameters{
+				OutshotType: &models.OutshotType{ID: models.OUTSHOTDOUBLE},
+				MaxRounds:   maxRounds,
+			}}},
 	})
 	if err != nil {
 		return nil, err
@@ -1316,7 +1412,7 @@ func insertMetadata(matches []*models.MatchMetadata) error {
 	if err != nil {
 		return err
 	}
-	stmt, err := tx.Prepare(`INSERT INTO match_metadata (match_id, order_of_play, tournament_group_id, match_displayname, elimination, promotion, 
+	stmt, err := tx.Prepare(`INSERT INTO match_metadata (match_id, order_of_play, tournament_group_id, match_displayname, elimination, promotion,
 		trophy, semi_final,  grand_final, winner_outcome_match_id, is_winner_outcome_home) VALUES (?, ?, ?, ?, 1, 0, 0, ?, ?, ?, ?)`)
 	if err != nil {
 		tx.Rollback()
@@ -1374,4 +1470,32 @@ func GetUndefeatedPlayers() (map[int]*models.Tournament, error) {
 		return nil, err
 	}
 	return undefeated, nil
+}
+
+// FinishTournament will finish a tournament
+func FinishTournament(tournamentID int64) error {
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Finish the tournament
+	_, err = tx.Exec("UPDATE tournament SET is_finished = 1 WHERE id = ? OR playoffs_tournament_id = ?", tournamentID, tournamentID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	log.Printf("Finished tournament (%d)", tournamentID)
+	tx.Commit()
+	return nil
+}
+
+func addTournamentStanding(tournamentID int64, playerID int, standing int) error {
+	_, err := models.DB.Exec(`
+	INSERT INTO tournament_standings (tournament_id, player_id,`+"`rank`"+`, elo)
+	VALUES ((SELECT id FROM tournament WHERE playoffs_tournament_id = ?), ?, ?, (SELECT tournament_elo FROM player_elo WHERE player_id = ?))`,
+		tournamentID, playerID, standing, playerID)
+	log.Printf("Added tournament standing %d for player %d in tournament %d", standing, playerID, tournamentID)
+	return err
 }

@@ -9,6 +9,9 @@ import (
 	"github.com/guregu/null"
 )
 
+var NUMS_WHITE = []int{0, 1, 4, 6, 15, 17, 19, 16, 11, 9, 5}
+var NUMS_BLACK = []int{0, 20, 18, 13, 10, 2, 3, 7, 8, 14, 12}
+
 // Visit struct used for storing legs
 type Visit struct {
 	ID          int         `json:"id"`
@@ -18,6 +21,7 @@ type Visit struct {
 	SecondDart  *Dart       `json:"second_dart"`
 	ThirdDart   *Dart       `json:"third_dart"`
 	IsBust      bool        `json:"is_bust"`
+	IsCheckout  bool        `json:"is_checkout"`
 	CreatedAt   time.Time   `json:"created_at"`
 	UpdatedAt   time.Time   `json:"updated_at"`
 	Count       int         `json:"count,omitempty"`
@@ -144,7 +148,7 @@ func (visit *Visit) SetIsBustAbove(currentScore int, targetScore int) {
 }
 
 // IsCheckout will check if the given visit is a checkout (remaining score is 0 and last dart thrown is a double)
-func (visit Visit) IsCheckout(currentScore int, outshotTypeId int) bool {
+func (visit Visit) IsVisitCheckout(currentScore int, outshotTypeId int) bool {
 	remaining := currentScore - visit.GetScore()
 	if remaining == 0 {
 		if outshotTypeId == OUTSHOTANY {
@@ -441,13 +445,13 @@ func (visit *Visit) CalculateAroundTheClockScore(currentScore int) int {
 func (visit *Visit) CalculateAroundTheWorldScore(round int) int {
 	score := 0
 	if round == visit.FirstDart.ValueRaw() || (round == 21 && visit.FirstDart.IsBull()) {
-		score += visit.FirstDart.GetScore()
+		score += int(visit.FirstDart.Multiplier)
 	}
 	if round == visit.SecondDart.ValueRaw() || (round == 21 && visit.SecondDart.IsBull()) {
-		score += visit.SecondDart.GetScore()
+		score += int(visit.SecondDart.Multiplier)
 	}
 	if round == visit.ThirdDart.ValueRaw() || (round == 21 && visit.ThirdDart.IsBull()) {
-		score += visit.ThirdDart.GetScore()
+		score += int(visit.ThirdDart.Multiplier)
 	}
 	return score
 }
@@ -599,6 +603,28 @@ func (visit *Visit) CalculateScamMarks(scores map[int]*Player2Leg) int {
 	hits.Add(visit.ThirdDart)
 
 	return marks
+}
+
+func (visit *Visit) Calculate170Score(round int, player *Player2Leg) int {
+	player.DartsThrown += 3
+	score := 0
+	if !visit.IsBust {
+		player.CurrentScore -= visit.GetScore()
+		score = visit.GetScore()
+	}
+
+	if player.CurrentScore == 0 && visit.GetLastDart().IsDouble() {
+		// We hit a checkout, reset
+		player.CurrentScore = 170
+		player.CurrentPoints.Int64++
+		player.DartsThrown = 0
+	} else if round != 1 && player.DartsThrown%9 == 0 {
+		// 9 Darts have been thrown, reset
+		player.CurrentScore = 170
+		player.DartsThrown = 0
+		score = 0
+	}
+	return score
 }
 
 // IsShanghai will check if the given visit is a "Shanghai". A Shanghai visit is one where a single, double and triple multipler is hit with each dart

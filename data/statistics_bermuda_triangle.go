@@ -239,8 +239,8 @@ func GetBermudaTriangleStatisticsForPlayer(id int) (*models.StatisticsBermudaTri
 }
 
 // GetBermudaTriangleHistoryForPlayer will return history of Bermuda Triangle statistics for the given player
-func GetBermudaTriangleHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.BERMUDATRIANGLE, false)
+func GetBermudaTriangleHistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.BERMUDATRIANGLE, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}

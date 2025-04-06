@@ -59,6 +59,7 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		Name           string         `json:"name"`
 		FirstName      string         `json:"first_name"`
 		LastName       null.String    `json:"last_name"`
+		DisplayName    string         `json:"display_name"`
 		VocalName      null.String    `json:"vocal_name,omitempty"`
 		Nickname       null.String    `json:"nickname,omitempty"`
 		SlackHandle    null.String    `json:"slack_handle,omitempty"`
@@ -85,6 +86,11 @@ func (player Player) MarshalJSON() ([]byte, error) {
 	if player.PlayerOptions != nil && !player.PlayerOptions.SubtractPerDart.Valid {
 		player.PlayerOptions = nil
 	}
+	displayName := player.FirstName
+	if player.Nickname.Valid {
+		displayName += " '" + player.Nickname.String + "' "
+	}
+	displayName += " " + player.LastName.String
 
 	return json.Marshal(playerJSON{
 		ID:             player.ID,
@@ -92,6 +98,7 @@ func (player Player) MarshalJSON() ([]byte, error) {
 		LastName:       player.LastName,
 		VocalName:      player.VocalName,
 		Nickname:       player.Nickname,
+		DisplayName:    displayName,
 		SlackHandle:    player.SlackHandle,
 		MatchesPlayed:  player.MatchesPlayed,
 		MatchesWon:     player.MatchesWon,

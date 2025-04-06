@@ -13,7 +13,6 @@ func AddOffice(office models.Office) error {
 		return err
 	}
 
-	// Prepare statement for inserting data
 	res, err := tx.Exec("INSERT INTO office (name, is_active, is_global) VALUES (?, ?, ?)", office.Name, office.IsActive, office.IsGlobal)
 	if err != nil {
 		tx.Rollback()
@@ -24,7 +23,20 @@ func AddOffice(office models.Office) error {
 		tx.Rollback()
 		return err
 	}
+	// Add all existing players to this office if there are any not connected to a office
+	_, err = tx.Exec("UPDATE player SET office_id = ? WHERE office_id IS NULL", officeID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 	log.Printf("Created new office (%d) %s", officeID, office.Name)
+
+	// Update any players without office
+	_, err = tx.Exec("UPDATE player SET office_id = ? WHERE office_id IS NULL", officeID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 	tx.Commit()
 	return nil
 }

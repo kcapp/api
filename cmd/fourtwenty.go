@@ -8,7 +8,7 @@ import (
 
 // fourtwentyCmd represents the fourtwenty command
 var fourtwentyCmd = &cobra.Command{
-	Use:   "fourtwenty",
+	Use:   "420",
 	Short: "Recalculate 420 statistics",
 	Run: func(cmd *cobra.Command, args []string) {
 		err := data.RecalculateStatistics(models.FOURTWENTY, legID, since, dryRun)

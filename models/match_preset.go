@@ -9,6 +9,7 @@ type MatchPreset struct {
 	MatchType     *MatchType  `json:"match_type"`
 	MatchMode     *MatchMode  `json:"match_mode"`
 	StartingScore null.Int    `json:"starting_score"`
+	Players       []int       `json:"players,omitempty"`
 	SmartcardUID  null.String `json:"smartcard_uid,omitempty"`
 	Description   null.String `json:"description,omitempty"`
 }

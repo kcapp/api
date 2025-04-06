@@ -155,8 +155,8 @@ func GetGotchaStatisticsForPlayer(id int) (*models.StatisticsGotcha, error) {
 }
 
 // GetGotchaHistoryForPlayer will return history of Gotcha statistics for the given player
-func GetGotchaHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.GOTCHA, false)
+func GetGotchaHistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.GOTCHA, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}

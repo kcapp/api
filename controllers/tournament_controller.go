@@ -363,7 +363,7 @@ func NewTournament(w http.ResponseWriter, r *http.Request) {
 // GenerateTournament will generate a new tournament
 func GenerateTournament(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
-	var input models.Tournament
+	var input models.GenerateTournamentInput
 	err := json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
 		log.Println("Unable to deserialize body", err)
@@ -392,7 +392,15 @@ func GeneratePlayoffsTournament(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tournament, err := data.GeneratePlayoffsTournament(id)
+	var input models.GeneratePlayoffsInput
+	err = json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		log.Println("Unable to deserialize body", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	tournament, err := data.GeneratePlayoffsTournament(id, input)
 	if err != nil {
 		log.Println("Unable to create new tournament", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -44,6 +44,7 @@ type Tournament struct {
 	Name                 string                `json:"name"`
 	ShortName            string                `json:"short_name"`
 	IsFinished           bool                  `json:"is_finished"`
+	IsSeason             bool                  `json:"is_season"`
 	IsPlayoffs           bool                  `json:"is_playoffs"`
 	PlayoffsTournamentID null.Int              `json:"playoffs_tournament_id,omitempty"`
 	PlayoffsTournament   *Tournament           `json:"playoffs,omitempty"`
@@ -60,9 +61,11 @@ type Tournament struct {
 
 // TournamentGroup struct for storing tournament groups
 type TournamentGroup struct {
-	ID       int      `json:"id"`
-	Name     string   `json:"name"`
-	Division null.Int `json:"division,omitempty"`
+	ID          int      `json:"id"`
+	Name        string   `json:"name"`
+	IsGenerated bool     `json:"is_generated"`
+	IsPlayoffs  bool     `json:"is_playoffs"`
+	Division    null.Int `json:"division,omitempty"`
 }
 
 // Player2Tournament struct for storing player to tounament links
@@ -118,4 +121,28 @@ type TournamentPreset struct {
 	PlayerIDPlaceholderHome int              `json:"player_id_placeholder_home"`
 	PlayerIDPlaceholderAway int              `json:"player_id_placeholder_away"`
 	Description             null.String      `json:"description"`
+}
+
+// GenerateTournamentInput struct for storing generate tournament inputs
+type GenerateTournamentInput struct {
+	Name          string               `json:"name"`
+	ShortName     string               `json:"short_name"`
+	IsPlayoffs    bool                 `json:"is_playoffs"`
+	ManualAdmin   bool                 `json:"manual_admin"`
+	OfficeID      int                  `json:"office_id"`
+	MatchModeID   int                  `json:"match_mode_id"`
+	MatchTypeID   int                  `json:"match_type_id"`
+	StartingScore int                  `json:"starting_score"`
+	MaxRounds     int                  `json:"max_rounds"`
+	Players       []*Player2Tournament `json:"players,omitempty"`
+	Venues        map[int]int          `json:"venues,omitempty"`
+}
+
+// GeneratePlayoffsInput struct for storing generate playoffs inputs
+type GeneratePlayoffsInput struct {
+	MatchModeLast32ID int `json:"match_mode_last32"`
+	MatchModeLast16ID int `json:"match_mode_last16"`
+	MatchModeQFID     int `json:"match_mode_quarterFinals"`
+	MatchModeSFID     int `json:"match_mode_semiFinals"`
+	MatchModeGFID     int `json:"match_mode_grandFinals"`
 }

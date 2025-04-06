@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	controllers_v2 "github.com/kcapp/api/controllers/v2"
 	"github.com/kcapp/api/models"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // serveCmd represents the serve command
@@ -17,12 +19,7 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the API",
 	Run: func(cmd *cobra.Command, args []string) {
-		configFileParam, _ := cmd.Flags().GetString("config")
-		config, err := models.GetConfig(configFileParam)
-		if err != nil {
-			panic(err)
-		}
-		models.InitDB(config.GetMysqlConnectionString())
+		models.InitDB(models.GetMysqlConnectionString())
 
 		router := mux.NewRouter()
 		router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +39,8 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/match/outshot", controllers.GetOutshotTypes).Methods("GET")
 		router.HandleFunc("/match", controllers.GetMatches).Methods("GET")
 		router.HandleFunc("/match/{id}", controllers.GetMatch).Methods("GET")
-		router.HandleFunc("/match/{id}", controllers.SetScore).Methods("PUT")
+		router.HandleFunc("/match/{id}", controllers.UpdateMatch).Methods("PUT")
+		router.HandleFunc("/match/{id}/score", controllers.SetScore).Methods("PUT")
 		router.HandleFunc("/match/{id}/metadata", controllers.GetMatchMetadata).Methods("GET")
 		router.HandleFunc("/match/{id}/rematch", controllers.ReMatch).Methods("POST")
 		router.HandleFunc("/match/{id}/statistics", controllers.GetStatisticsForMatch).Methods("GET")
@@ -57,6 +55,7 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/leg/{id}/order", controllers.ChangePlayerOrder).Methods("PUT")
 		router.HandleFunc("/leg/{id}/warmup", controllers.StartWarmup).Methods("PUT")
 		router.HandleFunc("/leg/{id}/undo", controllers.UndoFinishLeg).Methods("PUT")
+		router.HandleFunc("/leg/{id}/finish", controllers.FinishLeg).Methods("PUT")
 
 		router.HandleFunc("/visit", controllers.AddVisit).Methods("POST")
 		router.HandleFunc("/visit/{id}/modify", controllers.ModifyVisit).Methods("PUT")
@@ -93,11 +92,14 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/preset/{id}", controllers.UpdatePreset).Methods("PUT")
 		router.HandleFunc("/preset/{id}", controllers.DeletePreset).Methods("DELETE")
 
+		router.HandleFunc("/option/default", controllers.GetDefaultOptions).Methods("GET")
+
 		router.HandleFunc("/statistics/global", controllers.GetGlobalStatistics).Methods("GET")
 		router.HandleFunc("/statistics/global/fnc", controllers.GetGlobalStatisticsFnc).Methods("GET")
 		router.HandleFunc("/statistics/office/{from}/{to}", controllers.GetOfficeStatistics).Methods("GET")
 		router.HandleFunc("/statistics/office/{office_id}/{from}/{to}", controllers.GetOfficeStatistics).Methods("GET")
 		router.HandleFunc("/statistics/{dart}/hits", controllers.GetDartStatistics).Methods("GET")
+		router.HandleFunc("/statistics/x01/player/{legs}", controllers.GetPlayersLastXLegsStatistics).Methods("GET")
 		router.HandleFunc("/statistics/{match_type}/{from}/{to}", controllers.GetStatistics).Methods("GET")
 
 		router.HandleFunc("/owe", controllers.GetOwes).Methods("GET")
@@ -143,9 +145,26 @@ var serveCmd = &cobra.Command{
 		router.HandleFunc("/tournament/match/{id}/probabilities", controllers.GetMatchProbabilities).Methods("GET")
 
 		router.HandleFunc("/badge", controllers.GetBadges).Methods("GET")
+		router.HandleFunc("/badge/statistics", controllers.GetBadgesStatistics).Methods("GET")
+		router.HandleFunc("/badge/{id}", controllers.GetBadge).Methods("GET")
+		router.HandleFunc("/badge/{id}/statistics", controllers.GetBadgeStatistics).Methods("GET")
 
-		log.Printf("Listening on port %d", config.APIConfig.Port)
-		log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.APIConfig.Port), router))
+		router.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+			versionInfo := struct {
+				Version   string `json:"version"`
+				GitCommit string `json:"git_commit"`
+			}{
+				Version:   models.Version,
+				GitCommit: models.GitCommit,
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(versionInfo)
+		}).Methods("GET")
+
+		port := viper.GetInt("api.port")
+		log.Printf("Listening on port %d", port)
+		log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", port), router))
 	},
 }
 

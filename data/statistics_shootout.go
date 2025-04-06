@@ -30,7 +30,7 @@ func GetShootoutStatistics(from string, to string) ([]*models.StatisticsShootout
 			LEFT JOIN leg l2 ON l2.id = s.leg_id AND l2.winner_id = p.id
 			LEFT JOIN matches m2 ON m2.id = l.match_id AND m2.winner_id = p.id
 		WHERE m.updated_at >= ? AND m.updated_at < ?
-			AND m.is_finished = 1 AND m.is_abandoned = 0 m.is_walkover = 0
+			AND m.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND (m.match_type_id = 2 OR l.leg_type_id = 2)
 		GROUP BY p.id, m.office_id
 		ORDER BY(COUNT(DISTINCT m2.id) / COUNT(DISTINCT m.id)) DESC, matches_played DESC, ppd DESC`, from, to)
@@ -69,7 +69,7 @@ func GetShootoutStatisticsForMatch(matchID int) ([]*models.StatisticsShootout, e
 			JOIN leg l ON l.id = s.leg_id
 			JOIN matches m ON m.id = l.match_id
 		WHERE m.id = ?
-			AND m.is_finished = 1 AND m.is_abandoned = 0
+			AND m.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND (m.match_type_id = 2 OR l.leg_type_id = 2)
 		GROUP BY p.id`, matchID)
 	if err != nil {
@@ -159,8 +159,8 @@ func GetShootoutStatisticsForPlayer(id int) (*models.StatisticsShootout, error) 
 }
 
 // GetShootoutHistoryForPlayer will return history of Shootout statistics for the given player
-func GetShootoutHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
-	legs, err := GetLegsOfType(models.SHOOTOUT, false)
+func GetShootoutHistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error) {
+	legs, err := GetLegsOfType(models.SHOOTOUT, id, start, limit, false)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func GetShootoutHistoryForPlayer(id int, limit int) ([]*models.Leg, error) {
 			LEFT JOIN leg l ON l.id = s.leg_id
 			LEFT JOIN matches m ON m.id = l.match_id
 		WHERE s.player_id = ?
-			AND l.is_finished = 1 AND m.is_abandoned = 0
+			AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 			AND (m.match_type_id = 2 OR l.leg_type_id = 2)
 		ORDER BY l.id DESC
 		LIMIT ?`, id, limit)

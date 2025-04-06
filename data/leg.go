@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/guregu/null"
+	"github.com/jmoiron/sqlx"
 	"github.com/kcapp/api/models"
 	"github.com/kcapp/api/util"
 )
@@ -65,7 +66,7 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 	// Insert leg parameters
 	if match.MatchType.ID == models.X01 || match.MatchType.ID == models.X01HANDICAP {
 		params := match.Legs[0].Parameters
-		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id) VALUES (?, ?)", legID, params.OutshotType.ID)
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, outshot_type_id, max_rounds) VALUES (?, ?, ?)", legID, params.OutshotType.ID, params.MaxRounds)
 		if err != nil {
 			tx.Rollback()
 			return nil, err
@@ -82,6 +83,13 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 	} else if *matchType == models.KNOCKOUT {
 		params := match.Legs[0].Parameters
 		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, starting_lives) VALUES (?, ?)", legID, params.StartingLives)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	} else if *matchType == models.ONESEVENTY {
+		params := match.Legs[0].Parameters
+		_, err = tx.Exec("INSERT INTO leg_parameters (leg_id, max_rounds, points_to_win) VALUES (?, ?, ?)", legID, params.MaxRounds, params.PointsToWin)
 		if err != nil {
 			tx.Rollback()
 			return nil, err
@@ -118,12 +126,12 @@ func NewLeg(matchID int, startingScore int, players []int, matchType *int) (*mod
 }
 
 // FinishLeg will finalize a leg by updating the winner and writing statistics for each player
-func FinishLeg(visit models.Visit) error {
+func FinishLeg(legID int, currentPlayer int, winnerID null.Int) error {
 	tx, err := models.DB.Begin()
 	if err != nil {
 		return err
 	}
-	leg, err := GetLeg(visit.LegID)
+	leg, err := GetLeg(legID)
 	if err != nil {
 		return err
 	}
@@ -132,72 +140,20 @@ func FinishLeg(visit models.Visit) error {
 		return err
 	}
 
-	// Update leg with winner
-	winnerID := null.IntFrom(int64(visit.PlayerID))
 	matchType := match.MatchType.ID
 	if leg.LegType != nil {
 		matchType = leg.LegType.ID
 	}
-	if matchType == models.SHOOTOUT || matchType == models.DARTSATX || matchType == models.AROUNDTHEWORLD ||
-		(matchType == models.SHANGHAI && !visit.IsShanghai()) || matchType == models.BERMUDATRIANGLE ||
-		matchType == models.JDCPRACTICE || matchType == models.SCAM {
-		// For certain game types we need to check the scores of each player to determine which player won the leg with the highest score
-		scores, err := GetPlayersScore(visit.LegID)
-		if err != nil {
-			return err
-		}
-		highScore := 0
-		isDraw := false
-		for playerID, player := range scores {
-			if player.CurrentScore == highScore {
-				isDraw = true
-			}
-			if player.CurrentScore > highScore {
-				highScore = player.CurrentScore
-				winnerID = null.IntFrom(int64(playerID))
-				isDraw = false
-			}
-		}
-		if isDraw {
-			winnerID = null.IntFromPtr(nil)
-		}
-	} else if matchType == models.FOURTWENTY {
-		scores, err := GetPlayersScore(visit.LegID)
-		if err != nil {
-			return err
-		}
-		lowestScore := 421
-		for playerID, player := range scores {
-			if player.CurrentScore < lowestScore {
-				lowestScore = player.CurrentScore
-				winnerID = null.IntFrom(int64(playerID))
-			}
-		}
-	} else if matchType == models.TICTACTOE && !leg.Parameters.IsTicTacToeWinner(visit.PlayerID) {
-		// If current player did not win, this game is a draw
-		winnerID = null.IntFromPtr(nil)
-	} else if matchType == models.KNOCKOUT {
-		scores, err := GetPlayersScore(visit.LegID)
-		if err != nil {
-			return err
-		}
-		for _, player := range scores {
-			if player.Lives.Int64 > 0 {
-				winnerID = null.IntFrom(int64(player.PlayerID))
-			}
-		}
-	}
-
-	_, err = tx.Exec(`UPDATE leg SET current_player_id = ?, winner_id = ?, is_finished = 1, end_time = NOW() WHERE id = ?`, visit.PlayerID, winnerID, visit.LegID)
+	_, err = tx.Exec(`UPDATE leg SET current_player_id = ?, winner_id = ?, is_finished = 1, end_time = NOW() WHERE id = ?`, currentPlayer, winnerID, legID)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 	leg.WinnerPlayerID = winnerID
-	log.Printf("[%d] Finished with player %d winning", visit.LegID, winnerID.ValueOrZero())
+	log.Printf("[%d] Finished with player %d winning", legID, winnerID.ValueOrZero())
 
 	if matchType == models.SHOOTOUT {
-		statisticsMap, err := CalculateShootoutStatistics(visit.LegID)
+		statisticsMap, err := CalculateShootoutStatistics(legID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -205,16 +161,16 @@ func FinishLeg(visit models.Visit) error {
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_shootout(leg_id, player_id, score, ppd, 60s_plus, 100s_plus, 140s_plus, 180s)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.Score, stats.PPD, stats.Score60sPlus,
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, legID, playerID, stats.Score, stats.PPD, stats.Score60sPlus,
 				stats.Score100sPlus, stats.Score140sPlus, stats.Score180s)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting shootout statistics for player %d", visit.LegID, playerID)
+			log.Printf("[%d] Inserting shootout statistics for player %d", legID, playerID)
 		}
 	} else if matchType == models.CRICKET {
-		statisticsMap, err := CalculateCricketStatistics(visit.LegID)
+		statisticsMap, err := CalculateCricketStatistics(legID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -223,16 +179,16 @@ func FinishLeg(visit models.Visit) error {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_cricket
 					(leg_id, player_id, total_marks, rounds, score, first_nine_marks, mpr, first_nine_mpr, marks5, marks6, marks7, marks8, marks9)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.TotalMarks, stats.Rounds, stats.Score, stats.FirstNineMarks,
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, legID, playerID, stats.TotalMarks, stats.Rounds, stats.Score, stats.FirstNineMarks,
 				stats.MPR, stats.FirstNineMPR, stats.Marks5, stats.Marks6, stats.Marks7, stats.Marks8, stats.Marks9)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting cricket statistics for player %d", visit.LegID, playerID)
+			log.Printf("[%d] Inserting cricket statistics for player %d", legID, playerID)
 		}
 	} else if matchType == models.DARTSATX {
-		statisticsMap, err := CalculateDartsAtXStatistics(visit.LegID)
+		statisticsMap, err := CalculateDartsAtXStatistics(legID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -241,16 +197,16 @@ func FinishLeg(visit models.Visit) error {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_darts_at_x
 					(leg_id, player_id, score, singles, doubles, triples, hit_rate, hits5, hits6, hits7, hits8, hits9)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.Score, stats.Singles, stats.Doubles, stats.Triples, stats.HitRate,
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, legID, playerID, stats.Score, stats.Singles, stats.Doubles, stats.Triples, stats.HitRate,
 				stats.Hits5, stats.Hits6, stats.Hits7, stats.Hits8, stats.Hits9)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting Darts At %d statistics for player %d", visit.LegID, leg.StartingScore, playerID)
+			log.Printf("[%d] Inserting Darts At %d statistics for player %d", legID, leg.StartingScore, playerID)
 		}
 	} else if matchType == models.AROUNDTHECLOCK {
-		statisticsMap, err := CalculateAroundTheClockStatistics(visit.LegID)
+		statisticsMap, err := CalculateAroundTheClockStatistics(legID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -260,7 +216,7 @@ func FinishLeg(visit models.Visit) error {
 			INSERT INTO statistics_around_the
 				(leg_id, player_id, darts_thrown, score, longest_streak, total_hit_rate, hit_rate_1, hit_rate_2, hit_rate_3, hit_rate_4, hit_rate_5, hit_rate_6, hit_rate_7, hit_rate_8,
 					hit_rate_9, hit_rate_10, hit_rate_11, hit_rate_12, hit_rate_13, hit_rate_14, hit_rate_15, hit_rate_16, hit_rate_17, hit_rate_18, hit_rate_19, hit_rate_20, hit_rate_bull)
-			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, visit.LegID, playerID, stats.DartsThrown, stats.Score, stats.LongestStreak, stats.TotalHitRate, stats.Hitrates[1],
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, legID, playerID, stats.DartsThrown, stats.Score, stats.LongestStreak, stats.TotalHitRate, stats.Hitrates[1],
 				stats.Hitrates[2], stats.Hitrates[3], stats.Hitrates[4], stats.Hitrates[5], stats.Hitrates[6], stats.Hitrates[7], stats.Hitrates[8], stats.Hitrates[9], stats.Hitrates[10],
 				stats.Hitrates[11], stats.Hitrates[12], stats.Hitrates[13], stats.Hitrates[14], stats.Hitrates[15], stats.Hitrates[16], stats.Hitrates[17], stats.Hitrates[18], stats.Hitrates[19],
 				stats.Hitrates[20], stats.Hitrates[25])
@@ -268,10 +224,10 @@ func FinishLeg(visit models.Visit) error {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting Around the Clock statistics for player %d", visit.LegID, playerID)
+			log.Printf("[%d] Inserting Around the Clock statistics for player %d", legID, playerID)
 		}
 	} else if matchType == models.AROUNDTHEWORLD || matchType == models.SHANGHAI {
-		statisticsMap, err := CalculateAroundTheWorldStatistics(visit.LegID, matchType)
+		statisticsMap, err := CalculateAroundTheWorldStatistics(legID, matchType)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -281,7 +237,7 @@ func FinishLeg(visit models.Visit) error {
 				INSERT INTO statistics_around_the
 					(leg_id, player_id, darts_thrown, score, shanghai, mpr, total_hit_rate, hit_rate_1, hit_rate_2, hit_rate_3, hit_rate_4, hit_rate_5, hit_rate_6, hit_rate_7, hit_rate_8, hit_rate_9, hit_rate_10,
 						hit_rate_11, hit_rate_12, hit_rate_13, hit_rate_14, hit_rate_15, hit_rate_16, hit_rate_17, hit_rate_18, hit_rate_19, hit_rate_20, hit_rate_bull)
-				VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, visit.LegID, playerID, stats.DartsThrown, stats.Score, stats.Shanghai, stats.MPR, stats.TotalHitRate, stats.Hitrates[1],
+				VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, legID, playerID, stats.DartsThrown, stats.Score, stats.Shanghai, stats.MPR, stats.TotalHitRate, stats.Hitrates[1],
 				stats.Hitrates[2], stats.Hitrates[3], stats.Hitrates[4], stats.Hitrates[5], stats.Hitrates[6], stats.Hitrates[7], stats.Hitrates[8], stats.Hitrates[9], stats.Hitrates[10],
 				stats.Hitrates[11], stats.Hitrates[12], stats.Hitrates[13], stats.Hitrates[14], stats.Hitrates[15], stats.Hitrates[16], stats.Hitrates[17], stats.Hitrates[18], stats.Hitrates[19],
 				stats.Hitrates[20], stats.Hitrates[25])
@@ -289,26 +245,26 @@ func FinishLeg(visit models.Visit) error {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting Around the World/Shanghai statistics for player %d", visit.LegID, playerID)
+			log.Printf("[%d] Inserting Around the World/Shanghai statistics for player %d", legID, playerID)
 		}
 	} else if matchType == models.TICTACTOE {
-		statisticsMap, err := CalculateTicTacToeStatistics(visit.LegID)
+		statisticsMap, err := CalculateTicTacToeStatistics(legID)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
-				INSERT INTO statistics_tic_tac_toe (leg_id, player_id, darts_thrown, score, numbers_closed, highest_closed) VALUES (?,?,?,?,?,?)`, visit.LegID,
+				INSERT INTO statistics_tic_tac_toe (leg_id, player_id, darts_thrown, score, numbers_closed, highest_closed) VALUES (?,?,?,?,?,?)`, legID,
 				playerID, stats.DartsThrown, stats.Score, stats.NumbersClosed, stats.HighestClosed)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting Tic Tac Toe statistics for player %d", visit.LegID, playerID)
+			log.Printf("[%d] Inserting Tic Tac Toe statistics for player %d", legID, playerID)
 		}
 	} else if matchType == models.BERMUDATRIANGLE {
-		statisticsMap, err := CalculateBermudaTriangleStatistics(visit.LegID)
+		statisticsMap, err := CalculateBermudaTriangleStatistics(legID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -317,17 +273,17 @@ func FinishLeg(visit models.Visit) error {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_bermuda_triangle (leg_id, player_id, darts_thrown, score, mpr, total_marks, highest_score_reached, total_hit_rate, hit_rate_1, hit_rate_2, hit_rate_3,
 					hit_rate_4, hit_rate_5, hit_rate_6, hit_rate_7, hit_rate_8, hit_rate_9, hit_rate_10, hit_rate_11, hit_rate_12, hit_rate_13, hit_count) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-				visit.LegID, playerID, stats.DartsThrown, stats.Score, stats.MPR, &stats.TotalMarks, stats.HighestScoreReached, stats.TotalHitRate, stats.Hitrates[0], stats.Hitrates[1], stats.Hitrates[2],
+				legID, playerID, stats.DartsThrown, stats.Score, stats.MPR, &stats.TotalMarks, stats.HighestScoreReached, stats.TotalHitRate, stats.Hitrates[0], stats.Hitrates[1], stats.Hitrates[2],
 				stats.Hitrates[3], stats.Hitrates[4], stats.Hitrates[5], stats.Hitrates[6], stats.Hitrates[7], stats.Hitrates[8], stats.Hitrates[9], stats.Hitrates[10], stats.Hitrates[11], stats.Hitrates[12],
 				stats.HitCount)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting Bermuda Triangle statistics for player %d", visit.LegID, playerID)
+			log.Printf("[%d] Inserting Bermuda Triangle statistics for player %d", legID, playerID)
 		}
 	} else if matchType == models.FOURTWENTY {
-		statisticsMap, err := Calculate420Statistics(visit.LegID)
+		statisticsMap, err := Calculate420Statistics(legID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -336,17 +292,17 @@ func FinishLeg(visit models.Visit) error {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_420 (leg_id, player_id, score, total_hit_rate, hit_rate_1, hit_rate_2, hit_rate_3, hit_rate_4, hit_rate_5, hit_rate_6, hit_rate_7, hit_rate_8, hit_rate_9,
 					hit_rate_10, hit_rate_11, hit_rate_12, hit_rate_13, hit_rate_14, hit_rate_15, hit_rate_16, hit_rate_17, hit_rate_18, hit_rate_19, hit_rate_20, hit_rate_bull) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-				visit.LegID, playerID, stats.Score, stats.TotalHitRate, stats.Hitrates[1], stats.Hitrates[2], stats.Hitrates[3], stats.Hitrates[4], stats.Hitrates[5], stats.Hitrates[6],
+				legID, playerID, stats.Score, stats.TotalHitRate, stats.Hitrates[1], stats.Hitrates[2], stats.Hitrates[3], stats.Hitrates[4], stats.Hitrates[5], stats.Hitrates[6],
 				stats.Hitrates[7], stats.Hitrates[8], stats.Hitrates[9], stats.Hitrates[10], stats.Hitrates[11], stats.Hitrates[12], stats.Hitrates[13], stats.Hitrates[14], stats.Hitrates[15], stats.Hitrates[16],
 				stats.Hitrates[17], stats.Hitrates[18], stats.Hitrates[19], stats.Hitrates[20], stats.Hitrates[25])
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting Four Twenty statistics for player %d", visit.LegID, playerID)
+			log.Printf("[%d] Inserting Four Twenty statistics for player %d", legID, playerID)
 		}
 	} else if matchType == models.KILLBULL {
-		statisticsMap, err := CalculateKillBullStatistics(visit.LegID)
+		statisticsMap, err := CalculateKillBullStatistics(legID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -354,15 +310,15 @@ func FinishLeg(visit models.Visit) error {
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 						INSERT INTO statistics_kill_bull (leg_id, player_id, darts_thrown, score, marks3, marks4, marks5, marks6, longest_streak, times_busted, total_hit_rate) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-				visit.LegID, playerID, stats.DartsThrown, stats.Score, stats.Marks3, stats.Marks4, stats.Marks5, stats.Marks6, stats.LongestStreak, stats.TimesBusted, stats.TotalHitRate)
+				legID, playerID, stats.DartsThrown, stats.Score, stats.Marks3, stats.Marks4, stats.Marks5, stats.Marks6, stats.LongestStreak, stats.TimesBusted, stats.TotalHitRate)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting Kill Bull statistics for player %d", visit.LegID, playerID)
+			log.Printf("[%d] Inserting Kill Bull statistics for player %d", legID, playerID)
 		}
 	} else if matchType == models.GOTCHA {
-		statisticsMap, err := CalculateGotchaStatistics(visit.LegID)
+		statisticsMap, err := CalculateGotchaStatistics(legID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -370,15 +326,15 @@ func FinishLeg(visit models.Visit) error {
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_gotcha (leg_id, player_id, darts_thrown, highest_score, times_reset, others_reset, score) VALUES (?,?,?,?,?,?,?)`,
-				visit.LegID, playerID, stats.DartsThrown, stats.HighestScore, stats.TimesReset, stats.OthersReset, stats.Score)
+				legID, playerID, stats.DartsThrown, stats.HighestScore, stats.TimesReset, stats.OthersReset, stats.Score)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting Gotcha statistics for player %d", visit.LegID, playerID)
+			log.Printf("[%d] Inserting Gotcha statistics for player %d", legID, playerID)
 		}
 	} else if matchType == models.JDCPRACTICE {
-		statisticsMap, err := CalculateJDCPracticeStatistics(visit.LegID)
+		statisticsMap, err := CalculateJDCPracticeStatistics(legID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -386,15 +342,15 @@ func FinishLeg(visit models.Visit) error {
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_jdc_practice (leg_id, player_id, darts_thrown, score, mpr, shanghai_count, doubles_hitrate) VALUES (?,?,?,?,?,?,?)`,
-				visit.LegID, playerID, stats.DartsThrown, stats.Score, stats.MPR, stats.ShanghaiCount, stats.DoublesHitrate)
+				legID, playerID, stats.DartsThrown, stats.Score, stats.MPR, stats.ShanghaiCount, stats.DoublesHitrate)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting JDC Practice statistics for player %d", visit.LegID, playerID)
+			log.Printf("[%d] Inserting JDC Practice statistics for player %d", legID, playerID)
 		}
 	} else if matchType == models.KNOCKOUT {
-		statisticsMap, err := CalculateKnockoutStatistics(visit.LegID)
+		statisticsMap, err := CalculateKnockoutStatistics(legID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -402,15 +358,15 @@ func FinishLeg(visit models.Visit) error {
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_knockout (leg_id, player_id, darts_thrown, avg_score, lives_lost, lives_taken, final_position) VALUES (?,?,?,?,?,?,?)`,
-				visit.LegID, playerID, stats.DartsThrown, stats.AvgScore, stats.LivesLost, stats.LivesTaken, stats.FinalPosition)
+				legID, playerID, stats.DartsThrown, stats.AvgScore, stats.LivesLost, stats.LivesTaken, stats.FinalPosition)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting Knockout statistics for player %d", visit.LegID, playerID)
+			log.Printf("[%d] Inserting Knockout statistics for player %d", legID, playerID)
 		}
 	} else if matchType == models.SCAM {
-		statisticsMap, err := CalculateScamStatistics(visit.LegID)
+		statisticsMap, err := CalculateScamStatistics(legID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -418,15 +374,35 @@ func FinishLeg(visit models.Visit) error {
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
 				INSERT INTO statistics_scam (leg_id, player_id, darts_thrown_stopper, darts_thrown_scorer, mpr, ppd, score) VALUES (?,?,?,?,?,?,?)`,
-				visit.LegID, playerID, stats.DartsThrownStopper, stats.DartsThrownScorer, stats.MPR, stats.PPD, stats.Score)
+				legID, playerID, stats.DartsThrownStopper, stats.DartsThrownScorer, stats.MPR, stats.PPD, stats.Score)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting Scam statistics for player %d", visit.LegID, playerID)
+			log.Printf("[%d] Inserting Scam statistics for player %d", legID, playerID)
+		}
+	} else if matchType == models.ONESEVENTY {
+		statisticsMap, err := Calculate170Statistics(legID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		for playerID, stats := range statisticsMap {
+			_, err = tx.Exec(`
+				INSERT INTO statistics_170
+					(leg_id, player_id, points, ppd, ppd_score, rounds, checkout_percentage, checkout_attempts, checkout_completed, highest_checkout, darts_thrown, 
+					checkout_9_darts, checkout_8_darts, checkout_7_darts, checkout_6_darts, checkout_5_darts, checkout_4_darts, checkout_3_darts)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, legID, playerID, stats.Points, stats.PPD, stats.PPDScore, stats.Rounds,
+				stats.CheckoutPercentage, stats.CheckoutAttempts, stats.CheckoutCompleted, stats.HighestCheckout, stats.DartsThrown, stats.CheckoutDarts[9],
+				stats.CheckoutDarts[8], stats.CheckoutDarts[7], stats.CheckoutDarts[6], stats.CheckoutDarts[5], stats.CheckoutDarts[4], stats.CheckoutDarts[3])
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("[%d] Inserting 170 statistics for player %d", legID, playerID)
 		}
 	} else {
-		statisticsMap, err := CalculateX01Statistics(visit.LegID)
+		statisticsMap, err := CalculateX01Statistics(legID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -436,14 +412,14 @@ func FinishLeg(visit models.Visit) error {
 				INSERT INTO statistics_x01
 					(leg_id, player_id, ppd, ppd_score, first_nine_ppd, first_nine_ppd_score, checkout_percentage, checkout_attempts, checkout, darts_thrown, 60s_plus,
 					 100s_plus, 140s_plus, 180s, accuracy_20, accuracy_19, overall_accuracy)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, visit.LegID, playerID, stats.PPD, stats.PPDScore, stats.FirstNinePPD, stats.FirstNinePPDScore,
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, legID, playerID, stats.PPD, stats.PPDScore, stats.FirstNinePPD, stats.FirstNinePPDScore,
 				stats.CheckoutPercentage, stats.CheckoutAttempts, stats.Checkout, stats.DartsThrown, stats.Score60sPlus, stats.Score100sPlus, stats.Score140sPlus,
 				stats.Score180s, stats.AccuracyStatistics.Accuracy20, stats.AccuracyStatistics.Accuracy19, stats.AccuracyStatistics.AccuracyOverall)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
-			log.Printf("[%d] Inserting x01 statistics for player %d", visit.LegID, playerID)
+			log.Printf("[%d] Inserting x01 statistics for player %d", legID, playerID)
 		}
 	}
 
@@ -483,14 +459,15 @@ func FinishLeg(visit models.Visit) error {
 				}
 				_, err = tx.Exec(`
 					INSERT INTO owes (player_ower_id, player_owee_id, owe_type_id, amount) VALUES (?, ?, ?, 1)
-					ON DUPLICATE KEY UPDATE amount = amount + 1`, playerID, visit.PlayerID, match.OweTypeID)
+					ON DUPLICATE KEY UPDATE amount = amount + 1`, playerID, winnerID, match.OweTypeID)
 				if err != nil {
 					tx.Rollback()
 					return err
 				}
-				log.Printf("Added owes of %s from player %d to player %d", match.OweType.Item.String, playerID, visit.PlayerID)
+				log.Printf("Added owes of %s from player %d to player %d", match.OweType.Item.String, playerID, winnerID.Int64)
 			}
 		}
+		match.WinnerID = winnerID
 		log.Printf("Match %d finished with player %d winning", match.ID, winnerID.ValueOrZero())
 	} else if match.MatchMode.LegsRequired.Valid && playedLegs == int(match.MatchMode.LegsRequired.Int64) {
 		// Match finished, draw
@@ -504,6 +481,7 @@ func FinishLeg(visit models.Visit) error {
 	} else if playedLegs == (int(match.MatchMode.LegsRequired.Int64)-1) && match.MatchMode.TieBreakMatchTypeID.Valid {
 		isTieBreak = true
 	}
+	match.IsFinished = isFinished
 	tx.Commit()
 
 	if isFinished {
@@ -514,40 +492,15 @@ func FinishLeg(visit models.Visit) error {
 		}
 
 		if match.TournamentID.Valid {
-			metadata, err := GetMatchMetadata(match.ID)
+			err = AdvanceTournamentAfterMatch(match)
 			if err != nil {
 				return err
 			}
+		}
 
-			if metadata.WinnerOutcomeMatchID.Valid {
-				winnerMatch, err := GetMatch(int(metadata.WinnerOutcomeMatchID.Int64))
-				if err != nil {
-					return err
-				}
-				idx := 0
-				if !metadata.IsWinnerOutcomeHome {
-					idx = 1
-				}
-				err = SwapPlayers(winnerMatch.ID, int(winnerID.ValueOrZero()), winnerMatch.Players[idx])
-				if err != nil {
-					return err
-				}
-			}
-			if metadata.LooserOutcomeMatchID.Valid {
-				looserID := getMatchLooser(match, int(winnerID.ValueOrZero()))
-				looserMatch, err := GetMatch(int(metadata.LooserOutcomeMatchID.Int64))
-				if err != nil {
-					return err
-				}
-				idx := 0
-				if !metadata.IsLooserOutcomeHome {
-					idx = 1
-				}
-				err = SwapPlayers(looserMatch.ID, looserID, looserMatch.Players[idx])
-				if err != nil {
-					return err
-				}
-			}
+		err = CheckMatchForBadges(match)
+		if err != nil {
+			return err
 		}
 	} else {
 		log.Printf("Match %d is not finished, creating next leg", match.ID)
@@ -660,6 +613,18 @@ func UndoLegFinish(legID int) error {
 		tx.Rollback()
 		return err
 	}
+	_, err = tx.Exec("DELETE FROM statistics_170 WHERE leg_id = ?", legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete any earned badges
+	_, err = tx.Exec("DELETE FROM player2badge WHERE leg_id = ? OR match_id IN (SELECT match_id FROM leg WHERE id = ?)", legID, legID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 
 	// Remove the last score
 	_, err = tx.Exec("DELETE FROM score WHERE leg_id = ? ORDER BY id DESC LIMIT 1", legID)
@@ -730,7 +695,8 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 		leg.Visits = visits
 
 		matchType := leg.LegType.ID
-		if matchType == models.X01 || matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
+		if matchType == models.X01 || matchType == models.X01HANDICAP || matchType == models.TICTACTOE || matchType == models.KNOCKOUT ||
+			matchType == models.ONESEVENTY {
 			leg.Parameters, err = GetLegParameters(leg.ID)
 			if err != nil {
 				return nil, err
@@ -745,19 +711,81 @@ func GetLegsForMatch(matchID int) ([]*models.Leg, error) {
 	return legs, nil
 }
 
-// GetLegsOfType returns all legs with scores for the given match type
-func GetLegsOfType(matchType int, loadVisits bool) ([]*models.Leg, error) {
+// GetLegs returns all legs with the given IDs
+func GetLegs(ids []int) ([]*models.Leg, error) {
+	q, args, err := sqlx.In(`
+		SELECT
+			l.id, l.end_time, l.starting_score, l.is_finished,
+			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
+			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC) as "players",
+			mt.id as 'match_type_id', mt.name, mt.description
+		FROM leg l
+			LEFT JOIN player2leg p2l ON p2l.leg_id = l.id
+			LEFT JOIN matches m ON m.id = l.match_id
+			LEFT JOIN match_type mt on mt.id = IFNULL(l.leg_type_id, m.match_type_id)
+		WHERE l.id IN(?)
+		GROUP BY l.id
+		ORDER BY l.id ASC`, ids)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := models.DB.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	legs := make([]*models.Leg, 0)
+	for rows.Next() {
+		leg := new(models.Leg)
+		leg.LegType = new(models.MatchType)
+		var players string
+		err := rows.Scan(&leg.ID, &leg.Endtime, &leg.StartingScore, &leg.IsFinished, &leg.CurrentPlayerID,
+			&leg.WinnerPlayerID, &leg.CreatedAt, &leg.UpdatedAt, &leg.MatchID, &leg.HasScores, &players, &leg.LegType.ID,
+			&leg.LegType.Name, &leg.LegType.Description)
+		if err != nil {
+			return nil, err
+		}
+		leg.Players = util.StringToIntArray(players)
+		visits, err := GetLegVisits(leg.ID)
+		if err != nil {
+			return nil, err
+		}
+		leg.Visits = visits
+
+		matchType := leg.LegType.ID
+		if matchType == models.X01 || matchType == models.X01HANDICAP || matchType == models.TICTACTOE || matchType == models.KNOCKOUT ||
+			matchType == models.ONESEVENTY {
+			leg.Parameters, err = GetLegParameters(leg.ID)
+			if err != nil {
+				return nil, err
+			}
+		}
+		legs = append(legs, leg)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return legs, nil
+}
+
+// GetLegsOfType returns legs with scores for the given match type and player
+func GetLegsOfType(matchType int, playerID int, start int, limit int, loadVisits bool) ([]*models.Leg, error) {
 	rows, err := models.DB.Query(`
 		SELECT
 			l.id, l.end_time, l.starting_score, l.is_finished,
 			l.current_player_id, l.winner_id, l.created_at, l.updated_at,
-			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC)
+			l.match_id, l.has_scores, GROUP_CONCAT(p2l.player_id ORDER BY p2l.order ASC) as 'players'
 		FROM leg l
 			JOIN matches m on m.id = l.match_id
 			JOIN player2leg p2l ON p2l.leg_id = l.id
-		WHERE l.has_scores = 1 AND (m.match_type_id = ? OR l.leg_type_id = ?)
+		WHERE l.is_finished AND m.is_abandoned = 0 AND m.is_bye = 0 AND 
+			l.has_scores = 1 AND IFNULL(l.leg_type_id, m.match_type_id) = ?
 		GROUP BY l.id
-		ORDER BY l.id DESC`, matchType, matchType)
+		HAVING FIND_IN_SET(?, players) > 0
+		ORDER BY l.id DESC
+		LIMIT ?, ?`, matchType, playerID, start, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -780,12 +808,14 @@ func GetLegsOfType(matchType int, loadVisits bool) ([]*models.Leg, error) {
 			}
 			leg.Visits = visits
 		}
-		if matchType == models.X01 || matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
+		if matchType == models.X01 || matchType == models.TICTACTOE || matchType == models.KNOCKOUT ||
+			matchType == models.ONESEVENTY {
 			leg.Parameters, err = GetLegParameters(leg.ID)
 			if err != nil {
 				return nil, err
 			}
 		}
+		leg.LegType = &models.MatchType{ID: matchType}
 		legs = append(legs, leg)
 	}
 	if err = rows.Err(); err != nil {
@@ -833,7 +863,7 @@ func GetBadgeLegsToRecalculate() ([]int, error) {
 		SELECT l.id
 		FROM leg l
 			JOIN matches m on m.id = l.match_id
-		WHERE l.has_scores = 1 AND COALESCE(l.leg_type_id, m.match_type_id) = 1 -- X01
+		WHERE l.has_scores = 1
 			AND m.is_abandoned = 0 AND m.is_bye = 0 AND m.is_walkover = 0
 			AND l.is_finished = 1
 		GROUP BY l.id
@@ -928,7 +958,8 @@ func GetLeg(id int) (*models.Leg, error) {
 	}
 
 	matchType := leg.LegType.ID
-	if matchType == models.X01 || matchType == models.X01HANDICAP || matchType == models.TICTACTOE || matchType == models.KNOCKOUT {
+	if matchType == models.X01 || matchType == models.X01HANDICAP || matchType == models.TICTACTOE ||
+		matchType == models.KNOCKOUT || matchType == models.ONESEVENTY {
 		leg.Parameters, err = GetLegParameters(id)
 		if err != nil {
 			return nil, err
@@ -1085,10 +1116,23 @@ func GetLeg(id int) (*models.Leg, error) {
 					score = visit.CalculateScamScore(scores)
 					scores[visit.PlayerID].CurrentScore += score
 				}
+			} else if matchType == models.ONESEVENTY {
+				// This is done below regardless of if the visit was a bust
+			} else if matchType == models.X01 || matchType == models.X01HANDICAP {
+				outshotType := models.OUTSHOTDOUBLE
+				if leg.Parameters != nil && leg.Parameters.OutshotType != nil {
+					outshotType = leg.Parameters.OutshotType.ID
+				}
+				visit.IsCheckout = visit.IsVisitCheckout(scores[visit.PlayerID].CurrentScore, outshotType)
+				scores[visit.PlayerID].CurrentScore -= score
 			} else {
 				scores[visit.PlayerID].CurrentScore -= score
 			}
 			visit.Score = score
+		}
+		if matchType == models.ONESEVENTY {
+			player := scores[visit.PlayerID]
+			visit.Score = visit.Calculate170Score(round, player)
 		}
 
 		visit.Scores = make(map[int]int)
@@ -1313,8 +1357,10 @@ func GetLegParameters(legID int) (*models.LegParameters, error) {
 	n := make([]null.Int, 9)
 	var ost null.Int
 	err := models.DB.QueryRow(`
-		SELECT outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9, starting_lives
-		FROM leg_parameters WHERE leg_id = ?`, legID).Scan(&ost, &n[0], &n[1], &n[2], &n[3], &n[4], &n[5], &n[6], &n[7], &n[8], &params.StartingLives)
+		SELECT outshot_type_id, number_1, number_2, number_3, number_4, number_5, number_6, number_7, number_8, number_9, starting_lives, 
+			points_to_win, max_rounds
+		FROM leg_parameters WHERE leg_id = ?`, legID).Scan(&ost, &n[0], &n[1], &n[2], &n[3], &n[4], &n[5], &n[6], &n[7], &n[8],
+		&params.StartingLives, &params.PointsToWin, &params.MaxRounds)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return new(models.LegParameters), nil
@@ -1427,4 +1473,75 @@ func getMatchLooser(match *models.Match, winnerID int) int {
 		return match.Players[1]
 	}
 	return match.Players[0]
+}
+
+// getLegWinner will determine the winner of a given leg
+func getLegWinner(leg *models.Leg, visit models.Visit, matchType int) (*null.Int, error) {
+	winnerID := null.IntFrom(int64(visit.PlayerID))
+	if matchType == models.SHOOTOUT || matchType == models.DARTSATX || matchType == models.AROUNDTHEWORLD ||
+		(matchType == models.SHANGHAI && !visit.IsShanghai()) || matchType == models.BERMUDATRIANGLE ||
+		matchType == models.JDCPRACTICE || matchType == models.SCAM {
+		// For certain game types we need to check the scores of each player to determine which player won the leg with the highest score
+		scores, err := GetPlayersScore(leg.ID)
+		if err != nil {
+			return nil, err
+		}
+		highScore := 0
+		isDraw := false
+		for playerID, player := range scores {
+			if player.CurrentScore == highScore {
+				isDraw = true
+			}
+			if player.CurrentScore > highScore {
+				highScore = player.CurrentScore
+				winnerID = null.IntFrom(int64(playerID))
+				isDraw = false
+			}
+		}
+		if isDraw {
+			winnerID = null.IntFromPtr(nil)
+		}
+	} else if matchType == models.FOURTWENTY {
+		scores, err := GetPlayersScore(leg.ID)
+		if err != nil {
+			return nil, err
+		}
+		lowestScore := 421
+		for playerID, player := range scores {
+			if player.CurrentScore < lowestScore {
+				lowestScore = player.CurrentScore
+				winnerID = null.IntFrom(int64(playerID))
+			}
+		}
+	} else if matchType == models.TICTACTOE && !leg.Parameters.IsTicTacToeWinner(visit.PlayerID) {
+		// If current player did not win, this game is a draw
+		winnerID = null.IntFromPtr(nil)
+	} else if matchType == models.KNOCKOUT {
+		scores, err := GetPlayersScore(leg.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, player := range scores {
+			if player.Lives.Int64 > 0 {
+				winnerID = null.IntFrom(int64(player.PlayerID))
+			}
+		}
+	} else if matchType == models.ONESEVENTY {
+		scores, err := GetPlayersScore(leg.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		mostPoints := int64(0)
+		for playerID, player := range scores {
+			if player.CurrentPoints.Int64 == mostPoints {
+				winnerID = null.IntFromPtr(nil)
+			}
+			if player.CurrentPoints.Int64 > mostPoints {
+				mostPoints = player.CurrentPoints.Int64
+				winnerID = null.IntFrom(int64(playerID))
+			}
+		}
+	}
+	return &winnerID, nil
 }
