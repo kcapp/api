@@ -2,6 +2,9 @@
 
 ## [2.10.0] - TBD
 #### Feature
+- Reworked player `x01` progression to be per bucket of 50 legs instead of week based
+- Endpoint to get leaderboard data for each match type
+- New `Still Regining` badge when surviving a kill slayer attempt
 
 ## [2.9.0] - 2025-04-06
 #### Feature
