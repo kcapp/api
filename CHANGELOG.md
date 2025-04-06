@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.9.0] - TBD
+## [2.9.0] - 2025-04-06
 #### Feature
 - Added method for updating venue of a match
 - Better automatic handling of tournaments matches
@@ -182,7 +182,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
-[2.9.0]: https://github.com/kcapp/api/compare/v2.8.0...develop
+[2.9.0]: https://github.com/kcapp/api/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/kcapp/api/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/kcapp/api/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/kcapp/api/compare/v2.5.0...v2.6.0
