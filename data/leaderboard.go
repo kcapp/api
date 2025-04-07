@@ -13,7 +13,7 @@ func GetMatchTypeLeaderboard() (map[int][]*models.MatchTypeLeaderboard, error) {
 	leaderboard := make(map[int][]*models.MatchTypeLeaderboard)
 	for rows.Next() {
 		mtl := new(models.MatchTypeLeaderboard)
-		err := rows.Scan(&mtl.MatchTypeID, &mtl.PlayerID, &mtl.LegID, &mtl.DartsThrown, &mtl.Score)
+		err := rows.Scan(&mtl.MatchTypeID, &mtl.PlayerID, &mtl.LegID, &mtl.DartsThrown, &mtl.Score, &mtl.ThreeDartAvg)
 		if err != nil {
 			return nil, err
 		}
