@@ -195,6 +195,10 @@ func Get170StatisticsForPlayer(id int) (*models.Statistics170, error) {
 	err := models.DB.QueryRow(`
 			SELECT
 				p.id,
+				COUNT(DISTINCT m.id) AS 'matches_played',
+				COUNT(DISTINCT m2.id) AS 'matches_won',
+				COUNT(DISTINCT l.id) AS 'legs_played',
+				COUNT(DISTINCT l2.id) AS 'legs_won',
 				SUM(s.points),
 				SUM(s.ppd_score) / SUM(s.darts_thrown),
 				SUM(s.rounds),
@@ -218,8 +222,9 @@ func Get170StatisticsForPlayer(id int) (*models.Statistics170, error) {
 			WHERE s.player_id = ?
 				AND l.is_finished = 1 AND m.is_abandoned = 0 AND m.is_walkover = 0
 				AND m.match_type_id = 17
-			GROUP BY p.id`, id).Scan(&s.LegID, &s.PlayerID, &s.Points, &s.PPD, &s.Rounds, &s.CheckoutPercentage, &s.CheckoutAttempts,
-		&s.HighestCheckout, &s.DartsThrown, &darts9, &darts8, &darts7, &darts6, &darts5, &darts4, &darts3)
+			GROUP BY p.id`, id).Scan(&s.PlayerID, &s.MatchesPlayed, &s.MatchesWon, &s.LegsPlayed, &s.LegsWon,
+		&s.Points, &s.PPD, &s.Rounds, &s.CheckoutPercentage, &s.CheckoutAttempts, &s.HighestCheckout,
+		&s.DartsThrown, &darts9, &darts8, &darts7, &darts6, &darts5, &darts4, &darts3)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return new(models.Statistics170), nil
@@ -285,13 +290,24 @@ func Get170HistoryForPlayer(id int, start int, limit int) ([]*models.Leg, error)
 	legs = make([]*models.Leg, 0)
 	for rows.Next() {
 		s := new(models.Statistics170)
-		s.CheckoutDarts = make(map[int]int)
+		var darts9, darts8, darts7, darts6, darts5, darts4, darts3 int
+
 		err := rows.Scan(&s.LegID, &s.PlayerID, &s.Points, &s.PPD, &s.PPDScore, &s.Rounds, &s.CheckoutPercentage,
-			&s.CheckoutAttempts, &s.CheckoutCompleted, &s.HighestCheckout, s.CheckoutDarts[9], s.CheckoutDarts[8],
-			s.CheckoutDarts[7], s.CheckoutDarts[6], s.CheckoutDarts[5], s.CheckoutDarts[4], s.CheckoutDarts[3])
+			&s.CheckoutAttempts, &s.CheckoutCompleted, &s.HighestCheckout, &darts9, &darts8, &darts7, &darts6, &darts5,
+			&darts4, &darts3)
 		if err != nil {
 			return nil, err
 		}
+		checkoutDarts := make(map[int]int, 0)
+		checkoutDarts[9] = darts9
+		checkoutDarts[8] = darts8
+		checkoutDarts[7] = darts7
+		checkoutDarts[6] = darts6
+		checkoutDarts[5] = darts5
+		checkoutDarts[4] = darts4
+		checkoutDarts[3] = darts3
+		s.CheckoutDarts = checkoutDarts
+
 		leg := m[s.LegID]
 		leg.Statistics = s
 		legs = append(legs, leg)

@@ -352,6 +352,16 @@ func GetPlayerMatchTypeStatistics(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(stats)
 		return
 
+	case models.ONESEVENTY:
+		stats, err := data.Get170StatisticsForPlayer(id)
+		if err != nil {
+			log.Println("Unable to get 170 Statistics for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(stats)
+		return
+
 	default:
 		log.Println("Unknown match type parameter")
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -536,6 +546,16 @@ func GetPlayerMatchTypeHistory(w http.ResponseWriter, r *http.Request) {
 		legs, err := data.GetScamHistoryForPlayer(id, 0, limit)
 		if err != nil {
 			log.Println("Unable to get Scam history for player", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(legs)
+		return
+
+	case models.ONESEVENTY:
+		legs, err := data.Get170HistoryForPlayer(id, 0, limit)
+		if err != nil {
+			log.Println("Unable to get 170 history for player", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

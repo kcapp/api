@@ -6,6 +6,9 @@
 - Endpoint to get leaderboard data for each match type
 - New `Still Regining` badge when surviving a kill slayer attempt
 
+#### Fixed
+- Endpoints for getting player 170 statistics
+
 ## [2.9.0] - 2025-04-06
 #### Feature
 - Added method for updating venue of a match
