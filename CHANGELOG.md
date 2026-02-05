@@ -8,6 +8,7 @@
 
 #### Fixed
 - Endpoints for getting player 170 statistics
+- Ensure that currenet player is set correctly on tournament playoffs
 
 ## [2.9.0] - 2025-04-06
 #### Feature

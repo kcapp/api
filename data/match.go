@@ -868,15 +868,16 @@ func SwapPlayers(matchID int, newPlayerID int, oldPlayerID int) error {
 		return err
 	}
 
-	// Update current player of the leg
-	_, err = tx.Exec("UPDATE leg SET current_player_id = ? WHERE match_id = ?", newPlayerID, matchID)
+	// Update player2leg
+	_, err = tx.Exec("UPDATE player2leg SET player_id = ? WHERE match_id = ? AND player_id = ?", newPlayerID, matchID, oldPlayerID)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	// Update player2leg
-	_, err = tx.Exec("UPDATE player2leg SET player_id = ? WHERE match_id = ? AND player_id = ?", newPlayerID, matchID, oldPlayerID)
+	// Update current player of the leg
+	//_, err = tx.Exec("UPDATE leg SET current_player_id = ? WHERE match_id = ?", newPlayerID, matchID)
+	_, err = tx.Exec("UPDATE leg SET current_player_id = (SELECT player_id FROM player2leg WHERE match_id = ? AND `order` = 1) WHERE match_id = ?", matchID, matchID)
 	if err != nil {
 		tx.Rollback()
 		return err
