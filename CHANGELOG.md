@@ -6,6 +6,9 @@
 - Endpoint to get leaderboard data for each match type
 - New `Still Regining` badge when surviving a kill slayer attempt
 
+#### Changed
+- Pinned `goose` to `v3.24.2` to avoid unexpected issues using `latest`
+
 #### Fixed
 - Endpoints for getting player 170 statistics
 - Ensure that currenet player is set correctly on tournament playoffs
