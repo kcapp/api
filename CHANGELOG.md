@@ -13,6 +13,7 @@
 - Endpoints for getting player 170 statistics
 - Ensure that currenet player is set correctly on tournament playoffs
 - Don't include legs that hit max rounds as highest checkout
+- Exclude bye matches from all matches overview page
 
 ## [2.9.0] - 2025-04-06
 #### Feature
