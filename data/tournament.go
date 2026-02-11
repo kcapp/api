@@ -608,6 +608,7 @@ func getHighestCheckoutsForTournament(tournamentID int) ([]*models.BestStatistic
 			JOIN matches m on l.match_id = m.id
 			WHERE l.winner_id = s.player_id
 				AND s.leg_id IN (SELECT id FROM leg WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?))
+				AND s.checkout IS NOT NULL
 				AND IFNULL(l.leg_type_id, m.match_type_id) = 1 -- X01
 			GROUP BY s.player_id, s.id
 			ORDER BY checkout DESC, l.end_time) checkouts
