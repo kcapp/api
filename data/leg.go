@@ -160,8 +160,8 @@ func FinishLeg(legID int, currentPlayer int, winnerID null.Int) error {
 		}
 		for playerID, stats := range statisticsMap {
 			_, err = tx.Exec(`
-				INSERT INTO statistics_shootout(leg_id, player_id, score, ppd, 60s_plus, 100s_plus, 140s_plus, 180s)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, legID, playerID, stats.Score, stats.PPD, stats.Score60sPlus,
+				INSERT INTO statistics_shootout(leg_id, player_id, score, ppd, darts_thrown, 60s_plus, 100s_plus, 140s_plus, 180s)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, legID, playerID, stats.Score, stats.PPD, stats.DartsThrown, stats.Score60sPlus,
 				stats.Score100sPlus, stats.Score140sPlus, stats.Score180s)
 			if err != nil {
 				tx.Rollback()

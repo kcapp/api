@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
 )
 
@@ -266,7 +267,7 @@ func CheckMatchForBadges(match *models.Match) error {
 		return err
 	}
 
-	leaderboard, err := GetPlayersLastXLegsStatistics()
+	leaderboard, err := GetPlayersLastXLegsStatistics(null.IntFrom(int64(match.ID)))
 	if err != nil {
 		return err
 	}

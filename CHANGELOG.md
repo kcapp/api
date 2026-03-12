@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.10.0] - 2026-03-12
+#### Feature
+- Reworked player `x01` progression to be per bucket of 50 legs instead of week based
+- Endpoint to get leaderboard data for each match type
+- New `Still Regining` badge when surviving a kill slayer attempt
+
+#### Changed
+- Pinned `goose` to `v3.24.2` to avoid unexpected issues using `latest`
+
+#### Fixed
+- Endpoints for getting player 170 statistics
+- Ensure that currenet player is set correctly on tournament playoffs
+- Don't include legs that hit max rounds as highest checkout
+- Exclude bye matches from all matches overview page
+
 ## [2.9.0] - 2025-04-06
 #### Feature
 - Added method for updating venue of a match
@@ -182,6 +197,7 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
+[2.10.0]: https://github.com/kcapp/api/compare/v2.9.0...develop
 [2.9.0]: https://github.com/kcapp/api/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/kcapp/api/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/kcapp/api/compare/v2.6.0...v2.7.0

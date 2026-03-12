@@ -9,6 +9,10 @@ type Statistics170 struct {
 	ID                 int         `json:"id"`
 	LegID              int         `json:"leg_id"`
 	PlayerID           int         `json:"player_id"`
+	MatchesPlayed      int         `json:"matches_played"`
+	MatchesWon         int         `json:"matches_won"`
+	LegsPlayed         int         `json:"legs_played"`
+	LegsWon            int         `json:"legs_won"`
 	Points             int         `json:"points"`
 	PPD                float32     `json:"ppd"`
 	PPDScore           int         `json:"-"`

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/guregu/null"
 	"github.com/kcapp/api/models"
 )
 
@@ -223,6 +224,7 @@ func CalculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout,
 		stats := new(models.StatisticsShootout)
 		statisticsMap[player.PlayerID] = stats
 		stats.Score = player.CurrentScore
+		stats.DartsThrown = null.IntFrom(0)
 	}
 
 	for _, visit := range visits {
@@ -240,6 +242,7 @@ func CalculateShootoutStatistics(legID int) (map[int]*models.StatisticsShootout,
 		} else if visitScore == 180 {
 			stats.Score180s++
 		}
+		stats.DartsThrown = null.IntFrom(stats.DartsThrown.Int64 + 3)
 	}
 
 	for playerID, stats := range statisticsMap {
@@ -258,8 +261,8 @@ func RecalculateShootoutStatistics(legs []int) ([]string, error) {
 			return nil, err
 		}
 		for playerID, stat := range stats {
-			queries = append(queries, fmt.Sprintf(`UPDATE statistics_shootout SET score = %d, ppd = %f, 60s_plus = %d, 100s_plus = %d, 140s_plus = %d, 180s = %d WHERE leg_id = %d AND player_id = %d;`,
-				stat.Score, stat.PPD, stat.Score60sPlus, stat.Score100sPlus, stat.Score140sPlus, stat.Score180s, legID, playerID))
+			queries = append(queries, fmt.Sprintf(`UPDATE statistics_shootout SET score = %d, ppd = %f, darts_thrown = %d, 60s_plus = %d, 100s_plus = %d, 140s_plus = %d, 180s = %d WHERE leg_id = %d AND player_id = %d;`,
+				stat.Score, stat.PPD, stat.DartsThrown.Int64, stat.Score60sPlus, stat.Score100sPlus, stat.Score140sPlus, stat.Score180s, legID, playerID))
 		}
 	}
 	return queries, nil

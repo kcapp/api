@@ -17,12 +17,16 @@ var rootCmd = &cobra.Command{
 	Short: "Backend API for kcapp frontend",
 	Long:  `kcapp-api is the backend API for kcapp dart scoring application frontend`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		configFileParam, err := cmd.Flags().GetString("config")
-		if err != nil {
-			panic(err)
-		}
-		InitConfig(&configFileParam)
+		SetupConfig(cmd)
 	},
+}
+
+func SetupConfig(cmd *cobra.Command) {
+	configFileParam, err := cmd.Flags().GetString("config")
+	if err != nil {
+		panic(err)
+	}
+	InitConfig(&configFileParam)
 }
 
 func InitConfig(configFile *string) {

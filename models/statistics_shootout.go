@@ -14,6 +14,7 @@ type StatisticsShootout struct {
 	OfficeID      null.Int        `json:"office_id,omitempty"`
 	Score         int             `json:"score"`
 	PPD           float32         `json:"ppd"`
+	DartsThrown   null.Int        `json:"darts_thrown"`
 	Score60sPlus  int             `json:"scores_60s_plus"`
 	Score100sPlus int             `json:"scores_100s_plus"`
 	Score140sPlus int             `json:"scores_140s_plus"`
