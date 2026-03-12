@@ -100,6 +100,7 @@ func GetDartsAtXStatisticsForMatch(id int) ([]*models.StatisticsDartsAtX, error)
 	rows, err := models.DB.Query(`
 		SELECT
 			p.id AS 'player_id',
+			MAX(s.score) as 'score',
 			CAST(SUM(s.score) / COUNT(DISTINCT l.id) AS SIGNED) as 'avg_score',
 			SUM(s.singles) as 'singles',
 			SUM(s.doubles) as 'doubles',
@@ -126,7 +127,7 @@ func GetDartsAtXStatisticsForMatch(id int) ([]*models.StatisticsDartsAtX, error)
 	stats := make([]*models.StatisticsDartsAtX, 0)
 	for rows.Next() {
 		s := new(models.StatisticsDartsAtX)
-		err := rows.Scan(&s.PlayerID, &s.AvgScore, &s.Singles, &s.Doubles, &s.Triples, &s.HitRate, &s.Hits5, &s.Hits6, &s.Hits7, &s.Hits8, &s.Hits9)
+		err := rows.Scan(&s.PlayerID, &s.Score, &s.AvgScore, &s.Singles, &s.Doubles, &s.Triples, &s.HitRate, &s.Hits5, &s.Hits6, &s.Hits7, &s.Hits8, &s.Hits9)
 		if err != nil {
 			return nil, err
 		}

@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/guregu/null"
 	"github.com/kcapp/api/data"
 	"github.com/kcapp/api/models"
 )
@@ -273,7 +274,7 @@ func GetDartStatistics(w http.ResponseWriter, r *http.Request) {
 func GetPlayersLastXLegsStatistics(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
 
-	global, err := data.GetPlayersLastXLegsStatistics()
+	global, err := data.GetPlayersLastXLegsStatistics(null.IntFromPtr(nil))
 	if err != nil {
 		log.Println("Unable to get last x legs statistics", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

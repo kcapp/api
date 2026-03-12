@@ -135,7 +135,8 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 			SUM(s.overall_accuracy) / COUNT(s.overall_accuracy) AS 'accuracy_overall',
 			SUM(s.checkout_attempts) AS 'checkout_attempts',
 			COUNT(s.checkout_percentage) / SUM(s.checkout_attempts) * 100 AS 'checkout_percentage',
-			MAX(s.checkout) AS 'checkout'
+			MAX(s.checkout) AS 'checkout',
+			SUM(IF(s.checkout IS NOT NULL, darts_thrown, 0))/COUNT(s.checkout) AS 'darts_per_leg'
 		FROM statistics_x01 s
 			JOIN player p ON p.id = s.player_id
 			JOIN leg l ON l.id = s.leg_id
@@ -155,7 +156,7 @@ func GetX01StatisticsForMatch(id int) ([]*models.StatisticsX01, error) {
 		s := new(models.StatisticsX01)
 		err := rows.Scan(&s.PlayerID, &s.PPD, &s.FirstNinePPD, &s.ThreeDartAvg, &s.FirstNineThreeDartAvg, &s.Score60sPlus,
 			&s.Score100sPlus, &s.Score140sPlus, &s.Score180s, &s.Accuracy20, &s.Accuracy19, &s.AccuracyOverall, &s.CheckoutAttempts,
-			&s.CheckoutPercentage, &s.Checkout)
+			&s.CheckoutPercentage, &s.Checkout, &s.DartsPerLeg)
 		if err != nil {
 			return nil, err
 		}
@@ -994,8 +995,8 @@ func GetPlayerBadgeStatistics(ids []int, legID *int) (map[int]*models.PlayerBadg
 }
 
 // GetPlayersLastXLegsStatistics will return statistics for the last X legs for all players
-func GetPlayersLastXLegsStatistics() ([]*models.StatisticsX01, error) {
-	rows, err := models.DB.Query(`CALL get_players_last_x_legs_statistics(0, (SELECT leaderboard_last_legs_count FROM match_default LIMIT 1), (SELECT leaderboard_active_period_weeks FROM match_default LIMIT 1))`)
+func GetPlayersLastXLegsStatistics(ignoreMatchID null.Int) ([]*models.StatisticsX01, error) {
+	rows, err := models.DB.Query(`CALL get_players_last_x_legs_statistics(0, (SELECT leaderboard_last_legs_count FROM match_default LIMIT 1), (SELECT leaderboard_active_period_weeks FROM match_default LIMIT 1), ?)`, ignoreMatchID)
 	if err != nil {
 		return nil, err
 	}
