@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.11.0] - TBD
+
+
 ## [2.10.0] - 2026-03-12
 #### Feature
 - Reworked player `x01` progression to be per bucket of 50 legs instead of week based
@@ -197,7 +200,8 @@
 #### Feature
 - Intial version of API for [kcapp-frontend](https://github.com/kcapp/frontend)
 
-[2.10.0]: https://github.com/kcapp/api/compare/v2.9.0...develop
+[2.11.0]: https://github.com/kcapp/api/compare/v2.10.0...v2.11.0
+[2.10.0]: https://github.com/kcapp/api/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/kcapp/api/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/kcapp/api/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/kcapp/api/compare/v2.6.0...v2.7.0
