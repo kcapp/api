@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.10.0] - TBD
+## [2.10.0] - 2026-03-12
 #### Feature
 - Reworked player `x01` progression to be per bucket of 50 legs instead of week based
 - Endpoint to get leaderboard data for each match type
