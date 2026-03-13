@@ -21,4 +21,6 @@ type VenueConfig struct {
 	HasSmartboard          bool        `json:"has_smartboard"`
 	SmartboardUUID         null.String `json:"smartboard_uuid,omitempty"`
 	SmartboardButtonNumber null.Int    `json:"smartboard_button_number,omitempty"`
+	HasAutodarts           bool        `json:"has_autodarts"`
+	AutodartsURL           null.String `json:"autodarts_url,omitempty"`
 }
