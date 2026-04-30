@@ -3,6 +3,7 @@
 ## [2.11.0] - TBD
 #### Feature
 - Support for configuring [Autodarts](autodarts.io) URL in venue configuration
+- Canceling a leg now supports not abandoning match, for easier undo
 
 ## [2.10.0] - 2026-03-12
 #### Feature
