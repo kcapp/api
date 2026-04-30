@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -315,7 +316,20 @@ func DeleteLeg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.DeleteLeg(legID)
+	body := struct {
+		Abandoned *bool `json:"abandoned"`
+	}{}
+	abandoned := true
+	err = json.NewDecoder(r.Body).Decode(&body)
+	if err != nil && err != io.EOF {
+		log.Println("Unable to deserialize delete leg body", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if body.Abandoned != nil {
+		abandoned = *body.Abandoned
+	}
+	err = data.DeleteLeg(legID, abandoned)
 	if err != nil {
 		log.Println("Unable to delete leg", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
