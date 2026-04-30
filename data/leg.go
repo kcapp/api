@@ -1313,7 +1313,7 @@ func StartWarmup(legID int, venueID int) error {
 }
 
 // DeleteLeg will delete the current leg and update match with previous leg
-func DeleteLeg(legID int) error {
+func DeleteLeg(legID int, abandoned bool) error {
 	leg, err := GetLeg(legID)
 	if err != nil {
 		return err
@@ -1341,8 +1341,11 @@ func DeleteLeg(legID int) error {
 			}
 			log.Printf("Delete match without any leg %d", match.ID)
 		} else {
-			_, err = tx.Exec("UPDATE matches SET current_leg_id = ?, is_abandoned = 1, is_finished = 1 WHERE id = ?", previousLeg, match.ID)
-			if err != nil {
+			query := "UPDATE matches SET current_leg_id = ? WHERE id = ?"
+			if abandoned {
+				query = "UPDATE matches SET current_leg_id = ?, is_abandoned = 1, is_finished = 1 WHERE id = ?"
+			}
+			if _, err = tx.Exec(query, previousLeg, match.ID); err != nil {
 				return err
 			}
 			log.Printf("[%d] Updated current leg of match %d", previousLeg, match.ID)
