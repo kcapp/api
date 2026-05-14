@@ -140,6 +140,7 @@ type Match struct {
 	CurrentLegID     null.Int           `json:"current_leg_id"`
 	CreatedAt        time.Time          `json:"created_at"`
 	UpdatedAt        time.Time          `json:"updated_at"`
+	StartedAt        time.Time          `json:"started_at,omitempty"`
 	EndTime          time.Time          `json:"end_time,omitempty"`
 	MatchType        *MatchType         `json:"match_type"`
 	MatchMode        *MatchMode         `json:"match_mode"`
@@ -176,6 +177,7 @@ func (match Match) MarshalJSON() ([]byte, error) {
 		ID               int                `json:"id"`
 		CurrentLegID     null.Int           `json:"current_leg_id"`
 		CreatedAt        time.Time          `json:"created_at"`
+		StartedAt        time.Time          `json:"started_at,omitempty"`
 		UpdatedAt        time.Time          `json:"updated_at"`
 		EndTime          time.Time          `json:"end_time,omitempty"`
 		MatchType        *MatchType         `json:"match_type"`
@@ -215,10 +217,22 @@ func (match Match) MarshalJSON() ([]byte, error) {
 	}
 	legNum := strconv.Itoa(len(match.Legs)) + legPostfix[idx]
 
+	startedAt := match.StartedAt
+	if match.StartedAt.IsZero() {
+		startedAt = match.CreatedAt
+		if len(match.Legs) > 0 {
+			firstLeg := match.Legs[0]
+			if len(firstLeg.Visits) > 0 {
+				startedAt = firstLeg.Visits[0].CreatedAt
+			}
+		}
+
+	}
 	return json.Marshal(matchJSON{
 		ID:               match.ID,
 		CurrentLegID:     match.CurrentLegID,
 		CreatedAt:        match.CreatedAt,
+		StartedAt:        startedAt,
 		UpdatedAt:        match.UpdatedAt,
 		EndTime:          match.EndTime,
 		MatchType:        match.MatchType,

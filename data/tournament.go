@@ -208,14 +208,16 @@ func GetTournamentsForOffice(officeID int) ([]*models.Tournament, error) {
 func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id, m.is_finished, m.current_leg_id, m.winner_id, m.is_walkover, m.is_bye, IF(TIMEDIFF(MAX(l.updated_at), NOW() - INTERVAL 15 MINUTE) > 0, 1, 0) AS 'is_started',
-			m.created_at, m.updated_at, m.owe_type_id, m.venue_id,
-			mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required,
+			m.id, IFNULL(s.created_at, m.created_at) as 'match_start_time', m.is_finished, m.current_leg_id, m.winner_id, m.is_walkover, m.is_bye,
+			IF(TIMEDIFF(MAX(l.updated_at), NOW() - INTERVAL 15 MINUTE) > 0, 1, 0) AS 'is_started', m.created_at, m.updated_at,
+			m.owe_type_id, m.venue_id, mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required,
 			v.id, v.name, v.description, l.updated_at as 'last_throw', if(l.is_finished AND l.has_scores, 1, 0) as 'has_scores',
 			GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
 			m.tournament_id, tg.id, GROUP_CONCAT(legs.winner_id ORDER BY legs.id) AS 'legs_won', ot.item,
 			IF(SUM(p.is_placeholder) > 0, 0, 1) as 'is_players_decided'
 		FROM matches m
+			LEFT JOIN leg fleg on fleg.id = (select min(id) from leg where match_id = m.id)
+			LEFT JOIN score s on s.id = (select min(id) from score where leg_id = fleg.id)
 			JOIN match_type mt ON mt.id = m.match_type_id
 			JOIN match_mode mm ON mm.id = m.match_mode_id
 			LEFT JOIN leg l ON l.id = m.current_leg_id
@@ -245,7 +247,7 @@ func GetTournamentMatches(id int) (map[int][]*models.Match, error) {
 		var players string
 		var legsWon null.String
 		var ot null.String
-		err := rows.Scan(&m.ID, &m.IsFinished, &m.CurrentLegID, &m.WinnerID, &m.IsWalkover, &m.IsBye, &m.IsStarted, &m.CreatedAt, &m.UpdatedAt,
+		err := rows.Scan(&m.ID, &m.StartedAt, &m.IsFinished, &m.CurrentLegID, &m.WinnerID, &m.IsWalkover, &m.IsBye, &m.IsStarted, &m.CreatedAt, &m.UpdatedAt,
 			&m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired,
 			&venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &m.HasScores, &players, &m.TournamentID, &groupID, &legsWon, &ot, &m.IsPlayersDecided)

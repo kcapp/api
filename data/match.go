@@ -332,12 +332,15 @@ func GetMatchProbabilities(id int) (*models.Probability, error) {
 func GetMatchesLimit(start int, limit int) ([]*models.Match, error) {
 	rows, err := models.DB.Query(`
 		SELECT
-			m.id, m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id, m.winner_id, m.office_id, m.is_practice,
-			m.created_at, m.updated_at, m.owe_type_id, m.venue_id, mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name,
-			mm.wins_required, mm.legs_required, mm.is_draw_possible, mm.is_challenge, ot.id, ot.item, v.id, v.name, v.description,
+			m.id, IFNULL(s.created_at, m.created_at) as 'match_start_time', m.is_finished, m.is_abandoned, m.is_walkover, m.is_bye, m.current_leg_id,
+			m.winner_id, m.office_id, m.is_practice, m.created_at, m.updated_at, m.owe_type_id, m.venue_id,
+			mt.id, mt.name, mt.description, mm.id, mm.name, mm.short_name, mm.wins_required, mm.legs_required,
+			mm.is_draw_possible, mm.is_challenge, ot.id, ot.item, v.id, v.name, v.description,
 			l.updated_at as 'last_throw', GROUP_CONCAT(DISTINCT p2l.player_id ORDER BY p2l.order) AS 'players',
 			m.tournament_id, t.id, t.name, tg.id, tg.name, GROUP_CONCAT(legs.winner_id ORDER BY legs.id) AS 'legs_won'
 		FROM matches m
+			LEFT JOIN leg fleg on fleg.id = (select min(id) from leg where match_id = m.id)
+			LEFT JOIN score s on s.id = (select min(id) from score where leg_id = fleg.id)
 			JOIN match_type mt ON mt.id = m.match_type_id
 			JOIN match_mode mm ON mm.id = m.match_mode_id
 			LEFT JOIN leg l ON l.id = m.current_leg_id
@@ -350,7 +353,7 @@ func GetMatchesLimit(start int, limit int) ([]*models.Match, error) {
 			LEFT JOIN tournament_group tg ON tg.id = p2t.tournament_group_id
 		WHERE m.created_at <= NOW() AND m.is_bye <> 1
 		GROUP BY m.id
-		ORDER BY m.created_at DESC, m.id DESC
+		ORDER BY match_start_time DESC, m.id DESC
 		LIMIT ?, ?`, start, limit)
 	if err != nil {
 		return nil, err
@@ -367,7 +370,7 @@ func GetMatchesLimit(start int, limit int) ([]*models.Match, error) {
 		tournament := new(models.MatchTournament)
 		var players string
 		var legsWon null.String
-		err := rows.Scan(&m.ID, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.IsBye, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice,
+		err := rows.Scan(&m.ID, &m.StartedAt, &m.IsFinished, &m.IsAbandoned, &m.IsWalkover, &m.IsBye, &m.CurrentLegID, &m.WinnerID, &m.OfficeID, &m.IsPractice,
 			&m.CreatedAt, &m.UpdatedAt, &m.OweTypeID, &m.VenueID, &m.MatchType.ID, &m.MatchType.Name, &m.MatchType.Description,
 			&m.MatchMode.ID, &m.MatchMode.Name, &m.MatchMode.ShortName, &m.MatchMode.WinsRequired, &m.MatchMode.LegsRequired, &m.MatchMode.IsDrawPossible,
 			&m.MatchMode.IsChallenge, &ot.ID, &ot.Item, &venue.ID, &venue.Name, &venue.Description, &m.LastThrow, &players, &m.TournamentID,

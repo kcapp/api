@@ -5,6 +5,9 @@
 - Support for configuring [Autodarts](autodarts.io) URL in venue configuration
 - Canceling a leg now supports not abandoning match, for easier undo
 
+#### Changed
+- Calculate `started_at` for matches to display start time correctly
+
 ## [2.10.0] - 2026-03-12
 #### Feature
 - Reworked player `x01` progression to be per bucket of 50 legs instead of week based
