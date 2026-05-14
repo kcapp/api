@@ -10,7 +10,7 @@ import (
 func GetMysqlConnectionString() string {
 	// Need to add ?parseTime=true here to support time.Time in queries
 	return fmt.Sprintf(
-		"%s:%s@(%s:%d)/%s?parseTime=true",
+		"%s:%s@(%s:%d)/%s?parseTime=true&loc=UTC&time_zone=%%27%%2B00%%3A00%%27",
 		viper.GetString("db.username"),
 		viper.GetString("db.password"),
 		viper.GetString("db.address"),

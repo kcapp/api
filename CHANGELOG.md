@@ -1,6 +1,9 @@
 # Changelog
 
 ## [2.11.0] - TBD
+#### Breaking
+- Force timezone from datbase to be `UTC`
+
 #### Feature
 - Support for configuring [Autodarts](autodarts.io) URL in venue configuration
 - Canceling a leg now supports not abandoning match, for easier undo
