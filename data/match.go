@@ -897,7 +897,6 @@ func GetBadgeMatchesToRecalculate() ([]int, error) {
 			LEFT JOIN leg l ON l.match_id = m.id
 		WHERE m.is_abandoned = 0 AND m.is_bye = 0 AND m.is_walkover = 0
 			AND m.is_finished = 1 AND l.has_scores = 1 AND m.match_type_id = 1
-			AND m.id = 21800
 		GROUP BY m.id
 		ORDER BY m.id ASC`)
 	if err != nil {
