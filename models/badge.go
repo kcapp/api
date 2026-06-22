@@ -1004,7 +1004,8 @@ func (b BadgeTripleThreat) Validate(playerID int, visits []*Visit) (bool, *int) 
 	for _, visit := range playerVisits {
 		if visit.GetScore() == 171 &&
 			visit.FirstDart.IsTriple() && visit.SecondDart.IsTriple() && visit.ThirdDart.IsTriple() &&
-			visit.FirstDart.IsValue(values) && visit.SecondDart.IsValue(values) && visit.ThirdDart.IsValue(values) {
+			visit.FirstDart.IsValue(values) && visit.SecondDart.IsValue(values) && visit.ThirdDart.IsValue(values) &&
+			visit.FirstDart.ValueRaw() != visit.SecondDart.ValueRaw() {
 			return true, &visit.ID
 		}
 	}
